@@ -17,5 +17,12 @@ python manage.py migrate --noinput
 echo "[entrypoint] Recolectando estáticos..."
 python manage.py collectstatic --noinput
 
-echo "[entrypoint] Iniciando Gunicorn..."
-exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -
+# DJANGO_DEBUG=True (desarrollo)  -> runserver con autoreload
+# DJANGO_DEBUG=False (producción) -> gunicorn
+if [ "${DJANGO_DEBUG:-False}" = "True" ]; then
+  echo "[entrypoint] DEBUG=True → Iniciando Django runserver (autoreload)..."
+  exec python manage.py runserver 0.0.0.0:8000
+else
+  echo "[entrypoint] DEBUG=False → Iniciando Gunicorn..."
+  exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -
+fi

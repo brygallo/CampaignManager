@@ -4,7 +4,7 @@
   <base href="{{ request.scheme }}://{{ request.get_host }}/">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Iniciar sesión | {{ brand_name|default:"CampaignManager" }}</title>
+  <title>Acceso a campaña | {{ brand_name|default:"CampaignManager" }}</title>
   <link rel="shortcut icon" href="{% static 'assets/media/logos/favicon.ico' %}" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
   <link href="{% static 'assets/plugins/global/plugins.bundle.css' %}" rel="stylesheet" type="text/css" />
@@ -32,8 +32,8 @@
               {% csrf_token %}
 
               <div class="text-center mb-11">
-                <h1 class="text-dark fw-bolder mb-3">Iniciar sesión</h1>
-                <div class="text-gray-500 fw-semibold fs-6">Bienvenido a {{ brand_name|default:"CampaignManager" }}</div>
+                <h1 class="text-dark fw-bolder mb-3">Acceso al centro de campaña</h1>
+                <div class="text-gray-500 fw-semibold fs-6">Ingresa para coordinar equipos, territorio y actividades políticas.</div>
               </div>
 
               {% if form.non_field_errors %}
@@ -46,11 +46,11 @@
               {% endif %}
 
               <div class="fv-row mb-8">
-                <label for="id_username" class="form-label fs-6 fw-bolder text-dark">Usuario o email</label>
+                <label for="id_username" class="form-label fs-6 fw-bolder text-dark">Usuario o correo institucional</label>
                 <input type="text" name="username" id="id_username"
                        class="form-control bg-transparent {% if form.username.errors %}is-invalid{% endif %}"
                        value="{{ form.username.value|default_if_none:'' }}"
-                       placeholder="usuario@ejemplo.com" autofocus required>
+                       placeholder="equipo@campana.com" autofocus required>
                 {% if form.username.errors %}<div class="text-danger small mt-2">{{ form.username.errors|join:", " }}</div>{% endif %}
               </div>
 
@@ -65,14 +65,14 @@
               <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">
                 <label class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" name="remember">
-                  <span class="form-check-label">Recordarme</span>
+                  <span class="form-check-label">Mantener sesión activa</span>
                 </label>
-                <a href="#" class="link-primary">¿Olvidaste tu contraseña?</a>
+                <a href="#" class="link-primary">¿Necesitas recuperar tu acceso?</a>
               </div>
 
               <div class="d-grid mb-10">
                 <button type="submit" class="btn btn-primary">
-                  <span class="indicator-label">Iniciar sesión</span>
+                  <span class="indicator-label">Entrar al panel</span>
                 </button>
               </div>
 
@@ -98,9 +98,9 @@
           </a>
           <img class="d-none d-lg-block mx-auto w-275px w-md-50 w-xl-500px mb-10 mb-lg-20"
                src="{% static 'assets/media/misc/auth-screens.png' %}" alt="">
-          <h1 class="d-none d-lg-block text-white fs-2qx fw-bolder text-center mb-7">Gestiona tus campañas</h1>
+          <h1 class="d-none d-lg-block text-white fs-2qx fw-bolder text-center mb-7">Control operativo de campaña política</h1>
           <div class="d-none d-lg-block text-white fs-base text-center">
-            Plataforma integral para administrar campañas, sitios y flujos de aprobación.
+            Organiza territorios, responsables, actividades y aprobaciones desde un solo panel de trabajo.
           </div>
         </div>
       </div>

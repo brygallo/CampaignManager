@@ -9,12 +9,12 @@ from .models import Profile, User
 
 
 class EmailOrUsernameAuthenticationForm(AuthenticationForm):
-    username = forms.CharField(label="Usuario o email")
+    username = forms.CharField(label="Usuario o correo institucional")
 
     error_messages = {
         "invalid_login": (
-            "Por favor, introduzca un usuario/email y clave correctos. "
-            "Observe que ambos campos pueden ser sensibles a mayúsculas."
+            "No pudimos validar el acceso al panel de campaña. "
+            "Revisa el usuario/correo y la contraseña asignados."
         ),
         "inactive": "Esta cuenta está inactiva.",
     }
