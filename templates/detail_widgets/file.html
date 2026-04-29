@@ -1,0 +1,7 @@
+{% if value %}
+  <a href="{{ value.url }}" target="_blank" class="d-inline-flex align-items-center gap-2">
+    <i class="material-icons-outlined fs-6">attach_file</i> {{ value.name|default:"Archivo" }}
+  </a>
+{% else %}
+  —
+{% endif %}

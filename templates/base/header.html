@@ -1,0 +1,68 @@
+{% load static %}
+<header class="top-header">
+  <nav class="navbar navbar-expand align-items-center gap-4">
+    <div class="btn-toggle">
+      <a href="javascript:;"><i class="material-icons-outlined">menu</i></a>
+    </div>
+
+    <div class="search-bar flex-grow-1">
+      <div class="position-relative">
+        <input class="form-control rounded-5 px-5 search-control d-lg-block d-none" type="text" placeholder="Buscar...">
+        <span class="material-icons-outlined position-absolute d-lg-block d-none ms-3 translate-middle-y start-0 top-50">search</span>
+      </div>
+    </div>
+
+    <ul class="navbar-nav gap-1 nav-right-links align-items-center">
+      {% if available_sites %}
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle dropdown-toggle-nocaret d-flex align-items-center gap-2"
+           href="javascript:;" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="material-icons-outlined">apartment</span>
+          <span class="d-none d-md-inline">{{ active_site.name|default:"Selecciona sitio" }}</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% for s in available_sites %}
+            <li>
+              <form method="post" action="{% url 'switch-site' s.pk %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 {% if active_site.pk == s.pk %}active{% endif %}">
+                  <span class="material-icons-outlined fs-6">{% if active_site.pk == s.pk %}check_circle{% else %}radio_button_unchecked{% endif %}</span>
+                  {{ s.name }}
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="/sites_mgmt/site/listar/">Gestionar sitios</a></li>
+        </ul>
+      </li>
+      {% endif %}
+
+      {% if user.is_authenticated %}
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle dropdown-toggle-nocaret d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+          {% if user.profile.avatar %}
+            <img src="{{ user.profile.avatar.url }}" class="rounded-circle" width="36" height="36" alt="">
+          {% else %}
+            <span class="material-icons-outlined fs-3">account_circle</span>
+          {% endif %}
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li class="dropdown-header">
+            <strong>{{ user.get_full_name|default:user.username }}</strong><br>
+            <small class="text-muted">{{ user.email }}</small>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'authentication:profile' %}"><i class="material-icons-outlined fs-6 me-2">person</i>Mi perfil</a></li>
+          <li>
+            <form method="post" action="{% url 'authentication:logout' %}" class="m-0">
+              {% csrf_token %}
+              <button type="submit" class="dropdown-item"><i class="material-icons-outlined fs-6 me-2">logout</i>Cerrar sesión</button>
+            </form>
+          </li>
+        </ul>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</header>

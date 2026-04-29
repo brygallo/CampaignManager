@@ -1,0 +1,31 @@
+{% load superadmin_utils static %}
+{# Renders available transitions as dropdown items / nav-links inside a parent menu. #}
+{% for transition in object.get_available_state_transitions %}
+  {% if request.user|has_perm:transition.permission %}
+    <li class="nav-item">
+      <a href="#"
+         data-transition="{{ transition.name }}"
+         data-input="{{ transition.custom.input }}"
+         data-max_size="{{ transition.custom.max_size }}"
+         data-placeholder="{{ transition.custom.placeholder }}"
+         data-title="{{ transition.custom.title }}"
+         data-form="{{ transition.custom.form }}"
+         data-text="{{ transition.custom.text }}"
+         data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}"
+         class="nav-link transition d-flex align-items-center gap-2">
+        {% if object.state > transition.target %}
+          <i class="material-icons-outlined fs-5">{{ transition.custom.back_icon|default:'arrow_back' }}</i>
+        {% else %}
+          <i class="material-icons-outlined fs-5">{{ transition.custom.icon|default:'arrow_forward' }}</i>
+        {% endif %}
+        <span class="nav-text">
+          {% if object.state > transition.target and transition.custom.back_verbose %}
+            {{ transition.custom.back_verbose }}
+          {% else %}
+            {{ transition.custom.verbose }}
+          {% endif %}
+        </span>
+      </a>
+    </li>
+  {% endif %}
+{% endfor %}

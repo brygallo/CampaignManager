@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: campaignmanager_app
+    env_file: .env
+    volumes:
+      - .:/src
+      - media_volume:/src/media
+      - static_volume:/src/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15
+    container_name: campaignmanager_postgres
+    environment:
+      POSTGRES_DB: campaignmanager
+      POSTGRES_USER: campaignmanager
+      POSTGRES_PASSWORD: campaignmanager
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: campaignmanager_redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  media_volume:
+  static_volume:

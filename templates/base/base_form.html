@@ -1,0 +1,84 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}{{ site.title|default:site.model_name|title }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<h6 class="mb-0 text-uppercase">{{ site.title|default:site.model_name|title }}</h6>
+<hr>
+
+<div class="card rounded-4">
+  <div class="card-header d-flex align-items-center gap-2 py-3">
+    <span class="material-icons-outlined">{% if object %}edit{% else %}add_circle{% endif %}</span>
+    <h5 class="mb-0">
+      {% if object %}Editar{% else %}Crear{% endif %} {{ site.model_name|title }}
+    </h5>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      {% if site.urls.list %}
+        <a href="{{ site.urls.list }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+          <i class="material-icons-outlined fs-6">arrow_back</i> Volver
+        </a>
+      {% endif %}
+      {% if object and site.urls.delete %}
+        <a href="{{ site.urls.delete }}" class="btn btn-outline-danger d-flex align-items-center gap-2">
+          <i class="material-icons-outlined fs-6">delete</i> Eliminar
+        </a>
+      {% endif %}
+      <button type="submit" form="main-form" class="btn btn-grd btn-grd-primary d-flex align-items-center gap-2">
+        <i class="material-icons-outlined fs-6">check</i> Guardar
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <form id="main-form" method="post" enctype="multipart/form-data" class="row g-3" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      {% if form.has_fieldsets %}
+        {% for section in form.get_fieldsets %}
+          <fieldset class="col-12">
+            {% if section.title %}<legend class="text-uppercase fs-6 fw-bold border-bottom pb-2 mb-3">{{ section.title }}</legend>{% endif %}
+            {% for row in section.fieldset %}
+              <div class="row g-3 mb-2">
+                {% for field in row.fields %}
+                  <div class="col-md-{{ row.bs_cols }}">
+                    {% include "base/_field.html" with field=field %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          </fieldset>
+        {% endfor %}
+      {% else %}
+        {% for field in form %}
+          <div class="col-md-6">
+            {% include "base/_field.html" with field=field %}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% block form_inlines %}
+        {% for name, formset in inlines.items %}
+          <div class="col-12">
+            <hr>
+            <h6 class="text-uppercase">{{ name|title }}</h6>
+            {{ formset.management_form }}
+            {% for inline_form in formset %}
+              <div class="row g-3 mb-2">
+                {% for field in inline_form %}
+                  <div class="col-md-3">
+                    {% include "base/_field.html" with field=field %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      {% endblock %}
+    </form>
+  </div>
+</div>
+{% endblock %}

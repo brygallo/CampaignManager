@@ -1,0 +1,16 @@
+{% extends "base/base.html" %}
+{% block content %}
+<div class="card rounded-4">
+  <div class="card-body p-5 text-center">
+    {% if profile.avatar %}
+      <img src="{{ profile.avatar.url }}" class="rounded-circle mb-3" width="120" height="120" alt="">
+    {% else %}
+      <span class="material-icons-outlined" style="font-size:96px">account_circle</span>
+    {% endif %}
+    <h3 class="mb-1">{{ user.get_full_name|default:user.username }}</h3>
+    <p class="text-muted mb-3">{{ user.email }}</p>
+    {% if profile.phone_number %}<p class="mb-1"><i class="material-icons-outlined fs-6 align-middle">phone</i> {{ profile.phone_number }}</p>{% endif %}
+    {% if profile.bio %}<p class="text-muted">{{ profile.bio }}</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

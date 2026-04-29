@@ -1,0 +1,51 @@
+{% load static %}
+<!-- bootstrap -->
+<script src="{% static 'assets/js/bootstrap.bundle.min.js' %}"></script>
+<!-- jQuery -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<!-- plugins -->
+<script src="{% static 'assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js' %}"></script>
+<script src="{% static 'assets/plugins/metismenu/metisMenu.min.js' %}"></script>
+<script src="{% static 'assets/plugins/simplebar/js/simplebar.min.js' %}"></script>
+<script src="{% static 'assets/plugins/datatable/js/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/plugins/datatable/js/dataTables.bootstrap5.min.js' %}"></script>
+<script src="{% static 'assets/plugins/select2/js/select2.min.js' %}"></script>
+<script src="{% static 'assets/plugins/notifications/js/lobibox.min.js' %}"></script>
+<script src="{% static 'assets/plugins/notifications/js/notifications.min.js' %}"></script>
+
+<!-- main -->
+<script src="{% static 'assets/js/main.js' %}"></script>
+<script src="{% static 'assets/js/workflows.js' %}"></script>
+
+<!-- global initializers -->
+<script>
+  $(function () {
+    // DataTable: pick up any table with id="datatable"
+    if ($("#datatable").length) {
+      $("#datatable").DataTable({
+        responsive: true,
+        language: { url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json" }
+      });
+    }
+    // Select2: any select with class "select2"
+    $(".select2").select2({ width: "100%" });
+
+    // Theme switcher persisted in localStorage
+    const html = document.documentElement;
+    const radios = document.querySelectorAll('input[name="theme-options"]');
+    const map = {
+      BlueTheme: "blue-theme",
+      LightTheme: "light",
+      DarkTheme: "dark",
+      SemiDarkTheme: "semi-dark",
+      BorderedTheme: "bordered-theme",
+    };
+    function applyTheme(theme) {
+      html.setAttribute("data-bs-theme", theme);
+      localStorage.setItem("cm.theme", theme);
+    }
+    const saved = localStorage.getItem("cm.theme");
+    if (saved) applyTheme(saved);
+    radios.forEach(r => r.addEventListener("change", () => applyTheme(map[r.id] || "light")));
+  });
+</script>

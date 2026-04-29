@@ -1,0 +1,27 @@
+{% extends "base/base.html" %}
+
+{% block title %}Eliminar {{ object }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="card rounded-4 border border-danger border-2">
+  <div class="card-body p-5 text-center">
+    <span class="material-icons-outlined text-danger" style="font-size:64px">warning</span>
+    <h3 class="mt-3 mb-2">¿Eliminar este registro?</h3>
+    <p class="mb-4 text-muted">
+      Vas a eliminar:
+      <strong class="text-dark">{{ object }}</strong>
+    </p>
+    <form method="post" class="d-flex justify-content-center gap-3">
+      {% csrf_token %}
+      {% if site.urls.detail %}
+        <a href="{{ site.urls.detail }}" class="btn btn-outline-secondary">Cancelar</a>
+      {% else %}
+        <a href="{{ site.urls.list }}" class="btn btn-outline-secondary">Cancelar</a>
+      {% endif %}
+      <button type="submit" class="btn btn-grd btn-grd-danger d-flex align-items-center gap-2">
+        <i class="material-icons-outlined fs-6">delete</i> Sí, eliminar
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

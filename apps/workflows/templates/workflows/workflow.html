@@ -1,0 +1,205 @@
+{% load workflows superadmin_utils %}
+{# Workflow card: stepper showing visible states + footer with backward/forward action buttons. #}
+{% if object.get_visible_states %}
+  {% if object.get_current_state in object.get_visible_states %}
+    {% with states=object.get_visible_states %}
+
+      <style>
+        /* Wizard-style stepper not present in Maxton bundle by default. */
+        .wf-stepper { display: flex; align-items: flex-end; padding: 0.5rem 1rem; gap: 0.75rem; }
+        .wf-stepper .wf-step { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; color: #b5b5c3; }
+        .wf-stepper .wf-step .wf-step-title { font-size: 0.9rem; font-weight: 600; line-height: 1.2; margin: 0 0 0.5rem 0; display: flex; align-items: baseline; min-width: 0; }
+        .wf-stepper .wf-step .wf-step-title .wf-step-num { font-size: 1.4rem; margin-right: 0.4rem; flex-shrink: 0; line-height: 1; }
+        .wf-stepper .wf-step .wf-step-title .wf-step-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .wf-stepper .wf-step .wf-step-bar { height: 4px; width: 100%; background-color: var(--bs-secondary-bg, #ebedf3); border-radius: 2px; position: relative; overflow: hidden; }
+        .wf-stepper .wf-step .wf-step-bar:after { content: ""; position: absolute; inset: 0; width: 0; transition: background-color .2s ease, width .3s ease; }
+        .wf-stepper .wf-step.is-current { color: var(--bs-primary, #3699ff); }
+        .wf-stepper .wf-step.is-current .wf-step-bar:after { width: 100%; background-color: var(--bs-primary, #3699ff); }
+        .wf-stepper .wf-step.is-done { color: var(--bs-success, #1bc5bd); }
+        .wf-stepper .wf-step.is-done .wf-step-bar:after { width: 100%; background-color: var(--bs-success, #1bc5bd); }
+        .wf-stepper .wf-step.is-current,
+        .wf-stepper .wf-step.is-prev,
+        .wf-stepper .wf-step.is-next { flex-grow: 2; }
+        @media (max-width: 1399.98px) {
+          .wf-stepper .wf-step:not(.is-current):not(.is-prev):not(.is-next) { flex: 0 1 auto; }
+          .wf-stepper .wf-step:not(.is-current):not(.is-prev):not(.is-next) .wf-step-label { display: none; }
+          .wf-stepper .wf-step:not(.is-current):not(.is-prev):not(.is-next) .wf-step-num { margin-right: 0; }
+          .wf-stepper .wf-step:not(.is-current):not(.is-prev):not(.is-next) .wf-step-bar { min-width: 2rem; }
+        }
+      </style>
+
+      <div class="card rounded-4 mb-4">
+        <div class="card-body p-0">
+
+          {# Mobile summary chip (< lg) #}
+          <div class="d-lg-none p-4 border-bottom">
+            <div class="d-flex align-items-center mb-3 gap-3">
+              <div class="rounded-circle bg-grd-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:45px;height:45px;font-size:1.1rem">
+                {% for s in states %}{% if s.value == object.state %}{{ forloop.counter }}{% endif %}{% endfor %}
+              </div>
+              <div class="flex-grow-1" style="min-width: 0;">
+                <div class="text-muted small fw-bolder text-uppercase mb-1">
+                  Paso{% for s in states %}{% if s.value == object.state %} {{ forloop.counter }}{% endif %}{% endfor %} de {{ states|length }}
+                </div>
+                <div class="fw-bolder fs-6 text-truncate" data-bs-toggle="tooltip" title="{{ object.get_current_state.label }}">
+                  {{ object.get_current_state.label }}
+                </div>
+              </div>
+            </div>
+            {% with last_state=states|last %}
+              {% widthratio object.state last_state.value 100 as pct %}
+              <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ pct }}%" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            {% endwith %}
+          </div>
+
+          {# Desktop stepper (≥ lg) #}
+          <div class="d-none d-lg-block">
+            <div class="wf-stepper">
+              {% for state in states %}
+                <div class="wf-step
+                  {% if state.value < object.state %}is-done{% elif state.value == object.state %}is-current{% endif %}
+                  {% if state.value|add:1 == object.state %}is-prev{% endif %}
+                  {% if state.value|add:-1 == object.state %}is-next{% endif %}">
+                  <div class="wf-step-title" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ state.label }}">
+                    <span class="wf-step-num">{{ forloop.counter }}.</span>
+                    <span class="wf-step-label">{{ state.label }}</span>
+                  </div>
+                  <div class="wf-step-bar"></div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {# Footer with transition action buttons #}
+        <div class="card-footer d-flex flex-wrap align-items-center justify-content-between py-3 px-4 gap-2">
+
+          {# LEFT: cancel/destructive (target = 0) + backward split #}
+          <div class="d-flex flex-wrap align-items-center gap-2 me-auto">
+            {% for transition in object.get_available_state_transitions %}
+              {% if transition.target == 0 and request.user|has_perm:transition.permission %}
+                <a href="#"
+                   class="transition btn btn-sm btn-outline-danger fw-bolder d-flex align-items-center gap-2"
+                   data-transition="{{ transition.name }}"
+                   data-input="{{ transition.custom.input }}"
+                   data-max_size="{{ transition.custom.max_size }}"
+                   data-placeholder="{{ transition.custom.placeholder }}"
+                   data-title="{{ transition.custom.title }}"
+                   data-form="{{ transition.custom.form }}"
+                   data-text="{{ transition.custom.text }}"
+                   data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}"
+                   data-bs-toggle="tooltip" data-bs-placement="top"
+                   title="{% firstof transition.custom.back_verbose transition.custom.verbose %}">
+                  <i class="material-icons-outlined fs-6">close</i>
+                  <span class="d-none d-xl-inline">{% firstof transition.custom.back_verbose transition.custom.verbose %}</span>
+                </a>
+              {% endif %}
+            {% endfor %}
+
+            {% split_backward_transitions object as back_split %}
+            {% if back_split.closest %}
+              <div class="btn-group">
+                <a href="#"
+                   class="transition btn btn-sm btn-outline-secondary fw-bolder d-flex align-items-center gap-2"
+                   data-transition="{{ back_split.closest.name }}"
+                   data-input="{{ back_split.closest.custom.input }}"
+                   data-max_size="{{ back_split.closest.custom.max_size }}"
+                   data-placeholder="{{ back_split.closest.custom.placeholder }}"
+                   data-title="{{ back_split.closest.custom.title }}"
+                   data-form="{{ back_split.closest.custom.form }}"
+                   data-text="{{ back_split.closest.custom.text }}"
+                   data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
+                  <i class="material-icons-outlined fs-6">{{ back_split.closest.custom.back_icon|default:'arrow_back' }}</i>
+                  <span>{% firstof back_split.closest.custom.back_verbose back_split.closest.custom.verbose %}</span>
+                </a>
+                {% if back_split.others %}
+                  <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="visually-hidden">Más retrocesos</span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    {% for transition in back_split.others %}
+                      <li>
+                        <a href="#"
+                           class="transition dropdown-item d-flex align-items-center gap-2"
+                           data-transition="{{ transition.name }}"
+                           data-input="{{ transition.custom.input }}"
+                           data-max_size="{{ transition.custom.max_size }}"
+                           data-placeholder="{{ transition.custom.placeholder }}"
+                           data-title="{{ transition.custom.title }}"
+                           data-form="{{ transition.custom.form }}"
+                           data-text="{{ transition.custom.text }}"
+                           data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
+                          <i class="material-icons-outlined fs-6">{{ transition.custom.back_icon|default:'arrow_back' }}</i>
+                          {% firstof transition.custom.back_verbose transition.custom.verbose %}
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+
+          {# RIGHT: forward primary CTA (split when multiple) #}
+          {% split_forward_transitions object as fwd_split %}
+          <div class="d-flex flex-wrap align-items-center">
+            {% if fwd_split.closest %}
+              <div class="btn-group">
+                <a href="#"
+                   class="transition btn btn-sm btn-grd btn-grd-primary fw-bolder d-flex align-items-center gap-2"
+                   data-transition="{{ fwd_split.closest.name }}"
+                   data-input="{{ fwd_split.closest.custom.input }}"
+                   data-max_size="{{ fwd_split.closest.custom.max_size }}"
+                   data-placeholder="{{ fwd_split.closest.custom.placeholder }}"
+                   data-title="{{ fwd_split.closest.custom.title }}"
+                   data-form="{{ fwd_split.closest.custom.form }}"
+                   data-text="{{ fwd_split.closest.custom.text }}"
+                   data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
+                  <span>{{ fwd_split.closest.custom.verbose }}</span>
+                  <i class="material-icons-outlined fs-6">{{ fwd_split.closest.custom.icon|default:'arrow_forward' }}</i>
+                </a>
+                {% if fwd_split.others %}
+                  <button type="button" class="btn btn-sm btn-grd btn-grd-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="visually-hidden">Más avances</span>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    {% for transition in fwd_split.others %}
+                      <li>
+                        <a href="#"
+                           class="transition dropdown-item d-flex align-items-center gap-2"
+                           data-transition="{{ transition.name }}"
+                           data-input="{{ transition.custom.input }}"
+                           data-max_size="{{ transition.custom.max_size }}"
+                           data-placeholder="{{ transition.custom.placeholder }}"
+                           data-title="{{ transition.custom.title }}"
+                           data-form="{{ transition.custom.form }}"
+                           data-text="{{ transition.custom.text }}"
+                           data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
+                          <i class="material-icons-outlined fs-6">{{ transition.custom.icon|default:'arrow_forward' }}</i>
+                          {{ transition.custom.verbose }}
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    {% endwith %}
+  {% else %}
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+      <i class="material-icons-outlined">error</i>
+      <strong>{{ object.get_current_state.label|upper }}</strong>
+    </div>
+  {% endif %}
+
+  <form id="stateForm" action="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="transition">
+  </form>
+{% endif %}

@@ -1,0 +1,65 @@
+"""User custom + Profile."""
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
+from django.db import models
+
+
+class User(AbstractUser):
+    """User extendido: email único, alias opcional. USERNAME_FIELD se mantiene
+    como `username` para no romper compatibilidad con superadmin (ManagementForm,
+    permisos, etc.), pero el email se valida como único.
+    """
+
+    email = models.EmailField(
+        "Correo electrónico",
+        unique=True,
+        error_messages={"unique": "Ya existe un usuario con este correo."},
+    )
+    alias = models.CharField("Alias", max_length=64, blank=True)
+
+    REQUIRED_FIELDS = ["email", "first_name", "last_name"]
+
+    class Meta:
+        verbose_name = "Usuario"
+        verbose_name_plural = "Usuarios"
+        ordering = ["last_name", "first_name", "username"]
+        permissions = (("view_profile", "Ver perfil de usuario"),)
+
+    def __str__(self):
+        return self.get_full_name() or self.username
+
+
+class Profile(models.Model):
+    """OneToOne extendido del User."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile",
+        verbose_name="Usuario",
+    )
+    phone_number = models.CharField(
+        "Teléfono",
+        max_length=20,
+        blank=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\+?\d{7,15}$",
+                message="Número de teléfono inválido (7-15 dígitos, prefijo + opcional).",
+            )
+        ],
+    )
+    avatar = models.ImageField(
+        "Avatar",
+        upload_to="avatars/",
+        blank=True,
+        null=True,
+    )
+    bio = models.TextField("Biografía", blank=True)
+
+    class Meta:
+        verbose_name = "Perfil"
+        verbose_name_plural = "Perfiles"
+
+    def __str__(self):
+        return f"Perfil de {self.user}"

@@ -1,0 +1,27 @@
+{% load superadmin_utils static %}
+{% block content %}
+    {% for fieldset in results %}
+        <fieldset>
+            {% if fieldset.title %}
+                <legend class="font-weight-bold">{{ fieldset.title|capfirst }}</legend>
+                <div class="separator separator-solid separator-border-2 separator-primary mb-10"></div>
+            {% endif %}
+            <div class="row">
+                {% for row in fieldset.fieldset %}
+                    {% for label, value, widget, name in row.fields %}
+                        <div class="col-md-{{ row.bs_cols }}">
+                            <div class="form-group">
+                                {% detail_widget label value widget as template %}
+                                {% include template with labe=label value=value widget=widget %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </fieldset>
+    {% endfor %}
+{% endblock %}
+
+
+
+

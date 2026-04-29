@@ -1,0 +1,18 @@
+{# Render genérico de un BoundField con clases Bootstrap 5 #}
+{% if field.field.widget.input_type == "checkbox" %}
+  <div class="form-check">
+    {{ field }}
+    <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  </div>
+{% else %}
+  <label for="{{ field.id_for_label }}" class="form-label">
+    {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+  </label>
+  {{ field }}
+{% endif %}
+{% if field.help_text %}
+  <div class="form-text">{{ field.help_text }}</div>
+{% endif %}
+{% if field.errors %}
+  <div class="invalid-feedback d-block">{{ field.errors|join:" · " }}</div>
+{% endif %}

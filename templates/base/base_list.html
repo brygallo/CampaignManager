@@ -1,0 +1,106 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}{{ site.title|default:site.model_name|title }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<h6 class="mb-0 text-uppercase">{{ site.title|default:site.model_name|title }}</h6>
+<hr>
+
+<div class="card rounded-4">
+  <div class="card-header d-flex flex-wrap align-items-center gap-2 py-3">
+    <div class="card-title mb-0 d-flex align-items-center gap-2">
+      <span class="material-icons-outlined">list_alt</span>
+      <h5 class="mb-0">{{ site.title|default:site.model_name|title }}</h5>
+    </div>
+    <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+      {% if site.urls.create %}
+        <a href="{{ site.urls.create }}" class="btn btn-grd btn-grd-primary px-4 d-flex align-items-center gap-2">
+          <i class="material-icons-outlined fs-6">add</i> Nuevo
+        </a>
+      {% endif %}
+      {% block list_extra_actions %}{% endblock %}
+    </div>
+  </div>
+
+  {% block list_filters %}
+    {% if state_filter_items %}
+      <div class="card-body border-bottom">
+        <div class="row g-3">
+          {% for item in state_filter_items %}
+            <div class="col-6 col-md-4 col-xl-2">
+              <a href="{{ item.url }}" class="text-decoration-none">
+                <div class="card mb-0 rounded-4 border {% if item.active %}border-{{ item.css }} border-2{% endif %}">
+                  <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="rounded-circle d-flex align-items-center justify-content-center bg-grd-{{ item.css }} text-white" style="width:38px;height:38px">
+                        <i class="material-icons-outlined">{{ item.icon }}</i>
+                      </div>
+                      <div>
+                        <p class="mb-0 small text-muted">{{ item.label }}</p>
+                        <h5 class="mb-0">{{ item.count }}</h5>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endblock %}
+
+  <div class="card-body">
+    <div class="table-responsive">
+      <table id="datatable" class="table table-striped align-middle" style="width:100%">
+        <thead>
+          <tr>
+            {% for label in fields %}
+              <th>{{ label }}</th>
+            {% endfor %}
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              {% for value in row.values %}
+                <td>{{ value|default_if_none:"" }}</td>
+              {% endfor %}
+              <td class="text-end">
+                <div class="btn-group">
+                  {% if row.urls.detail %}
+                    <a href="{{ row.urls.detail }}" class="btn btn-sm btn-outline-primary" title="Ver">
+                      <i class="material-icons-outlined fs-6">visibility</i>
+                    </a>
+                  {% endif %}
+                  {% if row.urls.update %}
+                    <a href="{{ row.urls.update }}" class="btn btn-sm btn-outline-warning" title="Editar">
+                      <i class="material-icons-outlined fs-6">edit</i>
+                    </a>
+                  {% endif %}
+                  {% if row.urls.delete %}
+                    <a href="{{ row.urls.delete }}" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                      <i class="material-icons-outlined fs-6">delete</i>
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ fields|length|add:1 }}" class="text-center py-5">
+                <span class="material-icons-outlined fs-1 text-muted">inbox</span>
+                <p class="mb-0 mt-2 text-muted">No hay registros que mostrar.</p>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% include "base/paginator.html" %}
+  </div>
+</div>
+{% endblock %}

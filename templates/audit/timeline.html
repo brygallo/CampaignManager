@@ -1,0 +1,46 @@
+{# Renderiza la lista de Trace formateada por core.audit.build_processed_traces #}
+{% if processed_traces %}
+  <ul class="timeline-list mb-0 ps-0">
+    {% for entry in processed_traces %}
+      {% with t=entry.trace %}
+      <li class="timeline-item d-flex gap-3 pb-4 border-start ps-4 ms-2">
+        <div>
+          <span class="material-icons-outlined
+                       text-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}">
+            {% if t.action == 1 %}add_circle{% elif t.action == 2 %}edit{% else %}delete{% endif %}
+          </span>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <strong>{{ t.user|default:"sistema" }}</strong>
+            <span class="badge bg-light text-dark">{{ t.get_action_display }}</span>
+            <small class="text-muted">{{ t.date|date:"d/m/Y H:i" }}</small>
+            {% if t.ip %}<small class="text-muted">· {{ t.ip }}</small>{% endif %}
+            {% if t.os %}<small class="text-muted">· {{ t.os }}</small>{% endif %}
+          </div>
+          {% if entry.changes %}
+          <div class="row g-2 mt-2">
+            {% for ch in entry.changes %}
+              <div class="col-md-6">
+                <small class="text-muted d-block">{{ ch.verbose_name }}</small>
+                {% if ch.is_image and ch.href %}
+                  <a href="{{ ch.href }}" target="_blank"><img src="{{ ch.href }}" class="rounded-3" style="max-height:64px"></a>
+                {% elif ch.href %}
+                  <a href="{{ ch.href }}" target="_blank">{{ ch.value }}</a>
+                {% elif ch.is_bool %}
+                  <span class="badge bg-{% if ch.bool_state %}success{% else %}secondary{% endif %}">{{ ch.value }}</span>
+                {% else %}
+                  <strong>{{ ch.value|default:"—" }}</strong>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </li>
+      {% endwith %}
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-muted mb-0">Sin movimientos registrados.</p>
+{% endif %}
