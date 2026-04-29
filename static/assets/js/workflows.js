@@ -21,9 +21,9 @@
  *   3. Otherwise → confirm dialog, on accept POST {transition} as FormData.
  *
  * On success: reload the page (the surrounding views always re-render after a transition).
- * On error: show a Lobibox notification with the message returned by the server.
+ * On error: show a SweetAlert2 toast with the message returned by the server.
  *
- * Depends on: jQuery, Bootstrap 5 modal, Lobibox (already loaded via base/js.html).
+ * Depends on: jQuery, Bootstrap 5 modal, SweetAlert2 (loaded via Metronic plugins.bundle.js).
  */
 (function ($) {
   "use strict";
@@ -38,17 +38,19 @@
   }
 
   function notify(type, message) {
-    if (window.Lobibox && Lobibox.notify) {
-      Lobibox.notify(type, {
-        position: "bottom right",
-        msg: message,
-        sound: false,
-        delay: 3500,
-        size: "mini",
+    if (window.Swal) {
+      Swal.fire({
+        text: message,
+        icon: type === "success" ? "success" : (type === "warning" ? "warning" : "error"),
+        toast: true,
+        position: "bottom-end",
+        showConfirmButton: false,
+        timer: 3500,
+        timerProgressBar: true,
       });
       return;
     }
-    // Fallback if Lobibox is not loaded.
+    // Fallback if SweetAlert2 is not loaded.
     alert(message);
   }
 
@@ -57,15 +59,15 @@
       const $modal = $(`
         <div class="modal fade" tabindex="-1">
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4">
+            <div class="modal-content ">
               <div class="modal-header">
                 <h5 class="modal-title">${title || "¿Confirmar acción?"}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
               </div>
               <div class="modal-body">${text || "¿Estás seguro de continuar?"}</div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-grd btn-grd-primary" data-action="ok">Confirmar</button>
+                <button type="button" class="btn btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" data-action="ok">Confirmar</button>
               </div>
             </div>
           </div>
@@ -91,7 +93,7 @@
       const $modal = $(`
         <div class="modal fade" tabindex="-1">
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4">
+            <div class="modal-content ">
               <div class="modal-header">
                 <h5 class="modal-title">${title || "Ingresa un valor"}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -106,8 +108,8 @@
                          required>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                  <button type="submit" class="btn btn-grd btn-grd-primary">Confirmar</button>
+                  <button type="button" class="btn btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Confirmar</button>
                 </div>
               </form>
             </div>
@@ -135,15 +137,15 @@
       const $modal = $(`
         <div class="modal fade" tabindex="-1">
           <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content rounded-4">
+            <div class="modal-content ">
               <div class="modal-header">
                 <h5 class="modal-title">${title || "Confirmar transición"}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
               </div>
               <div class="modal-body"></div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-grd btn-grd-primary" data-action="submit">Confirmar</button>
+                <button type="button" class="btn btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" data-action="submit">Confirmar</button>
               </div>
             </div>
           </div>

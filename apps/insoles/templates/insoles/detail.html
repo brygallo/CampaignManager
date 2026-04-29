@@ -1,12 +1,15 @@
 {% load superadmin_utils static %}
 {% block content %}
     {% for fieldset in results %}
-        <fieldset>
+        <div class="mb-7">
             {% if fieldset.title %}
-                <legend class="font-weight-bold">{{ fieldset.title|capfirst }}</legend>
-                <div class="separator separator-solid separator-border-2 separator-primary mb-10"></div>
+                <div class="d-flex align-items-center mb-4">
+                  <span class="bullet bullet-vertical h-30px bg-primary me-3"></span>
+                  <h4 class="text-gray-800 fw-bold mb-0 text-uppercase fs-6">{{ fieldset.title|capfirst }}</h4>
+                </div>
+                <div class="separator separator-dashed mb-4"></div>
             {% endif %}
-            <div class="row">
+            <div class="row g-5">
                 {% for row in fieldset.fieldset %}
                     {% for label, value, widget, name in row.fields %}
                         <div class="col-md-{{ row.bs_cols }}">
@@ -18,10 +21,6 @@
                     {% endfor %}
                 {% endfor %}
             </div>
-        </fieldset>
+        </div>
     {% endfor %}
 {% endblock %}
-
-
-
-
