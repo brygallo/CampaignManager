@@ -1,16 +1,56 @@
 {% extends "base/base.html" %}
+{% block title %}Mi perfil | {{ block.super }}{% endblock %}
+
 {% block content %}
-<div class="card rounded-4">
-  <div class="card-body p-5 text-center">
-    {% if profile.avatar %}
-      <img src="{{ profile.avatar.url }}" class="rounded-circle mb-3" width="120" height="120" alt="">
-    {% else %}
-      <span class="material-icons-outlined" style="font-size:96px">account_circle</span>
-    {% endif %}
-    <h3 class="mb-1">{{ user.get_full_name|default:user.username }}</h3>
-    <p class="text-muted mb-3">{{ user.email }}</p>
-    {% if profile.phone_number %}<p class="mb-1"><i class="material-icons-outlined fs-6 align-middle">phone</i> {{ profile.phone_number }}</p>{% endif %}
-    {% if profile.bio %}<p class="text-muted">{{ profile.bio }}</p>{% endif %}
+<div class="card mb-5 mb-xl-10">
+  <div class="card-body pt-9 pb-0">
+    <div class="d-flex flex-wrap flex-sm-nowrap mb-3">
+      <div class="me-7 mb-4">
+        <div class="symbol symbol-100px symbol-lg-160px symbol-fixed position-relative">
+          {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="{{ user.username }}" />
+          {% else %}
+            <div class="symbol-label fs-2qx fw-bolder bg-light-primary text-primary">
+              {{ user.get_full_name|default:user.username|first|upper }}
+            </div>
+          {% endif %}
+          <div class="position-absolute translate-middle bottom-0 start-100 mb-6 bg-success rounded-circle border border-4 border-white h-20px w-20px"></div>
+        </div>
+      </div>
+
+      <div class="flex-grow-1">
+        <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
+          <div class="d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <span class="text-gray-900 text-hover-primary fs-2 fw-bold me-1">{{ user.get_full_name|default:user.username }}</span>
+              <i class="ki-outline ki-verify fs-1 text-primary"></i>
+            </div>
+
+            <div class="d-flex flex-wrap fw-semibold fs-6 mb-4 pe-2">
+              <span class="d-flex align-items-center text-gray-500 text-hover-primary me-5 mb-2">
+                <i class="ki-outline ki-profile-circle fs-4 me-1"></i>{{ user.username }}
+              </span>
+              <span class="d-flex align-items-center text-gray-500 text-hover-primary me-5 mb-2">
+                <i class="ki-outline ki-sms fs-4 me-1"></i>{{ user.email }}
+              </span>
+              {% if profile.phone_number %}
+              <span class="d-flex align-items-center text-gray-500 text-hover-primary mb-2">
+                <i class="ki-outline ki-phone fs-4 me-1"></i>{{ profile.phone_number }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if profile.bio %}
+          <div class="d-flex flex-wrap flex-stack">
+            <div class="d-flex flex-column flex-grow-1 pe-8">
+              <div class="text-gray-600 fs-6">{{ profile.bio }}</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

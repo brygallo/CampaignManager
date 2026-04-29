@@ -1,9 +1,42 @@
 """Formularios de la app authentication."""
 from django import forms
+from django.contrib.auth import authenticate
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import UserChangeForm
 from superadmin.forms import ModelForm
 
 from .models import Profile, User
+
+
+class EmailOrUsernameAuthenticationForm(AuthenticationForm):
+    username = forms.CharField(label="Usuario o email")
+
+    error_messages = {
+        "invalid_login": (
+            "Por favor, introduzca un usuario/email y clave correctos. "
+            "Observe que ambos campos pueden ser sensibles a mayúsculas."
+        ),
+        "inactive": "Esta cuenta está inactiva.",
+    }
+
+    def clean_username(self):
+        return self.cleaned_data["username"].strip()
+
+    def clean(self):
+        username = self.cleaned_data.get("username")
+        password = self.cleaned_data.get("password")
+
+        if username is not None and password:
+            self.user_cache = authenticate(
+                self.request,
+                username=username,
+                password=password,
+            )
+            if self.user_cache is None:
+                raise self.get_invalid_login_error()
+            self.confirm_login_allowed(self.user_cache)
+
+        return self.cleaned_data
 
 
 class UserForm(ModelForm):

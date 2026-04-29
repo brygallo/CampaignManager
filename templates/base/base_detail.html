@@ -4,69 +4,75 @@
 {% block title %}{{ object }} | {{ block.super }}{% endblock %}
 
 {% block content %}
-<h6 class="mb-0 text-uppercase">{{ site.title|default:site.model_name|title }}</h6>
-<hr>
-
-<div class="card rounded-4">
-  <div class="card-header d-flex align-items-center gap-2 py-3">
-    <span class="material-icons-outlined">description</span>
-    <h5 class="mb-0">{{ object }}</h5>
-    <div class="ms-auto d-flex align-items-center gap-2">
+<div class="card">
+  <div class="card-header border-bottom">
+    <div class="card-title">
+      <h2 class="fw-bold">
+        <i class="ki-outline ki-document fs-2 me-2"></i>{{ object }}
+      </h2>
+    </div>
+    <div class="card-toolbar gap-2">
       {% if site.urls.list %}
-        <a href="{{ site.urls.list }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
-          <i class="material-icons-outlined fs-6">arrow_back</i> Volver
+        <a href="{{ site.urls.list }}" class="btn btn-light">
+          <i class="ki-outline ki-arrow-left fs-2"></i>Volver
         </a>
       {% endif %}
       {% if site.urls.update %}
-        <a href="{{ site.urls.update }}" class="btn btn-grd btn-grd-warning d-flex align-items-center gap-2">
-          <i class="material-icons-outlined fs-6">edit</i> Editar
+        <a href="{{ site.urls.update }}" class="btn btn-light-warning">
+          <i class="ki-outline ki-pencil fs-2"></i>Editar
         </a>
       {% endif %}
       {% if site.urls.delete %}
-        <a href="{{ site.urls.delete }}" class="btn btn-grd btn-grd-danger d-flex align-items-center gap-2">
-          <i class="material-icons-outlined fs-6">delete</i> Eliminar
+        <a href="{{ site.urls.delete }}" class="btn btn-light-danger">
+          <i class="ki-outline ki-trash fs-2"></i>Eliminar
         </a>
       {% endif %}
     </div>
   </div>
 
   <div class="card-body">
-    <ul class="nav nav-tabs nav-primary" role="tablist">
-      <li class="nav-item" role="presentation">
+    <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-5 fs-6" role="tablist">
+      <li class="nav-item">
         <a class="nav-link active" data-bs-toggle="tab" href="#tab-data" role="tab">
-          <i class="material-icons-outlined fs-6">info</i> Información
+          <i class="ki-outline ki-information fs-3 me-2"></i>Información
         </a>
       </li>
       {% if processed_traces %}
-      <li class="nav-item" role="presentation">
+      <li class="nav-item">
         <a class="nav-link" data-bs-toggle="tab" href="#tab-audit" role="tab">
-          <i class="material-icons-outlined fs-6">history</i> Auditoría
+          <i class="ki-outline ki-time fs-3 me-2"></i>Auditoría
         </a>
       </li>
       {% endif %}
       {% block detail_extra_tabs %}{% endblock %}
     </ul>
-    <div class="tab-content py-3">
+
+    <div class="tab-content">
       <div class="tab-pane fade show active" id="tab-data" role="tabpanel">
         {% if fieldsets_results %}
           {% for section in fieldsets_results %}
-            <h6 class="text-uppercase mt-3">{{ section.title }}</h6>
-            <hr>
-            <div class="row g-3">
-              {% for entry in section.entries %}
-                <div class="col-md-6">
-                  <small class="text-muted d-block">{{ entry.label }}</small>
-                  <strong>{{ entry.value|default:"—" }}</strong>
-                </div>
-              {% endfor %}
+            <div class="mb-7">
+              <div class="d-flex align-items-center mb-4">
+                <span class="bullet bullet-vertical h-30px bg-primary me-3"></span>
+                <h4 class="text-gray-800 fw-bold mb-0 text-uppercase fs-6">{{ section.title }}</h4>
+              </div>
+              <div class="separator separator-dashed mb-4"></div>
+              <div class="row g-5">
+                {% for entry in section.entries %}
+                  <div class="col-md-6">
+                    <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ entry.label }}</div>
+                    <div class="fs-6 fw-bold text-gray-800">{{ entry.value|default:"—" }}</div>
+                  </div>
+                {% endfor %}
+              </div>
             </div>
           {% endfor %}
         {% elif flatten_results %}
-          <div class="row g-3">
+          <div class="row g-5">
             {% for entry in flatten_results %}
               <div class="col-md-6">
-                <small class="text-muted d-block">{{ entry.label }}</small>
-                <strong>{{ entry.value|default:"—" }}</strong>
+                <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ entry.label }}</div>
+                <div class="fs-6 fw-bold text-gray-800">{{ entry.value|default:"—" }}</div>
               </div>
             {% endfor %}
           </div>

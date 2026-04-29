@@ -1,18 +1,18 @@
-{# Render genérico de un BoundField con clases Bootstrap 5 #}
+{# Render genérico de un BoundField con estilos Metronic / Bootstrap 5 #}
 {% if field.field.widget.input_type == "checkbox" %}
-  <div class="form-check">
+  <div class="form-check form-check-custom form-check-solid mt-7">
     {{ field }}
-    <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
   </div>
 {% else %}
-  <label for="{{ field.id_for_label }}" class="form-label">
+  <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
     {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
   </label>
   {{ field }}
 {% endif %}
 {% if field.help_text %}
-  <div class="form-text">{{ field.help_text }}</div>
+  <div class="form-text text-muted small">{{ field.help_text }}</div>
 {% endif %}
 {% if field.errors %}
-  <div class="invalid-feedback d-block">{{ field.errors|join:" · " }}</div>
+  <div class="text-danger small mt-1">{{ field.errors|join:" · " }}</div>
 {% endif %}

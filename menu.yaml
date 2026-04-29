@@ -9,60 +9,6 @@ Sitios:
     app: sites_mgmt
     model: domain
 
-Campañas:
-  Campañas:
-    app: campaigns
-    model: campaign
-  Canales:
-    app: campaigns
-    model: channel
-  Audiencias:
-    app: campaigns
-    model: audience
-
-Creativos:
-  Piezas:
-    app: creatives
-    model: creative
-  Assets:
-    app: creatives
-    model: asset
-
-Plan de Medios:
-  Planes:
-    app: bookings
-    model: mediaplan
-  Proveedores:
-    app: bookings
-    model: vendor
-
-Presupuestos:
-  Presupuestos:
-    app: budgets
-    model: budget
-  Gastos:
-    app: budgets
-    model: expense
-
-Métricas:
-  KPIs:
-    app: metrics
-    model: kpi
-  Métricas:
-    app: metrics
-    model: metric
-
-Formularios dinámicos:
-  Formularios:
-    app: dynamicforms
-    model: form
-  Campos:
-    app: dynamicforms
-    model: field
-  Secciones:
-    app: dynamicforms
-    model: fieldset
-
 Sistema:
   Usuarios:
     app: authentication

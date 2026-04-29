@@ -4,43 +4,42 @@
 {% block title %}{{ site.title|default:site.model_name|title }} | {{ block.super }}{% endblock %}
 
 {% block content %}
-<h6 class="mb-0 text-uppercase">{{ site.title|default:site.model_name|title }}</h6>
-<hr>
-
-<div class="card rounded-4">
-  <div class="card-header d-flex flex-wrap align-items-center gap-2 py-3">
-    <div class="card-title mb-0 d-flex align-items-center gap-2">
-      <span class="material-icons-outlined">list_alt</span>
-      <h5 class="mb-0">{{ site.title|default:site.model_name|title }}</h5>
+<div class="card">
+  <div class="card-header border-0 pt-6">
+    <div class="card-title">
+      <div class="d-flex align-items-center position-relative my-1">
+        <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5"></i>
+        <input type="text" data-kt-table-filter="search" class="form-control form-control-solid w-250px ps-12" placeholder="Buscar...">
+      </div>
     </div>
-    <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
-      {% if site.urls.create %}
-        <a href="{{ site.urls.create }}" class="btn btn-grd btn-grd-primary px-4 d-flex align-items-center gap-2">
-          <i class="material-icons-outlined fs-6">add</i> Nuevo
-        </a>
-      {% endif %}
-      {% block list_extra_actions %}{% endblock %}
+    <div class="card-toolbar">
+      <div class="d-flex justify-content-end align-items-center gap-2">
+        {% block list_extra_actions %}{% endblock %}
+        {% if site.urls.create %}
+          <a href="{{ site.urls.create }}" class="btn btn-primary">
+            <i class="ki-outline ki-plus fs-2"></i>Nuevo
+          </a>
+        {% endif %}
+      </div>
     </div>
   </div>
 
   {% block list_filters %}
     {% if state_filter_items %}
-      <div class="card-body border-bottom">
+      <div class="card-body pt-0 pb-2 border-bottom">
         <div class="row g-3">
           {% for item in state_filter_items %}
             <div class="col-6 col-md-4 col-xl-2">
-              <a href="{{ item.url }}" class="text-decoration-none">
-                <div class="card mb-0 rounded-4 border {% if item.active %}border-{{ item.css }} border-2{% endif %}">
-                  <div class="card-body p-3">
-                    <div class="d-flex align-items-center gap-2">
-                      <div class="rounded-circle d-flex align-items-center justify-content-center bg-grd-{{ item.css }} text-white" style="width:38px;height:38px">
-                        <i class="material-icons-outlined">{{ item.icon }}</i>
-                      </div>
-                      <div>
-                        <p class="mb-0 small text-muted">{{ item.label }}</p>
-                        <h5 class="mb-0">{{ item.count }}</h5>
-                      </div>
-                    </div>
+              <a href="{{ item.url }}" class="card card-flush bg-light-{{ item.css }} {% if item.active %}border border-2 border-{{ item.css }}{% endif %} text-decoration-none mb-0">
+                <div class="card-body p-4 d-flex align-items-center gap-3">
+                  <span class="symbol symbol-40px">
+                    <span class="symbol-label bg-{{ item.css }} bg-opacity-25">
+                      <i class="ki-outline ki-{{ item.icon|default:'abstract-26' }} fs-2 text-{{ item.css }}"></i>
+                    </span>
+                  </span>
+                  <div>
+                    <span class="text-muted fs-7 fw-semibold d-block">{{ item.label }}</span>
+                    <span class="fs-3 fw-bolder text-dark">{{ item.count }}</span>
                   </div>
                 </div>
               </a>
@@ -51,56 +50,81 @@
     {% endif %}
   {% endblock %}
 
-  <div class="card-body">
-    <div class="table-responsive">
-      <table id="datatable" class="table table-striped align-middle" style="width:100%">
-        <thead>
-          <tr>
-            {% for label in fields %}
-              <th>{{ label }}</th>
-            {% endfor %}
-            <th class="text-end">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-            <tr>
-              {% for value in row.values %}
-                <td>{{ value|default_if_none:"" }}</td>
-              {% endfor %}
-              <td class="text-end">
-                <div class="btn-group">
-                  {% if row.urls.detail %}
-                    <a href="{{ row.urls.detail }}" class="btn btn-sm btn-outline-primary" title="Ver">
-                      <i class="material-icons-outlined fs-6">visibility</i>
-                    </a>
-                  {% endif %}
-                  {% if row.urls.update %}
-                    <a href="{{ row.urls.update }}" class="btn btn-sm btn-outline-warning" title="Editar">
-                      <i class="material-icons-outlined fs-6">edit</i>
-                    </a>
-                  {% endif %}
-                  {% if row.urls.delete %}
-                    <a href="{{ row.urls.delete }}" class="btn btn-sm btn-outline-danger" title="Eliminar">
-                      <i class="material-icons-outlined fs-6">delete</i>
-                    </a>
-                  {% endif %}
-                </div>
-              </td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="{{ fields|length|add:1 }}" class="text-center py-5">
-                <span class="material-icons-outlined fs-1 text-muted">inbox</span>
-                <p class="mb-0 mt-2 text-muted">No hay registros que mostrar.</p>
-              </td>
-            </tr>
+  <div class="card-body py-4">
+    <table id="datatable" class="table align-middle table-row-dashed fs-6 gy-5" style="width:100%">
+      <thead>
+        <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+          {% for label in fields %}
+            <th>{{ label }}</th>
           {% endfor %}
-        </tbody>
-      </table>
-    </div>
+          <th class="text-end min-w-100px">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="text-gray-700 fw-semibold">
+        {% for row in rows %}
+          <tr>
+            {% for value in row.values %}
+              <td>{{ value|default_if_none:"" }}</td>
+            {% endfor %}
+            <td class="text-end">
+              {% if row.urls.detail %}
+                <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver">
+                  <i class="ki-outline ki-eye fs-2"></i>
+                </a>
+              {% endif %}
+              {% if row.urls.update %}
+                <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar">
+                  <i class="ki-outline ki-pencil fs-2"></i>
+                </a>
+              {% endif %}
+              {% if row.urls.delete %}
+                <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar">
+                  <i class="ki-outline ki-trash fs-2"></i>
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="{{ fields|length|add:1 }}" class="text-center py-10">
+              <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
+              <p class="text-muted fs-6 mb-0">No hay registros que mostrar.</p>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
     {% include "base/paginator.html" %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
+      const $tbl = jQuery("#datatable");
+      if ($tbl.length) {
+        const dt = $tbl.DataTable({
+          responsive: true,
+          paging: false,
+          info: false,
+          language: {
+            search: "",
+            searchPlaceholder: "Buscar...",
+            zeroRecords: "Sin coincidencias",
+          },
+          dom: 't',
+          order: [],
+          columnDefs: [{ orderable: false, targets: -1 }]
+        });
+        const searchEl = document.querySelector('[data-kt-table-filter="search"]');
+        if (searchEl) {
+          searchEl.addEventListener("keyup", function (e) { dt.search(e.target.value).draw(); });
+        }
+      }
+    }
+  });
+</script>
 {% endblock %}

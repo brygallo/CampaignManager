@@ -2,48 +2,53 @@
 {# Renderiza recursivamente el árbol de menú producido por el context_processor `superadmin.context_processors.menu`. #}
 {% for item in menu %}
   {% if item.submenus %}
-    <li>
-      <a href="javascript:;" class="has-arrow">
-        <div class="parent-icon">
-          <i class="material-icons-outlined">{{ item.icon|default:"folder" }}</i>
-        </div>
-        <div class="menu-title">{{ item.name }}</div>
-      </a>
-      <ul>
+    <div class="menu-item menu-accordion" data-kt-menu-trigger="click">
+      <span class="menu-link">
+        <span class="menu-icon">
+          <i class="ki-outline ki-{{ item.icon|default:'category' }} fs-2"></i>
+        </span>
+        <span class="menu-title">{{ item.name }}</span>
+        <span class="menu-arrow"></span>
+      </span>
+      <div class="menu-sub menu-sub-accordion">
         {% for sub in item.submenus %}
           {% if sub.submenus %}
-            <li>
-              <a href="javascript:;" class="has-arrow">
-                <i class="material-icons-outlined">arrow_right</i>{{ sub.name }}
-              </a>
-              <ul>
+            <div class="menu-item menu-accordion" data-kt-menu-trigger="click">
+              <span class="menu-link">
+                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                <span class="menu-title">{{ sub.name }}</span>
+                <span class="menu-arrow"></span>
+              </span>
+              <div class="menu-sub menu-sub-accordion">
                 {% for sub2 in sub.submenus %}
-                  <li>
-                    <a href="{{ sub2.url|default:'#' }}">
-                      <i class="material-icons-outlined">arrow_right</i>{{ sub2.name }}
+                  <div class="menu-item">
+                    <a class="menu-link {% if request.path == sub2.url %}active{% endif %}" href="{{ sub2.url|default:'#' }}">
+                      <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                      <span class="menu-title">{{ sub2.name }}</span>
                     </a>
-                  </li>
+                  </div>
                 {% endfor %}
-              </ul>
-            </li>
+              </div>
+            </div>
           {% else %}
-            <li>
-              <a href="{{ sub.url|default:'#' }}">
-                <i class="material-icons-outlined">arrow_right</i>{{ sub.name }}
+            <div class="menu-item">
+              <a class="menu-link {% if request.path == sub.url %}active{% endif %}" href="{{ sub.url|default:'#' }}">
+                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                <span class="menu-title">{{ sub.name }}</span>
               </a>
-            </li>
+            </div>
           {% endif %}
         {% endfor %}
-      </ul>
-    </li>
+      </div>
+    </div>
   {% else %}
-    <li>
-      <a href="{{ item.url|default:'#' }}">
-        <div class="parent-icon">
-          <i class="material-icons-outlined">{{ item.icon|default:"chevron_right" }}</i>
-        </div>
-        <div class="menu-title">{{ item.name }}</div>
+    <div class="menu-item">
+      <a class="menu-link {% if request.path == item.url %}active{% endif %}" href="{{ item.url|default:'#' }}">
+        <span class="menu-icon">
+          <i class="ki-outline ki-{{ item.icon|default:'right' }} fs-2"></i>
+        </span>
+        <span class="menu-title">{{ item.name }}</span>
       </a>
-    </li>
+    </div>
   {% endif %}
 {% endfor %}
