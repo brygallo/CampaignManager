@@ -1,8 +1,9 @@
-{% load static %}
-{# Renderiza recursivamente el árbol de menú producido por el context_processor `superadmin.context_processors.menu`. #}
+{% load menu_tags %}
+{# Renderiza recursivamente el árbol del menú con el patrón "active / here show" de Metronic. #}
 {% for item in menu %}
   {% if item.submenus %}
-    <div class="menu-item menu-accordion" data-kt-menu-trigger="click">
+    {% with item_open=item|branch_active:request.path %}
+    <div class="menu-item menu-accordion{% if item_open %} here show{% endif %}" data-kt-menu-trigger="click">
       <span class="menu-link">
         <span class="menu-icon">
           <i class="ki-outline ki-{{ item.icon|default:'category' }} fs-2"></i>
@@ -13,7 +14,8 @@
       <div class="menu-sub menu-sub-accordion">
         {% for sub in item.submenus %}
           {% if sub.submenus %}
-            <div class="menu-item menu-accordion" data-kt-menu-trigger="click">
+            {% with sub_open=sub|branch_active:request.path %}
+            <div class="menu-item menu-accordion{% if sub_open %} here show{% endif %}" data-kt-menu-trigger="click">
               <span class="menu-link">
                 <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
                 <span class="menu-title">{{ sub.name }}</span>
@@ -22,7 +24,7 @@
               <div class="menu-sub menu-sub-accordion">
                 {% for sub2 in sub.submenus %}
                   <div class="menu-item">
-                    <a class="menu-link {% if request.path == sub2.url %}active{% endif %}" href="{{ sub2.url|default:'#' }}">
+                    <a class="menu-link{% if sub2.url|url_active:request.path %} active{% endif %}" href="{{ sub2.url|default:'#' }}">
                       <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
                       <span class="menu-title">{{ sub2.name }}</span>
                     </a>
@@ -30,9 +32,10 @@
                 {% endfor %}
               </div>
             </div>
+            {% endwith %}
           {% else %}
             <div class="menu-item">
-              <a class="menu-link {% if request.path == sub.url %}active{% endif %}" href="{{ sub.url|default:'#' }}">
+              <a class="menu-link{% if sub.url|url_active:request.path %} active{% endif %}" href="{{ sub.url|default:'#' }}">
                 <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
                 <span class="menu-title">{{ sub.name }}</span>
               </a>
@@ -41,9 +44,10 @@
         {% endfor %}
       </div>
     </div>
+    {% endwith %}
   {% else %}
     <div class="menu-item">
-      <a class="menu-link {% if request.path == item.url %}active{% endif %}" href="{{ item.url|default:'#' }}">
+      <a class="menu-link{% if item.url|url_active:request.path %} active{% endif %}" href="{{ item.url|default:'#' }}">
         <span class="menu-icon">
           <i class="ki-outline ki-{{ item.icon|default:'right' }} fs-2"></i>
         </span>

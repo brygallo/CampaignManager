@@ -1,14 +1,3 @@
-Sitios:
-  Mis Sitios:
-    app: sites_mgmt
-    model: site
-  Membresías:
-    app: sites_mgmt
-    model: sitemembership
-  Dominios:
-    app: sites_mgmt
-    model: domain
-
 Sistema:
   Usuarios:
     app: authentication

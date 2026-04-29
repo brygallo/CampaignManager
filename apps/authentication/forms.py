@@ -3,7 +3,10 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import UserChangeForm
+from django.contrib.auth.models import Permission
+from django_select2 import forms as s2forms
 from superadmin.forms import ModelForm
+from tracing.models import Rule
 
 from .models import Profile, User
 
@@ -86,5 +89,60 @@ class ProfileForm(ModelForm):
             "Perfil": (
                 ("phone_number", "avatar"),
                 ("bio",),
+            ),
+        }
+
+
+class PermissionForm(ModelForm):
+    class Meta:
+        model = Permission
+        fieldsets = {
+            "Permiso": (
+                ("name", "codename"),
+                ("content_type",),
+            ),
+        }
+        widgets = {
+            "content_type": s2forms.ModelSelect2Widget(
+                model="contenttypes.contenttype",
+                search_fields=["app_label__icontains", "model__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0},
+            ),
+        }
+
+
+class UserPermissionForm(ModelForm):
+    class Meta:
+        model = User
+        fields = ("groups",)
+        widgets = {
+            "groups": s2forms.ModelSelect2MultipleWidget(
+                model="auth.Group",
+                search_fields=["name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0},
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["groups"].label = "Grupos del usuario"
+
+
+class RuleForm(ModelForm):
+    class Meta:
+        model = Rule
+        fieldsets = (
+            "content_type",
+            ("check_create", "check_edit", "check_delete"),
+            "is_active",
+        )
+        widgets = {
+            "content_type": s2forms.ModelSelect2Widget(
+                model="contenttypes.contenttype",
+                search_fields=["app_label__icontains", "model__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0},
             ),
         }

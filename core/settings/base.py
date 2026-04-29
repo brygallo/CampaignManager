@@ -119,6 +119,11 @@ TEMPLATES = [
                 "superadmin.context_processors.menu",
                 "core.context_processors.active_site",
             ],
+            "libraries": {
+                # `core` no está en INSTALLED_APPS, por eso registramos
+                # sus templatetags manualmente.
+                "menu_tags": "core.templatetags.menu_tags",
+            },
         },
     },
 ]

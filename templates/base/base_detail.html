@@ -49,8 +49,8 @@
 
     <div class="tab-content">
       <div class="tab-pane fade show active" id="tab-data" role="tabpanel">
-        {% if fieldsets_results %}
-          {% for section in fieldsets_results %}
+        {% if site.results %}
+          {% for section in site.results %}
             <div class="mb-7">
               <div class="d-flex align-items-center mb-4">
                 <span class="bullet bullet-vertical h-30px bg-primary me-3"></span>
@@ -58,21 +58,23 @@
               </div>
               <div class="separator separator-dashed mb-4"></div>
               <div class="row g-5">
-                {% for entry in section.entries %}
-                  <div class="col-md-6">
-                    <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ entry.label }}</div>
-                    <div class="fs-6 fw-bold text-gray-800">{{ entry.value|default:"—" }}</div>
-                  </div>
+                {% for row in section.fieldset %}
+                  {% for label, value, field_type, field_name in row.fields %}
+                    <div class="col-md-{{ row.bs_cols }}">
+                      <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ label }}</div>
+                      <div class="fs-6 fw-bold text-gray-800">{{ value|default:"—" }}</div>
+                    </div>
+                  {% endfor %}
                 {% endfor %}
               </div>
             </div>
           {% endfor %}
-        {% elif flatten_results %}
+        {% elif site.flatten_results %}
           <div class="row g-5">
-            {% for entry in flatten_results %}
+            {% for label, value, field_type, field_name in site.flatten_results %}
               <div class="col-md-6">
-                <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ entry.label }}</div>
-                <div class="fs-6 fw-bold text-gray-800">{{ entry.value|default:"—" }}</div>
+                <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ label }}</div>
+                <div class="fs-6 fw-bold text-gray-800">{{ value|default:"—" }}</div>
               </div>
             {% endfor %}
           </div>

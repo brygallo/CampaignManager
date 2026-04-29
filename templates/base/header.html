@@ -33,44 +33,6 @@
         </div>
       </div>
 
-      {% if available_sites %}
-      <div class="app-navbar-item ms-1 ms-md-3">
-        <div class="btn btn-flex btn-active-color-primary bg-light bg-active-light-primary px-3 px-md-4"
-             data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
-             data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
-          <i class="ki-outline ki-office-bag fs-3 me-md-2"></i>
-          <span class="d-none d-md-inline fw-semibold text-gray-700">
-            {{ active_site.name|default:"Selecciona sitio" }}
-          </span>
-        </div>
-        <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-semibold w-275px py-3" data-kt-menu="true">
-          <div class="menu-item px-3">
-            <div class="menu-content text-muted pb-2 px-3 fs-7 text-uppercase">Sitios disponibles</div>
-          </div>
-          {% for s in available_sites %}
-            <div class="menu-item px-3">
-              <form method="post" action="{% url 'switch-site' s.pk %}" class="m-0">
-                {% csrf_token %}
-                <button type="submit" class="menu-link px-3 d-flex align-items-center bg-transparent border-0 w-100 text-start {% if active_site.pk == s.pk %}bg-light-primary text-primary{% endif %}">
-                  <span class="menu-icon">
-                    <i class="ki-outline ki-{% if active_site.pk == s.pk %}check-circle{% else %}abstract-26{% endif %} fs-3"></i>
-                  </span>
-                  <span class="menu-title">{{ s.name }}</span>
-                </button>
-              </form>
-            </div>
-          {% endfor %}
-          <div class="separator my-2"></div>
-          <div class="menu-item px-3">
-            <a href="/sites_mgmt/site/listar/" class="menu-link px-3">
-              <span class="menu-icon"><i class="ki-outline ki-setting-2 fs-3"></i></span>
-              <span class="menu-title">Gestionar sitios</span>
-            </a>
-          </div>
-        </div>
-      </div>
-      {% endif %}
-
       <div class="app-navbar-item ms-1 ms-md-3">
         <div class="btn btn-icon btn-custom btn-color-gray-500 btn-active-light btn-active-color-primary w-35px h-35px w-md-40px h-md-40px"
              id="kt_theme_mode_menu_toggle"

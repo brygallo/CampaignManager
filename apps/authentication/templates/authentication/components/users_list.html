@@ -1,0 +1,57 @@
+{% if users_list %}
+  <div class="table-responsive">
+    <table class="table table-row-dashed align-middle mb-0">
+      <thead>
+        <tr class="text-start text-muted fw-bold fs-7 text-uppercase">
+          <th>Usuario</th>
+          <th>Correo</th>
+          <th>Estado</th>
+          {% if show_permission_source %}<th>Origen</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for user_item in users_list %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                <span class="symbol symbol-40px">
+                  {% if user_item.profile.avatar %}
+                    <img src="{{ user_item.profile.avatar.url }}" alt="{{ user_item }}">
+                  {% else %}
+                    <span class="symbol-label bg-light-primary text-primary fw-bold">
+                      {{ user_item.get_full_name|default:user_item.username|slice:":1"|upper }}
+                    </span>
+                  {% endif %}
+                </span>
+                <div>
+                  <div class="fw-bold text-gray-900">{{ user_item.get_full_name|default:user_item.username }}</div>
+                  <div class="text-muted fs-7">@{{ user_item.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ user_item.email }}</td>
+            <td>
+              {% if user_item.is_active %}
+                <span class="badge badge-light-success">Activo</span>
+              {% else %}
+                <span class="badge badge-light-danger">Inactivo</span>
+              {% endif %}
+            </td>
+            {% if show_permission_source %}
+              <td>
+                {% if user_item.has_direct_permission %}
+                  <span class="badge badge-light-primary me-1 mb-1">Directo</span>
+                {% endif %}
+                {% for group in user_item.permission_groups %}
+                  <span class="badge badge-light-success me-1 mb-1">{{ group.name }}</span>
+                {% endfor %}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-info mb-0">{{ users_list_empty|default:"No hay usuarios asociados." }}</div>
+{% endif %}

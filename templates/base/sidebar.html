@@ -17,9 +17,6 @@
       </span>
       <div class="d-flex flex-column">
         <span class="fs-5 fw-bolder text-gray-900 lh-1">{{ brand_name|default:"CampaignManager" }}</span>
-        {% if active_site %}
-          <span class="fs-8 text-muted">{{ active_site.name }}</span>
-        {% endif %}
       </div>
     </a>
   </div>
@@ -37,7 +34,7 @@
            id="kt_app_sidebar_menu" data-kt-menu="true" data-kt-menu-expand="false">
 
         <div class="menu-item">
-          <a class="menu-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">
+          <a class="menu-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'home' %}">
             <span class="menu-icon"><i class="ki-outline ki-home-2 fs-2"></i></span>
             <span class="menu-title">Inicio</span>
           </a>

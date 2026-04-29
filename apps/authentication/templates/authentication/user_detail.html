@@ -1,0 +1,25 @@
+{% extends "base/base_detail.html" %}
+
+{% block detail_extra_tabs %}
+  <li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#tab-permissions" role="tab">
+      <i class="ki-outline ki-shield-tick fs-3 me-2"></i>Permisos
+    </a>
+  </li>
+{% endblock %}
+
+{% block detail_extra_panes %}
+  <div class="tab-pane fade" id="tab-permissions" role="tabpanel">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h4 class="fw-bold text-gray-900 mb-1">{{ permissions_list_title }}</h4>
+        <div class="text-muted fs-7">{{ permissions_entries|length }} permiso{{ permissions_entries|length|pluralize:"s" }}</div>
+      </div>
+      <div class="d-flex align-items-center position-relative w-250px">
+        <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
+        <input id="permissions-list-search" type="text" class="form-control form-control-solid ps-11" placeholder="Buscar permiso...">
+      </div>
+    </div>
+    {% include "authentication/components/permissions_list.html" %}
+  </div>
+{% endblock %}
