@@ -1,46 +1,53 @@
 {# Renderiza la lista de Trace formateada por core.audit.build_processed_traces #}
 {% if processed_traces %}
-  <ul class="timeline-list mb-0 ps-0">
+  <div class="timeline timeline-border-dashed">
     {% for entry in processed_traces %}
       {% with t=entry.trace %}
-      <li class="timeline-item d-flex gap-3 pb-4 border-start ps-4 ms-2">
-        <div>
-          <span class="material-icons-outlined
-                       text-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}">
-            {% if t.action == 1 %}add_circle{% elif t.action == 2 %}edit{% else %}delete{% endif %}
-          </span>
-        </div>
-        <div class="flex-grow-1">
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <strong>{{ t.user|default:"sistema" }}</strong>
-            <span class="badge bg-light text-dark">{{ t.get_action_display }}</span>
-            <small class="text-muted">{{ t.date|date:"d/m/Y H:i" }}</small>
-            {% if t.ip %}<small class="text-muted">· {{ t.ip }}</small>{% endif %}
-            {% if t.os %}<small class="text-muted">· {{ t.os }}</small>{% endif %}
+        <div class="timeline-item">
+          <div class="timeline-line"></div>
+          <div class="timeline-icon">
+            <i class="ki-outline ki-{% if t.action == 1 %}plus-squared text-success{% elif t.action == 2 %}pencil text-warning{% else %}trash text-danger{% endif %} fs-2"></i>
           </div>
-          {% if entry.changes %}
-          <div class="row g-2 mt-2">
-            {% for ch in entry.changes %}
-              <div class="col-md-6">
-                <small class="text-muted d-block">{{ ch.verbose_name }}</small>
-                {% if ch.is_image and ch.href %}
-                  <a href="{{ ch.href }}" target="_blank"><img src="{{ ch.href }}" class="rounded-3" style="max-height:64px"></a>
-                {% elif ch.href %}
-                  <a href="{{ ch.href }}" target="_blank">{{ ch.value }}</a>
-                {% elif ch.is_bool %}
-                  <span class="badge bg-{% if ch.bool_state %}success{% else %}secondary{% endif %}">{{ ch.value }}</span>
-                {% else %}
-                  <strong>{{ ch.value|default:"—" }}</strong>
-                {% endif %}
+          <div class="timeline-content mb-10 mt-n2">
+            <div class="overflow-auto pe-3">
+              <div class="fs-5 fw-semibold mb-2 d-flex flex-wrap align-items-center gap-2">
+                <span class="text-gray-900">{{ t.user|default:"sistema" }}</span>
+                <span class="badge badge-light-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}">
+                  {{ t.get_action_display }}
+                </span>
               </div>
-            {% endfor %}
+              <div class="d-flex align-items-center mt-1 fs-7 text-muted">
+                <i class="ki-outline ki-calendar fs-7 me-1"></i>{{ t.date|date:"d/m/Y H:i" }}
+                {% if t.ip %}<span class="mx-2">·</span><i class="ki-outline ki-wifi fs-7 me-1"></i>{{ t.ip }}{% endif %}
+                {% if t.os %}<span class="mx-2">·</span><i class="ki-outline ki-screen fs-7 me-1"></i>{{ t.os }}{% endif %}
+              </div>
+              {% if entry.changes %}
+                <div class="row g-3 mt-3">
+                  {% for ch in entry.changes %}
+                    <div class="col-md-6">
+                      <div class="text-gray-500 fs-7 fw-semibold text-uppercase">{{ ch.verbose_name }}</div>
+                      {% if ch.is_image and ch.href %}
+                        <a href="{{ ch.href }}" target="_blank"><img src="{{ ch.href }}" class="rounded mt-1" style="max-height:64px"></a>
+                      {% elif ch.href %}
+                        <a href="{{ ch.href }}" target="_blank" class="text-primary fw-bold">{{ ch.value }}</a>
+                      {% elif ch.is_bool %}
+                        <span class="badge badge-light-{% if ch.bool_state %}success{% else %}secondary{% endif %}">{{ ch.value }}</span>
+                      {% else %}
+                        <span class="text-gray-800 fw-bold">{{ ch.value|default:"—" }}</span>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
           </div>
-          {% endif %}
         </div>
-      </li>
       {% endwith %}
     {% endfor %}
-  </ul>
+  </div>
 {% else %}
-  <p class="text-muted mb-0">Sin movimientos registrados.</p>
+  <div class="text-center py-10">
+    <i class="ki-outline ki-time fs-3hx text-muted mb-3 d-block"></i>
+    <p class="text-muted fs-6 mb-0">Sin movimientos registrados.</p>
+  </div>
 {% endif %}

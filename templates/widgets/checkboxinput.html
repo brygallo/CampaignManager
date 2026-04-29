@@ -1,5 +1,5 @@
 {% load superadmin_forms %}
-<div class="form-check form-switch">
+<div class="form-check form-switch form-check-custom form-check-solid">
   {{ field|add_class:"form-check-input" }}
-  <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
 </div>

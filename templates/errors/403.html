@@ -1,11 +1,13 @@
 {% extends "base/base.html" %}
+{% load static %}
 {% block content %}
-<div class="card rounded-4 mt-5">
-  <div class="card-body p-5 text-center">
-    <h1 class="display-1 fw-bold text-warning">403</h1>
-    <h3>Acceso denegado</h3>
-    <p class="text-muted">No tienes permisos para ver esta página.</p>
-    <a href="/" class="btn btn-grd btn-grd-primary mt-3">Volver al inicio</a>
-  </div>
+<div class="d-flex flex-column flex-center text-center py-10">
+  <img src="{% static 'assets/media/auth/agency.png' %}" class="theme-light-show mb-10 mw-100 h-200px" alt="403">
+  <img src="{% static 'assets/media/auth/agency-dark.png' %}" class="theme-dark-show mb-10 mw-100 h-200px" alt="403">
+  <h1 class="fw-bolder fs-2hx text-gray-900 mb-4">Acceso denegado</h1>
+  <p class="fs-5 fw-semibold text-gray-500 mb-7">No tienes permisos para ver esta página.</p>
+  <a href="{% url 'home' %}" class="btn btn-primary">
+    <i class="ki-outline ki-home fs-2"></i>Volver al inicio
+  </a>
 </div>
 {% endblock %}
