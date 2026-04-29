@@ -1,13 +1,10 @@
 """Context processors that expose globals to all templates."""
 from django.conf import settings
 
-from .tenancy import get_user_sites
 
-
-def active_site(request):
+def brand(request):
     return {
-        "active_site": getattr(request, "active_site", None),
-        "available_sites": get_user_sites(request),
-        "brand_name": getattr(settings, "MAXTON_BRAND_NAME", "CampaignManager"),
-        "default_theme": getattr(settings, "MAXTON_DEFAULT_THEME", "light"),
+        "brand_name": getattr(settings, "BRAND_NAME", "Control de Campaña"),
+        "brand_icon": getattr(settings, "BRAND_ICON", "assets/img/control-campana.svg"),
+        "default_theme": getattr(settings, "DEFAULT_THEME", "light"),
     }

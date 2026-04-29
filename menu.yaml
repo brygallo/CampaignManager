@@ -1,3 +1,20 @@
+Campañas:
+  Campañas electorales:
+    app: campaigns
+    model: campaign
+  Candidatos:
+    app: campaigns
+    model: candidate
+  Elecciones:
+    app: campaigns
+    model: election
+  Movimientos políticos:
+    app: campaigns
+    model: politicalmovement
+  Cargos:
+    app: campaigns
+    model: position
+
 Sistema:
   Usuarios:
     app: authentication

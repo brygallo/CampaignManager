@@ -48,6 +48,7 @@ def url_active(item_url: str, current_path: str) -> bool:
     return path.startswith(url + "/")
 
 
+
 @register.filter
 def branch_active(node: dict, current_path: str) -> bool:
     """True si el nodo o algún descendiente apunta a la ruta actual."""

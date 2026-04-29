@@ -1,0 +1,16 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Control de Campaña</title>
+  <desc id="desc">Icono de control de campaña con bandera, objetivo y grafica.</desc>
+  <rect width="96" height="96" rx="22" fill="#1B2A4A"/>
+  <circle cx="48" cy="48" r="30" fill="#EEF6FF"/>
+  <circle cx="48" cy="48" r="20" fill="#D7EAFE"/>
+  <circle cx="48" cy="48" r="10" fill="#3E97FF"/>
+  <path d="M46 19.5C46 17.8431 47.3431 16.5 49 16.5H67.5C69.1569 16.5 70.5 17.8431 70.5 19.5V43.5C70.5 45.1569 69.1569 46.5 67.5 46.5H49C47.3431 46.5 46 45.1569 46 43.5V19.5Z" fill="#F1416C"/>
+  <path d="M46 19.5H72L65.5 31.5L72 43.5H46V19.5Z" fill="#F1416C"/>
+  <path d="M42 16.5C42 14.8431 43.3431 13.5 45 13.5C46.6569 13.5 48 14.8431 48 16.5V76.5C48 78.1569 46.6569 79.5 45 79.5C43.3431 79.5 42 78.1569 42 76.5V16.5Z" fill="#FFFFFF"/>
+  <path d="M28 67L38 57L48 63L65 44" stroke="#50CD89" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="28" cy="67" r="4" fill="#50CD89"/>
+  <circle cx="38" cy="57" r="4" fill="#50CD89"/>
+  <circle cx="48" cy="63" r="4" fill="#50CD89"/>
+  <circle cx="65" cy="44" r="4" fill="#50CD89"/>
+</svg>

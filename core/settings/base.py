@@ -66,22 +66,9 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "apps.authentication",
-    "apps.sites_mgmt",
     "apps.insoles",
     "apps.workflows",
-    # Copies pulled from sim (uncomment after `cp`):
-    # "apps.dynamicforms",
-    # "apps.parameters",
-    # "apps.comments",
-    # "apps.files",
-    # "apps.emails",
-    # Domain apps (create as needed):
-    # "apps.campaigns",
-    # "apps.creatives",
-    # "apps.bookings",
-    # "apps.budgets",
-    # "apps.metrics",
-    # "apps.approvals",
+    "apps.campaigns",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -97,7 +84,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "tracing.middleware.TracingMiddleware",
-    "core.tenancy.ActiveSiteMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -117,7 +103,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "superadmin.context_processors.menu",
-                "core.context_processors.active_site",
+                "core.context_processors.brand",
             ],
             "libraries": {
                 # `core` no está en INSTALLED_APPS, por eso registramos
@@ -241,6 +227,7 @@ DJANGO_NOTIFICATIONS_CONFIG = {
     "USE_JSONFIELD": True,
 }
 
-# ----- Maxton theme (consumed by base.html) -----
-MAXTON_DEFAULT_THEME = "light"  # light | blue-theme | dark | semi-dark | bordered-theme
-MAXTON_BRAND_NAME = "CampaignManager"
+# ----- Branding (consumed by base.html) -----
+DEFAULT_THEME = "light"  # light | dark | system
+BRAND_NAME = "Control de Campaña"
+BRAND_ICON = "assets/img/control-campana.svg"

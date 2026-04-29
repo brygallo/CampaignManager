@@ -12,7 +12,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", core_views.home, name="home"),
     path("", include("apps.authentication.urls")),
-    path("", include("apps.sites_mgmt.urls")),
     path("", include("apps.insoles.urls")),
     path("", include("apps.workflows.urls")),
     path("select2/", include("core.select2")),

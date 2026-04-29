@@ -4,8 +4,8 @@
   <base href="{{ request.scheme }}://{{ request.get_host }}/">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Acceso a campaña | {{ brand_name|default:"CampaignManager" }}</title>
-  <link rel="shortcut icon" href="{% static 'assets/media/logos/favicon.ico' %}" />
+  <title>Acceso | {{ brand_name|default:"Control de Campaña" }}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static brand_icon|default:'assets/img/control-campana.svg' %}" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
   <link href="{% static 'assets/plugins/global/plugins.bundle.css' %}" rel="stylesheet" type="text/css" />
   <link href="{% static 'assets/css/style.bundle.css' %}" rel="stylesheet" type="text/css" />
@@ -94,7 +94,10 @@
            style="background-image: url({% static 'assets/media/auth/bg10.jpeg' %})">
         <div class="d-flex flex-column flex-center py-7 py-lg-15 px-5 px-md-15 w-100">
           <a href="#" class="mb-0 mb-lg-12">
-            <span class="display-5 fw-bolder text-white">{{ brand_name|default:"CampaignManager" }}</span>
+            <span class="d-inline-flex align-items-center gap-4">
+              <img src="{% static brand_icon|default:'assets/img/control-campana.svg' %}" class="h-60px" alt="{{ brand_name|default:'Control de Campaña' }}">
+              <span class="display-5 fw-bolder text-white">{{ brand_name|default:"Control de Campaña" }}</span>
+            </span>
           </a>
           <img class="d-none d-lg-block mx-auto w-275px w-md-50 w-xl-500px mb-10 mb-lg-20"
                src="{% static 'assets/media/misc/auth-screens.png' %}" alt="">

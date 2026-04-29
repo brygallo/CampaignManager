@@ -11,12 +11,12 @@
   <div class="app-sidebar-logo flex-shrink-0 d-none d-md-flex flex-center align-items-center" id="kt_app_sidebar_logo">
     <a href="{% url 'home' %}" class="d-flex align-items-center">
       <span class="symbol symbol-40px me-3">
-        <span class="symbol-label fs-2 fw-bolder bg-light-primary text-primary">
-          {{ brand_name|default:"C"|first|upper }}
+        <span class="symbol-label bg-white">
+          <img src="{% static brand_icon|default:'assets/img/control-campana.svg' %}" class="h-30px" alt="{{ brand_name|default:'Control de Campaña' }}">
         </span>
       </span>
       <div class="d-flex flex-column">
-        <span class="fs-5 fw-bolder text-gray-900 lh-1">{{ brand_name|default:"CampaignManager" }}</span>
+        <span class="fs-5 fw-bolder text-gray-900 lh-1">{{ brand_name|default:"Control de Campaña" }}</span>
       </div>
     </a>
   </div>
