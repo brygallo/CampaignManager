@@ -154,6 +154,9 @@
       $modal.find(".modal-body").html(html);
       const modal = new bootstrap.Modal($modal[0]);
       let resolved = false;
+      if (window.initFormWidgets) {
+        window.initFormWidgets($modal[0]);
+      }
       $modal.find('[data-action="submit"]').on("click", async () => {
         const $form = $modal.find("form").first();
         if (!$form.length) {

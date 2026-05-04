@@ -24,15 +24,6 @@
     </div>
     <div class="d-flex align-items-center gap-2 gap-lg-3">
       {% block list_extra_actions %}{% endblock %}
-      {% if site.current_filters %}
-        <button type="button"
-                id="clear-filters-btn"
-                class="btn btn-flex btn-outline btn-color-gray-700 btn-active-color-danger bg-body h-40px fs-7 fw-bold"
-                data-url="{% url 'site:session' site.app_name site.model_name %}"
-                title="Quitar todos los filtros activos">
-          <i class="ki-outline ki-eraser fs-2"></i>Limpiar filtros
-        </button>
-      {% endif %}
       {% if site.urls.create %}
         <a href="{{ site.urls.create }}" class="btn btn-flex btn-primary h-40px fs-7 fw-bold">
           <i class="ki-outline ki-plus fs-2"></i>Nuevo
@@ -93,47 +84,99 @@
   {% endblock %}
 
   <div class="card-header border-0 pt-6">
-    <div class="card-title flex-grow-1 me-3">
-      <form id="list-search-form" method="get" class="table-search w-100">
+    <div class="card-title">
+      <form id="list-search-form" method="get" class="table-search">
         {% if request.GET.paginate_by %}
           <input type="hidden" name="paginate_by" value="{{ request.GET.paginate_by }}">
         {% endif %}
-        <div class="d-flex align-items-center gap-2 position-relative my-1">
+        <div class="d-flex align-items-center position-relative my-1">
           <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5 z-index-1"></i>
           <input id="id_table_search"
                  type="text"
-                 class="form-control form-control-solid flex-grow-1 ps-12"
+                 class="form-control form-control-solid w-250px ps-12"
                  name="search"
                  value="{{ request.GET.search|default:'' }}"
-                 placeholder="Buscar en esta lista, separa términos con comas"
+                 placeholder="Buscar en esta lista"
                  title="Puedes escribir varios términos separados por coma. Presiona Enter para buscar.">
-          <button id="search_button_id" class="btn btn-primary flex-shrink-0" type="submit" title="Buscar">
-            <i class="ki-outline ki-magnifier fs-2"></i>
-          </button>
         </div>
       </form>
+    </div>
+
+    <div class="card-toolbar">
+      <div class="d-flex justify-content-end align-items-center gap-2"
+           data-kt-list-toolbar="base">
+        {% if site.filter_options %}
+          {% include "base/_filter_dropdown.html" %}
+        {% endif %}
+        {% block list_toolbar_extra %}{% endblock %}
+      </div>
     </div>
   </div>
 
   {% if site.current_filters %}
     <div class="card-body pt-0 pb-3 border-bottom">
-      <div class="d-flex flex-wrap align-items-center gap-2">
+      <div class="d-flex flex-wrap align-items-center gap-2"
+           data-kt-filter-session-url="{% url 'site:session' site.app_name site.model_name %}">
         <span class="text-muted fw-semibold fs-7 me-1">Filtros activos:</span>
         {% for filter in site.current_filters %}
-          <span class="badge badge-light-primary fw-semibold d-inline-flex align-items-center gap-2 py-2 px-3">
+          <span class="badge badge-light-primary fw-semibold d-inline-flex align-items-center gap-2 py-2 px-3"
+                data-kt-filter-badge="true"
+                data-field="{{ filter.field }}"
+                data-lookup="{{ filter.lookup }}"
+                data-search="{{ filter.search }}">
             <span class="text-muted">{{ filter.field_label }}</span>
             <span class="text-gray-500">{{ filter.lookup_label|default:'=' }}</span>
             <strong>{{ filter.search_label|default:filter.search }}</strong>
+            <button type="button"
+                    class="btn btn-icon btn-xs btn-active-light-danger ms-1 p-0 border-0 bg-transparent"
+                    data-kt-filter-remove="true"
+                    title="Quitar este filtro">
+              <i class="ki-outline ki-cross fs-7"></i>
+            </button>
           </span>
         {% endfor %}
+        <button type="button"
+                id="clear-filters-btn"
+                class="btn btn-sm btn-light btn-active-light-danger ms-2"
+                data-kt-filter-clear="true">
+          <i class="ki-outline ki-eraser fs-3"></i>Limpiar todo
+        </button>
       </div>
     </div>
   {% endif %}
 
   <div class="card-body py-4">
+    {% if site.urls.mass_delete %}
+      <div id="bulk-toolbar"
+           class="d-none align-items-center justify-content-between bg-light-primary rounded p-3 mb-4"
+           data-mass-delete-url="{{ site.urls.mass_delete }}">
+        <div class="d-flex align-items-center gap-2">
+          <i class="ki-outline ki-check-circle fs-2 text-primary"></i>
+          <span class="fw-bold text-gray-800">
+            <span id="bulk-selected-count">0</span> seleccionado<span id="bulk-selected-plural">s</span>
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" id="bulk-clear-btn" class="btn btn-sm btn-light">
+            <i class="ki-outline ki-cross fs-3"></i>Cancelar
+          </button>
+          <button type="button" id="bulk-delete-btn" class="btn btn-sm btn-danger">
+            <i class="ki-outline ki-trash fs-3"></i>Eliminar seleccionados
+          </button>
+        </div>
+      </div>
+    {% endif %}
+
     <table id="datatable" class="table align-middle table-row-dashed fs-6 gy-5" style="width:100%">
       <thead>
         <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+          {% if site.urls.mass_delete %}
+            <th class="w-40px pe-0">
+              <div class="form-check form-check-sm form-check-custom form-check-solid">
+                <input class="form-check-input" type="checkbox" id="bulk-select-all" aria-label="Seleccionar todos">
+              </div>
+            </th>
+          {% endif %}
           {% for field_name, label in site.fields %}
             <th>{{ label }}</th>
           {% endfor %}
@@ -143,6 +186,13 @@
       <tbody class="text-gray-700 fw-semibold">
         {% for row in site.rows %}
           <tr>
+            {% if site.urls.mass_delete %}
+              <td class="pe-0">
+                <div class="form-check form-check-sm form-check-custom form-check-solid">
+                  <input class="form-check-input bulk-row-check" type="checkbox" value="{{ row.instance.pk }}" aria-label="Seleccionar fila">
+                </div>
+              </td>
+            {% endif %}
             {% for value in row.values %}
               {% if forloop.first and row.urls.detail %}
                 <td>
@@ -172,7 +222,11 @@
           </tr>
         {% empty %}
           <tr>
-            <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
+            {% if site.urls.mass_delete %}
+              <td colspan="{{ site.fields|length|add:2 }}" class="text-center py-10">
+            {% else %}
+              <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
+            {% endif %}
               <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
               <p class="text-muted fs-6 mb-0">No hay registros que mostrar.</p>
             </td>
@@ -192,7 +246,9 @@
     if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
       const $tbl = jQuery("#datatable");
       if ($tbl.length) {
-        const dt = $tbl.DataTable({
+        const hasBulk = !!document.getElementById("bulk-toolbar");
+        const noSort = hasBulk ? [0, -1] : [-1];
+        $tbl.DataTable({
           responsive: true,
           paging: false,
           info: false,
@@ -203,36 +259,90 @@
           },
           dom: 't',
           order: [],
-          columnDefs: [{ orderable: false, targets: -1 }]
+          columnDefs: [{ orderable: false, targets: noSort }]
         });
       }
     }
 
-    // Clear active filters: POST with only CSRF to site:session — superadmin
-    // replaces stored params with {} for the (app, model) key.
-    const clearBtn = document.getElementById("clear-filters-btn");
-    if (clearBtn) {
-      clearBtn.addEventListener("click", async () => {
-        const url = clearBtn.dataset.url;
-        if (!url) return;
-        const csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1];
-        try {
-          const fd = new FormData();
-          await fetch(url, {
-            method: "POST",
-            headers: {
-              "X-CSRFToken": csrf ? decodeURIComponent(csrf) : "",
-              "X-Requested-With": "XMLHttpRequest",
-            },
-            body: fd,
-            credentials: "same-origin",
-          });
-          window.location.href = window.location.pathname;
-        } catch (err) {
-          console.error("clear filters", err);
+    // Bulk delete (mass_delete)
+    const bulkToolbar = document.getElementById("bulk-toolbar");
+    if (bulkToolbar) {
+      const selectAll = document.getElementById("bulk-select-all");
+      const countEl = document.getElementById("bulk-selected-count");
+      const pluralEl = document.getElementById("bulk-selected-plural");
+      const deleteBtn = document.getElementById("bulk-delete-btn");
+      const clearBtn = document.getElementById("bulk-clear-btn");
+      const massDeleteUrl = bulkToolbar.dataset.massDeleteUrl;
+
+      const getRowChecks = () => Array.from(document.querySelectorAll(".bulk-row-check"));
+      const getSelected = () => getRowChecks().filter(c => c.checked);
+
+      const refresh = () => {
+        const sel = getSelected();
+        const n = sel.length;
+        countEl.textContent = n;
+        pluralEl.textContent = n === 1 ? "" : "s";
+        bulkToolbar.classList.toggle("d-none", n === 0);
+        bulkToolbar.classList.toggle("d-flex", n > 0);
+        if (selectAll) {
+          const all = getRowChecks();
+          selectAll.checked = all.length > 0 && n === all.length;
+          selectAll.indeterminate = n > 0 && n < all.length;
         }
+      };
+
+      if (selectAll) {
+        selectAll.addEventListener("change", () => {
+          getRowChecks().forEach(c => { c.checked = selectAll.checked; });
+          refresh();
+        });
+      }
+
+      document.addEventListener("change", (e) => {
+        if (e.target && e.target.classList.contains("bulk-row-check")) refresh();
       });
+
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          getRowChecks().forEach(c => { c.checked = false; });
+          if (selectAll) selectAll.checked = false;
+          refresh();
+        });
+      }
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", async () => {
+          const ids = getSelected().map(c => c.value).filter(Boolean);
+          if (ids.length === 0) return;
+          const confirmed = window.confirm(
+            `¿Eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"}? Esta acción no se puede deshacer.`
+          );
+          if (!confirmed) return;
+          const csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1];
+          const fd = new FormData();
+          ids.forEach(id => fd.append("ids", id));
+          deleteBtn.disabled = true;
+          try {
+            const resp = await fetch(massDeleteUrl, {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": csrf ? decodeURIComponent(csrf) : "",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: fd,
+              credentials: "same-origin",
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            window.location.reload();
+          } catch (err) {
+            console.error("bulk delete", err);
+            window.alert("No se pudo eliminar. Intenta de nuevo.");
+            deleteBtn.disabled = false;
+          }
+        });
+      }
     }
   });
 </script>
+<script src="{% static 'assets/js/list/filters.js' %}"></script>
 {% endblock %}

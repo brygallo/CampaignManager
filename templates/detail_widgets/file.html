@@ -1,7 +1,25 @@
-{% if value %}
-  <a href="{{ value.url }}" target="_blank" class="d-inline-flex align-items-center gap-2 text-primary text-hover-primary">
-    <i class="ki-outline ki-paper-clip fs-3"></i> {{ value.name|default:"Archivo" }}
-  </a>
-{% else %}
-  —
-{% endif %}
+<label class="form-label fw-semibold">{{ label|capfirst }}</label>
+<div class="input-group">
+  <input type="text"
+         class="form-control form-control-solid"
+         value="{% if value %}{{ value.name|default:'Archivo' }}{% else %}Sin archivo{% endif %}"
+         readonly>
+  {% if value %}
+    {% with name=value.name|lower %}
+      {% if name|slice:'-4:' == '.pdf' %}
+        <button type="button"
+                class="btn btn-light-info pdf-preview-trigger"
+                data-bs-toggle="modal"
+                data-bs-target="#pdf-preview-modal"
+                data-file-url="{{ value.url }}"
+                data-file-name="{{ value.name|default:label }}"
+                title="Previsualizar PDF">
+          <i class="ki-outline ki-eye fs-3"></i>
+        </button>
+      {% endif %}
+    {% endwith %}
+    <a href="{{ value.url }}" target="_blank" class="btn btn-light-primary" title="Abrir archivo">
+      <i class="ki-outline ki-paper-clip fs-3"></i>
+    </a>
+  {% endif %}
+</div>

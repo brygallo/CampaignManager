@@ -1,0 +1,10 @@
+<label class="form-label fw-semibold">{{ label|capfirst }}</label>
+<div class="input-group">
+  <span class="input-group-text bg-light-primary border-0">
+    <i class="ki-outline ki-calendar fs-3 text-primary"></i>
+  </span>
+  <input type="text"
+         class="form-control form-control-solid"
+         value="{{ value|date:'d/m/Y'|default_if_none:'' }}"
+         readonly>
+</div>

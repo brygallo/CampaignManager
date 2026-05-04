@@ -5,10 +5,15 @@
     {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
     {% endif %}
-    {% for field in form %}
-      <div class="col-md-12">
-        {% include "base/_field.html" with field=field %}
-      </div>
+    {% for field in form.visible_fields %}
+      {% if not field.is_hidden %}
+        <div class="col-md-12">
+          {% include "base/_field.html" with field=field %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% for field in form.hidden_fields %}
+      {{ field }}
     {% endfor %}
   {% endblock %}
 </form>

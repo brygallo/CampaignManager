@@ -1,1 +1,21 @@
-{{ value|default:"—" }}
+{% load site_urls %}
+<label class="form-label fw-semibold">{{ label|capfirst }}</label>
+{% safe_site_url value 'detail' as related_url %}
+{% if value and related_url %}
+  <div class="input-group">
+    <input type="text"
+           class="form-control form-control-solid"
+           value="{{ value }}"
+           readonly>
+    <a href="{{ related_url }}"
+       class="btn btn-light-primary"
+       title="Abrir detalle de {{ label|lower }}">
+      <i class="ki-outline ki-exit-right fs-3"></i>
+    </a>
+  </div>
+{% else %}
+  <input type="text"
+         class="form-control form-control-solid"
+         value="{{ value|default_if_none:'' }}"
+         readonly>
+{% endif %}

@@ -1,1 +1,2 @@
-<div class="text-pre-wrap">{{ value|default:"—"|linebreaksbr }}</div>
+<label class="form-label fw-semibold">{{ label|capfirst }}</label>
+<textarea class="form-control form-control-solid" rows="4" readonly>{{ value|default_if_none:'' }}</textarea>

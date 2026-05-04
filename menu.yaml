@@ -15,6 +15,11 @@ Campañas:
     app: campaigns
     model: position
 
+Control territorial:
+  Publicidad física:
+    app: territorial_ads
+    model: physicaladvertisement
+
 Sistema:
   Usuarios:
     app: authentication

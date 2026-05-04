@@ -1,6 +1,7 @@
 {% extends "base/base.html" %}
 {% load static %}
 {% load model_meta %}
+{% load superadmin_utils %}
 
 {% block title %}{{ object }} | {{ block.super }}{% endblock %}
 
@@ -31,6 +32,7 @@
       </ul>
     </div>
     <div class="d-flex align-items-center gap-2 gap-lg-3">
+      {% block toolbar_actions %}{% endblock %}
       {% if site.nav %}
         <div class="btn-group" role="group" aria-label="Navegación">
           <a href="{{ site.nav.previous_url|default:'#' }}"
@@ -77,6 +79,8 @@
   {% include "workflows/includes/transition_requirements.html" %}
 {% endif %}
 
+{% block before_card %}{% endblock %}
+
 <div class="card">
   <div class="card-body">
     <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-5 fs-6" role="tablist">
@@ -98,28 +102,36 @@
     <div class="tab-content">
       <div class="tab-pane fade show active" id="tab-data" role="tabpanel">
         {% if site.results %}
-          {% for section in site.results %}
-            <div class="mb-9">
-              <div class="fw-bold fs-4 text-dark mb-1">{{ section.title }}</div>
-              <div class="h-3px w-100 bg-primary mb-5"></div>
-              <div class="row g-5">
-                {% for row in section.fieldset %}
+          {% for fieldset in site.results %}
+            <fieldset class="mb-8">
+              {% if fieldset.title %}
+                <div class="mb-5">
+                  <div class="fw-bold fs-4 text-dark mb-1">{{ fieldset.title|capfirst }}</div>
+                  <div class="h-3px w-100 bg-primary"></div>
+                </div>
+              {% endif %}
+              {% for row in fieldset.fieldset %}
+                <div class="row g-5 mb-4">
                   {% for label, value, field_type, field_name in row.fields %}
                     <div class="col-md-{{ row.bs_cols }}">
-                      <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ label }}</div>
-                      <div class="fs-6 fw-bold text-gray-800">{{ value|default:"—" }}</div>
+                      <div class="fv-row" data-field="{{ field_name }}">
+                        {% detail_widget label value field_type as template %}
+                        {% include template with label=label value=value widget=field_type field=field_name %}
+                      </div>
                     </div>
                   {% endfor %}
-                {% endfor %}
-              </div>
-            </div>
+                </div>
+              {% endfor %}
+            </fieldset>
           {% endfor %}
         {% elif site.flatten_results %}
           <div class="row g-5">
             {% for label, value, field_type, field_name in site.flatten_results %}
               <div class="col-md-6">
-                <div class="text-gray-500 fw-semibold fs-7 text-uppercase mb-1">{{ label }}</div>
-                <div class="fs-6 fw-bold text-gray-800">{{ value|default:"—" }}</div>
+                <div class="fv-row" data-field="{{ field_name }}">
+                  {% detail_widget label value field_type as template %}
+                  {% include template with label=label value=value widget=field_type field=field_name %}
+                </div>
               </div>
             {% endfor %}
           </div>
@@ -163,4 +175,76 @@
     </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block modals %}
+  {{ block.super }}
+  <div class="modal fade" id="pdf-preview-modal" tabindex="-1" aria-labelledby="pdfPreviewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="d-flex flex-column">
+            <h2 class="modal-title fw-bold mb-1" id="pdfPreviewLabel">Previsualización PDF</h2>
+            <span class="text-muted fs-7" id="pdf-preview-subtitle">Vista rápida del documento</span>
+          </div>
+          <button type="button" class="btn btn-icon btn-sm btn-active-light-primary ms-2" data-bs-dismiss="modal" aria-label="Cerrar">
+            <i class="ki-outline ki-cross fs-1"></i>
+          </button>
+        </div>
+        <div class="modal-body p-0 position-relative" style="height: 80vh;">
+          <div id="pdf-preview-loading" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-3 bg-light">
+            <span class="spinner-border text-primary" role="status"></span>
+            <span class="fw-semibold text-muted">Cargando previsualización…</span>
+          </div>
+          <iframe id="pdf-preview-frame"
+                  title="Previsualización PDF"
+                  src="about:blank"
+                  style="width: 100%; height: 100%; border: 0; background: #fff;"></iframe>
+        </div>
+        <div class="modal-footer">
+          <a id="pdf-preview-open" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-light-primary">
+            <i class="ki-outline ki-exit-up fs-3"></i>Abrir en otra pestaña
+          </a>
+          <button type="button" class="btn btn-light-danger" data-bs-dismiss="modal">
+            <i class="ki-outline ki-cross fs-2"></i>Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script>
+    (function () {
+      const modalEl = document.getElementById("pdf-preview-modal");
+      if (!modalEl) return;
+      const frame = document.getElementById("pdf-preview-frame");
+      const loading = document.getElementById("pdf-preview-loading");
+      const subtitle = document.getElementById("pdf-preview-subtitle");
+      const openLink = document.getElementById("pdf-preview-open");
+
+      modalEl.addEventListener("show.bs.modal", (event) => {
+        const trigger = event.relatedTarget;
+        if (!trigger) return;
+        const url = trigger.getAttribute("data-file-url") || "";
+        const name = trigger.getAttribute("data-file-name") || "Documento";
+        loading.classList.remove("d-none");
+        subtitle.textContent = name;
+        openLink.setAttribute("href", url);
+        frame.setAttribute("src", url);
+      });
+
+      frame.addEventListener("load", () => {
+        if (frame.getAttribute("src") !== "about:blank") {
+          loading.classList.add("d-none");
+        }
+      });
+
+      modalEl.addEventListener("hidden.bs.modal", () => {
+        frame.setAttribute("src", "about:blank");
+      });
+    })();
+  </script>
 {% endblock %}

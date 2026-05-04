@@ -69,6 +69,7 @@ LOCAL_APPS = [
     "apps.insoles",
     "apps.workflows",
     "apps.campaigns",
+    "apps.territorial_ads",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -111,6 +112,7 @@ TEMPLATES = [
                 "menu_tags": "core.templatetags.menu_tags",
                 "model_meta": "core.templatetags.model_meta",
                 "breadcrumbs": "core.templatetags.breadcrumbs",
+                "site_urls": "core.templatetags.site_urls",
             },
         },
     },
@@ -216,9 +218,19 @@ TEMPLATE_WIDGETS_DETAIL = {
     "BooleanField": "detail_widgets/boolean.html",
     "TextField": "detail_widgets/textarea.html",
     "ForeignKey": "detail_widgets/foreignkey.html",
+    "OneToOneField": "detail_widgets/foreignkey.html",
     "FileField": "detail_widgets/file.html",
     "ImageField": "detail_widgets/file.html",
     "MultipleChoiceField": "detail_widgets/multiplechoicefield.html",
+    "DateField": "detail_widgets/dateinput.html",
+    "DateTimeField": "detail_widgets/datetimeinput.html",
+    "TimeField": "detail_widgets/datetimeinput.html",
+    "IntegerField": "detail_widgets/numberinput.html",
+    "BigIntegerField": "detail_widgets/numberinput.html",
+    "PositiveIntegerField": "detail_widgets/numberinput.html",
+    "SmallIntegerField": "detail_widgets/numberinput.html",
+    "DecimalField": "detail_widgets/numberinput.html",
+    "FloatField": "detail_widgets/numberinput.html",
 }
 
 # ----- CKEditor -----

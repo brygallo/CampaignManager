@@ -10,6 +10,130 @@ or Material Icons) and Bootstrap color names — see ``base_list.html``
 for the exact rendering contract.
 """
 from django.db.models import Count
+from django.urls import reverse
+
+from superadmin.services import FieldService, FilterService
+
+
+DEFAULT_LOOKUP_BY_TYPE = {
+    "ForeignKey": "exact",
+    "OneToOneField": "exact",
+    "ManyToManyField": "exact",
+    "BooleanField": "exact",
+    "CharField": "icontains",
+    "TextField": "icontains",
+    "SlugField": "icontains",
+    "EmailField": "icontains",
+    "IntegerField": "exact",
+    "PositiveIntegerField": "exact",
+    "BigIntegerField": "exact",
+    "DecimalField": "exact",
+    "FloatField": "exact",
+    "DateField": "gte",
+    "DateTimeField": "gte",
+}
+
+
+def default_lookup_for_type(field_type):
+    """Return the default lookup to use for a Django field type.
+
+    Why: in the demo55 dropdown the user picks a value, not a lookup —
+    so we infer a sensible default per type (FK/choices → exact, CharField →
+    icontains, dates → gte for the lower-bound input of a range).
+    """
+    return DEFAULT_LOOKUP_BY_TYPE.get(field_type, "exact")
+
+
+class DropdownFilterMixin:
+    """Enrich ``site.filter_fields`` with rendering-ready options.
+
+    The Metronic demo55 filter dropdown renders all filters at once with
+    pre-loaded choices (no AJAX). This mixin exposes
+    ``site.filter_options`` and ``site.filter_session_url`` so
+    ``base_list.html`` can render a static dropdown.
+
+    Usage in an app's ``sites.py``::
+
+        @register(MyModel)
+        class MySite(ModelSite):
+            filter_fields = ("estado:Estado", "candidato")
+            list_mixins = (DropdownFilterMixin, ...)
+    """
+
+    def _get_session_params(self):
+        return FilterService.get_params(self.site.model, self.request.session)
+
+    def _build_filter_option(self, field_def, params):
+        model = self.site.model
+        name = field_def.split(":")[0]
+        try:
+            field_type = FieldService.get_field_type(model, name)
+        except Exception:
+            field_type = "CharField"
+
+        default_lookup = default_lookup_for_type(field_type)
+
+        try:
+            raw_choices = FilterService.get_choices(model, name)
+        except Exception:
+            raw_choices = []
+
+        if hasattr(raw_choices, "model"):
+            choices_list = [(obj.pk, str(obj)) for obj in raw_choices]
+        else:
+            choices_list = list(raw_choices) if raw_choices else []
+
+        is_date = field_type in ("DateField", "DateTimeField")
+        is_select = bool(choices_list) or field_type == "BooleanField"
+
+        option = {
+            "name": name,
+            "label": FieldService.get_field_label(model, field_def),
+            "field_type": field_type,
+            "default_lookup": default_lookup,
+            "choices": choices_list,
+            "is_select": is_select,
+            "is_date": is_date,
+            "is_text": not is_select and not is_date,
+            "current_value": params.get(f"{name}__{default_lookup}", ""),
+        }
+
+        if is_date:
+            option["current_value_gte"] = params.get(f"{name}__gte", "")
+            option["current_value_lte"] = params.get(f"{name}__lte", "")
+
+        return option
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        site_obj = getattr(self, "site", None)
+        if not site_obj or not getattr(site_obj, "filter_fields", None):
+            return context
+
+        params = self._get_session_params()
+        options = [
+            self._build_filter_option(field_def, params)
+            for field_def in site_obj.filter_fields
+        ]
+
+        session_url = reverse(
+            "site:session",
+            args=[
+                site_obj.model._meta.app_label,
+                site_obj.model._meta.model_name,
+            ],
+        )
+
+        site_ctx = context.get("site")
+        if isinstance(site_ctx, dict):
+            site_ctx["filter_options"] = options
+            site_ctx["filter_session_url"] = session_url
+        else:
+            context["site"] = {
+                "filter_options": options,
+                "filter_session_url": session_url,
+            }
+        return context
 
 
 class WorkflowStateFilterMixin:

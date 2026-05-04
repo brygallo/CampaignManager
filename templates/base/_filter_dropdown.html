@@ -1,0 +1,102 @@
+{# Filter dropdown — Metronic demo55 pattern. #}
+{# Requires DropdownFilterMixin: site.filter_options + site.filter_session_url. #}
+{% load static %}
+
+<button type="button"
+        class="btn btn-light-primary"
+        data-kt-menu-trigger="click"
+        data-kt-menu-placement="bottom-end"
+        aria-haspopup="menu">
+  <i class="ki-outline ki-filter fs-2"></i>Filtros
+  {% if site.current_filters %}
+    <span class="badge badge-circle badge-primary ms-2">{{ site.current_filters|length }}</span>
+  {% endif %}
+</button>
+
+<div class="menu menu-sub menu-sub-dropdown w-100 w-md-325px"
+     data-kt-menu="true"
+     id="kt_list_filter_menu">
+
+  <div class="px-7 py-5">
+    <div class="fs-5 text-dark fw-bold">Opciones de filtro</div>
+  </div>
+  <div class="separator border-gray-200"></div>
+
+  <form class="px-7 py-5"
+        data-kt-list-filter="form"
+        data-kt-list-filter-url="{{ site.filter_session_url }}">
+    {% csrf_token %}
+
+    {% for opt in site.filter_options %}
+      <div class="mb-7">
+        <label class="form-label fs-6 fw-semibold" for="filter_{{ opt.name }}">
+          {{ opt.label }}:
+        </label>
+
+        {% if opt.is_select %}
+          <select id="filter_{{ opt.name }}"
+                  class="form-select form-select-solid fw-bold"
+                  name="{{ opt.name }}__{{ opt.default_lookup }}"
+                  data-kt-select2="true"
+                  data-placeholder="Seleccione una opción"
+                  data-allow-clear="true"
+                  data-dropdown-parent="#kt_list_filter_menu">
+            <option></option>
+            {% for value, label in opt.choices %}
+              <option value="{{ value }}"
+                      {% if opt.current_value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+
+        {% elif opt.is_date %}
+          <div class="input-group">
+            <input type="text"
+                   id="filter_{{ opt.name }}"
+                   class="form-control form-control-solid rounded rounded-end-0"
+                   data-kt-list-filter-daterange="true"
+                   data-field="{{ opt.name }}"
+                   data-default-from="{{ opt.current_value_gte|default:'' }}"
+                   data-default-to="{{ opt.current_value_lte|default:'' }}"
+                   placeholder="Seleccione un rango">
+            <button type="button"
+                    class="btn btn-icon btn-light"
+                    data-kt-list-filter-daterange-clear="filter_{{ opt.name }}"
+                    title="Limpiar rango">
+              <i class="ki-outline ki-cross fs-2"></i>
+            </button>
+          </div>
+          <input type="hidden" name="{{ opt.name }}__gte"
+                 data-kt-list-filter-daterange-from="filter_{{ opt.name }}"
+                 value="{{ opt.current_value_gte|default:'' }}">
+          <input type="hidden" name="{{ opt.name }}__lte"
+                 data-kt-list-filter-daterange-to="filter_{{ opt.name }}"
+                 value="{{ opt.current_value_lte|default:'' }}">
+
+        {% else %}
+          <input type="text"
+                 id="filter_{{ opt.name }}"
+                 class="form-control form-control-solid"
+                 name="{{ opt.name }}__{{ opt.default_lookup }}"
+                 value="{{ opt.current_value|default:'' }}"
+                 placeholder="Filtrar por {{ opt.label|lower }}">
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="d-flex justify-content-end">
+      <button type="reset"
+              class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6"
+              data-kt-list-filter="reset">
+        Restablecer
+      </button>
+      <button type="submit"
+              class="btn btn-primary fw-semibold px-6"
+              data-kt-menu-dismiss="true"
+              data-kt-list-filter="apply">
+        Aplicar
+      </button>
+    </div>
+  </form>
+</div>

@@ -74,6 +74,10 @@
 
     initFlatpickr(scope);
 
+    if (window.initLeafletMaps) {
+      window.initLeafletMaps(scope);
+    }
+
     if (window.autosize) {
       window.autosize(scope.querySelectorAll('[data-kt-autosize="true"], textarea.form-control'));
     }

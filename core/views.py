@@ -54,6 +54,7 @@ def home(request):
 SUPERADMIN_MODULE_META = {
     # Group-level metadata (sections from menu.yaml)
     "campañas": {"icon": "flag", "color": "primary", "description": "Campañas, candidatos, elecciones y movimientos políticos."},
+    "control territorial": {"icon": "geolocation", "color": "success", "description": "Publicidad y operaciones en territorio."},
     "sistema": {"icon": "setting-2", "color": "info", "description": "Cuentas, roles, permisos y auditoría del sistema."},
     # Leaf-level metadata
     "campañas electorales": {"icon": "flag", "color": "primary", "description": "Gestiona campañas activas y archivadas."},
@@ -61,6 +62,7 @@ SUPERADMIN_MODULE_META = {
     "elecciones": {"icon": "element-equal", "color": "info", "description": "Periodos y procesos electorales."},
     "movimientos políticos": {"icon": "abstract-26", "color": "warning", "description": "Organizaciones políticas registradas."},
     "cargos": {"icon": "medal-star", "color": "danger", "description": "Posiciones disputadas en cada elección."},
+    "publicidad física": {"icon": "billboard", "color": "success", "description": "Vallas, lonas y soportes publicitarios en campo."},
     "usuarios": {"icon": "profile-circle", "color": "primary", "description": "Cuentas, datos y estado de los usuarios."},
     "grupos": {"icon": "people", "color": "success", "description": "Roles agrupando permisos por función."},
     "permisos": {"icon": "shield-tick", "color": "info", "description": "Permisos disponibles en el sistema."},

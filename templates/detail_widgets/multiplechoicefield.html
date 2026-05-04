@@ -1,1 +1,8 @@
-{% for v in value %}<span class="badge badge-light-primary me-1">{{ v }}</span>{% empty %}—{% endfor %}
+<label class="form-label fw-semibold">{{ label|capfirst }}</label>
+<div class="d-flex flex-wrap gap-2 pt-1">
+  {% for v in value %}
+    <span class="badge badge-light-primary fw-semibold">{{ v }}</span>
+  {% empty %}
+    <span class="text-muted">—</span>
+  {% endfor %}
+</div>

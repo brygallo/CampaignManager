@@ -2,6 +2,7 @@
 from django.apps import apps
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
@@ -18,6 +19,19 @@ from django.views.generic import UpdateView
 from .forms import EmailOrUsernameAuthenticationForm, UserPermissionForm
 
 User = get_user_model()
+
+
+def _site_urls_for(model, instance, user=None):
+    """Resolve list/detail/update/delete URLs of a model registered in superadmin."""
+    try:
+        from superadmin import site as superadmin_site
+        from superadmin.shortcuts import get_urls_of_site
+    except ImportError:
+        return {}
+    if not superadmin_site.is_registered(model):
+        return {}
+    model_site = superadmin_site.get_modelsite(model)
+    return get_urls_of_site(model_site, object=instance, user=user)
 
 
 @csrf_protect
@@ -99,19 +113,19 @@ STANDARD_PERM_LABELS = {
 }
 
 
-def _build_permission_matrix(user):
+def _build_permission_matrix(direct_perm_ids, group_perm_map=None):
     """Group every Permission by app/model for rendering the matrix.
 
+    ``direct_perm_ids``: iterable of Permission ids assigned directly to
+    the holder (a User's ``user_permissions`` or a Group's ``permissions``).
+    ``group_perm_map``: optional ``{permission_id: [group_name, ...]}`` to
+    show inheritance markers; pass ``None`` when the holder is a Group.
+
     Returns a list of dicts ``{app_label, app_name, models}`` where each
-    model contains ``{model_name, model_label, standard, custom}``. Standard
-    keeps the 4 CRUD permissions in the fixed action order; custom is the
-    rest (e.g. ``view_profile``).
+    model contains ``{model_name, model_label, standard, custom}``.
     """
-    direct_perm_ids = set(user.user_permissions.values_list("id", flat=True))
-    group_perm_map = {}
-    for group in user.groups.prefetch_related("permissions"):
-        for perm in group.permissions.all():
-            group_perm_map.setdefault(perm.id, []).append(group.name)
+    direct_perm_ids = set(direct_perm_ids)
+    group_perm_map = group_perm_map or {}
 
     permissions = (
         Permission.objects
@@ -206,16 +220,23 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         target_user = self.object or self.get_object()
+        direct_ids = target_user.user_permissions.values_list("id", flat=True)
+        group_perm_map = {}
+        for group in target_user.groups.prefetch_related("permissions"):
+            for perm in group.permissions.all():
+                group_perm_map.setdefault(perm.id, []).append(group.name)
         context["target_user"] = target_user
-        context["permission_groups"] = _build_permission_matrix(target_user)
+        context["target_user_urls"] = _site_urls_for(User, target_user, user=self.request.user)
+        context["permission_groups"] = _build_permission_matrix(direct_ids, group_perm_map)
         context["standard_actions"] = STANDARD_PERM_ACTIONS
         context["standard_labels"] = STANDARD_PERM_LABELS
         context["page_title"] = f"Permisos de {target_user.get_full_name() or target_user.username}"
+        site_urls = context["target_user_urls"]
         context["breadcrumbs"] = [
             ("Inicio", "/"),
             ("Panel administrativo", reverse_lazy("superadmin_home")),
-            ("Usuarios", "/authentication/user/listar/"),
-            (target_user.get_full_name() or target_user.username, f"/authentication/user/{target_user.username}/"),
+            ("Usuarios", site_urls.get("list")),
+            (target_user.get_full_name() or target_user.username, site_urls.get("detail")),
             ("Permisos", None),
         ]
         return context
@@ -245,4 +266,63 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         ]
         self.object.user_permissions.set(new_perms)
         messages.success(self.request, "Permisos actualizados correctamente.")
+        return redirect(self.get_success_url())
+
+
+def _resolve_posted_permissions(post_data):
+    """Translate ``perm_<codename>=<content_type_id>`` POST keys to Permission qs."""
+    prefix = "perm_"
+    posted_pairs = {
+        (key[len(prefix):], post_data[key])
+        for key in post_data
+        if key.startswith(prefix)
+    }
+    if not posted_pairs:
+        return []
+    codenames = [c for c, _ct in posted_pairs]
+    candidates = Permission.objects.filter(codename__in=codenames).select_related("content_type")
+    return [p for p in candidates if (p.codename, str(p.content_type_id)) in posted_pairs]
+
+
+class GroupPermissionView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    """Pattern P5: edit the permissions assigned to a Group."""
+
+    model = Group
+    fields = ()  # POST handled manually (perm_<codename> keys)
+    template_name = "authentication/group/permission_form.html"
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get_success_url(self):
+        return reverse_lazy(
+            "authentication:group_permissions",
+            kwargs={"pk": self.object.pk},
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        group = self.object or self.get_object()
+        direct_ids = group.permissions.values_list("id", flat=True)
+        context["target_group"] = group
+        context["target_group_urls"] = _site_urls_for(Group, group, user=self.request.user)
+        context["permission_groups"] = _build_permission_matrix(direct_ids, group_perm_map=None)
+        context["standard_actions"] = STANDARD_PERM_ACTIONS
+        context["standard_labels"] = STANDARD_PERM_LABELS
+        context["page_title"] = f"Permisos del grupo {group.name}"
+        site_urls = context["target_group_urls"]
+        context["breadcrumbs"] = [
+            ("Inicio", "/"),
+            ("Panel administrativo", reverse_lazy("superadmin_home")),
+            ("Grupos", site_urls.get("list")),
+            (group.name, site_urls.get("detail")),
+            ("Permisos", None),
+        ]
+        return context
+
+    def form_valid(self, form):
+        if not self.request.user.is_staff:
+            raise PermissionDenied
+        self.object.permissions.set(_resolve_posted_permissions(self.request.POST))
+        messages.success(self.request, "Permisos del grupo actualizados correctamente.")
         return redirect(self.get_success_url())
