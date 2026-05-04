@@ -5,9 +5,11 @@ from django.db import models
 
 
 class User(AbstractUser):
-    """User extendido: email único, alias opcional. USERNAME_FIELD se mantiene
-    como `username` para no romper compatibilidad con superadmin (ManagementForm,
-    permisos, etc.), pero el email se valida como único.
+    """Extended User with unique email and optional alias.
+
+    USERNAME_FIELD remains `username` to preserve superadmin compatibility
+    with ManagementForm, permissions, and related internals. Email is still
+    validated as unique.
     """
 
     email = models.EmailField(
@@ -30,7 +32,7 @@ class User(AbstractUser):
 
 
 class Profile(models.Model):
-    """OneToOne extendido del User."""
+    """Extended OneToOne profile for User."""
 
     user = models.OneToOneField(
         User,

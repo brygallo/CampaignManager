@@ -8,7 +8,33 @@ class AutoResponseView(BaseAutoResponseView):
     """Handle Select2 dependent-field requests and multi-value queries."""
 
     def get_queryset(self):
-        return super().get_queryset()
+        for key, value in self.request.GET.items():
+            if key == "field_id":
+                continue
+            key_tuple = key.split("-")
+            if len(key_tuple) == 3:
+                self.widget.dependent_fields.update({key: key_tuple[2]})
+
+        kwargs = {
+            model_field_name: self.request.GET.get(form_field_name)
+            for form_field_name, model_field_name in self.widget.dependent_fields.items()
+            if form_field_name in self.request.GET
+            and self.request.GET.get(form_field_name, "") != ""
+        }
+        kwargs.update(
+            {
+                f"{model_field_name}__in": self.request.GET.getlist(
+                    f"{form_field_name}[]", []
+                )
+                for form_field_name, model_field_name in self.widget.dependent_fields.items()
+            }
+        )
+        return self.widget.filter_queryset(
+            self.request,
+            self.term,
+            self.queryset,
+            **{key: value for key, value in kwargs.items() if value},
+        )
 
 
 @login_required

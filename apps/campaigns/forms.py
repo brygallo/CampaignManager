@@ -1,6 +1,8 @@
 """Forms de la app campaigns."""
 from superadmin.forms import ModelForm
 
+from core.forms import Select2ModelFormMixin
+
 from .models import Campaign, Candidate, Election, PoliticalMovement, Position
 
 
@@ -52,7 +54,7 @@ class CandidateForm(ModelForm):
         }
 
 
-class CampaignForm(ModelForm):
+class CampaignForm(Select2ModelFormMixin, ModelForm):
     class Meta:
         model = Campaign
         fieldsets = {
@@ -67,4 +69,33 @@ class CampaignForm(ModelForm):
             "Detalle": (
                 ("description",),
             ),
+        }
+        select2_fields = {
+            "election": {
+                "model": Election,
+                "search_fields": ["name__icontains"],
+            },
+            "candidate": {
+                "model": Candidate,
+                "search_fields": [
+                    "full_name__icontains",
+                    "identification__icontains",
+                    "email__icontains",
+                ],
+            },
+            "movement": {
+                "model": PoliticalMovement,
+                "search_fields": [
+                    "name__icontains",
+                    "acronym__icontains",
+                    "list_number__icontains",
+                ],
+            },
+            "position": {
+                "model": Position,
+                "search_fields": [
+                    "name__icontains",
+                    "scope__icontains",
+                ],
+            },
         }

@@ -1,16 +1,16 @@
-"""Transiciones FSM para Campaña electoral.
+"""FSM transitions for election campaigns.
 
-Patrón sim:
-  - Una clase mixin (``CampaignTransitions``) agrupa todos los
-    métodos `@transition` decorados.
-  - El `dict custom=` lleva los datos de UI consumidos por
+Sim pattern:
+  - A mixin class (``CampaignTransitions``) groups all decorated
+    `@transition` methods.
+  - The `custom=` dict carries UI metadata consumed by
     `templates/workflows/workflow.html`:
       verbose / back_verbose / icon / back_icon / color
-      text         (texto descriptivo del modal de confirmación)
-      title        (título del modal)
-      input        (text|password — pide un único valor antes de ejecutar)
-      placeholder  (placeholder del input)
-      form         (dotted path a un Form Django si se requiere captura)
+      text         (descriptive text for the confirmation modal)
+      title        (modal title)
+      input        (text|password - asks for one value before execution)
+      placeholder  (input placeholder)
+      form         (dotted path to a Django Form when data capture is required)
 """
 from django_fsm import transition
 
@@ -33,7 +33,7 @@ class CampaignTransitions:
         ),
     )
     def activate(self, **kwargs):
-        """Borrador → Activa."""
+        """Draft -> Active."""
 
     @transition(
         field="state",
@@ -51,7 +51,7 @@ class CampaignTransitions:
         ),
     )
     def close(self, **kwargs):
-        """Activa → Cerrada."""
+        """Active -> Closed."""
 
     @transition(
         field="state",
@@ -69,4 +69,4 @@ class CampaignTransitions:
         ),
     )
     def cancel(self, **kwargs):
-        """Borrador / Activa → Anulada."""
+        """Draft / Active -> Canceled."""

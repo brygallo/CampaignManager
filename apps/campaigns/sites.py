@@ -1,4 +1,4 @@
-"""Registro de los modelos de campaigns en superadmin."""
+"""Register campaign models in superadmin."""
 from superadmin.decorators import register
 
 from core.base import BaseSite

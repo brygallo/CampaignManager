@@ -1,0 +1,38 @@
+{% load superadmin_forms %}
+
+<div class="table-responsive inline-group" data-label="{{ label }}" data-errors="{{ formset.errors }}" id="{{ formset.prefix }}-group" data-prefix="{{ formset.prefix }}">
+  {{ formset.management_form }}
+  <table class="table table-row-dashed align-middle mb-0">
+    <thead>
+      <tr class="text-gray-600 fw-bold fs-7 text-uppercase">
+        {% for header in formset.headers %}
+          <th>{{ header }}</th>
+        {% endfor %}
+        {% if formset.can_delete %}
+          <th>Eliminar</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in formset %}
+        <tr id="{{ formset.prefix }}-{{ forloop.counter0 }}" class="inline {{ formset.prefix }}">
+          {% for field in form.hidden_fields %}
+            {{ field }}
+          {% endfor %}
+          {% for field in form.visible_fields %}
+            <td>
+              {% if field.field.widget.input_type == "checkbox" %}
+                {{ field }}
+              {% else %}
+                {% render_field field class="form-control" %}
+              {% endif %}
+              {% if field.errors %}
+                <div class="text-danger small mt-1">{{ field.errors|join:" · " }}</div>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -106,8 +106,8 @@ TEMPLATES = [
                 "core.context_processors.brand",
             ],
             "libraries": {
-                # `core` no está en INSTALLED_APPS, por eso registramos
-                # sus templatetags manualmente.
+                # `core` is not in INSTALLED_APPS, so its template tags
+                # are registered manually.
                 "menu_tags": "core.templatetags.menu_tags",
             },
         },
@@ -176,9 +176,11 @@ REST_FRAMEWORK = {
 }
 
 # ----- Select2 -----
+# Metronic ya empaqueta Select2 dentro de plugins.bundle.{js,css},
+# así que dejamos vacíos los assets propios de django-select2 para evitar 404.
 SELECT2_CACHE_BACKEND = "default"
-SELECT2_CSS = "assets/plugins/select2/css/select2.min.css"
-SELECT2_JS = "assets/plugins/select2/js/select2.min.js"
+SELECT2_CSS = ""
+SELECT2_JS = ""
 
 # ----- Superadmin (user-facing strings + widget templates) -----
 BREADCRUMB_HOME_TEXT = "Inicio"
@@ -191,6 +193,10 @@ BOOLEAN_YES = "Sí"
 BOOLEAN_NO = "No"
 
 TEMPLATE_WIDGETS = {
+    "text": "widgets/textinput.html",
+    "textarea": "widgets/textinput.html",
+    "file": "widgets/textinput.html",
+    "clearablefile": "widgets/textinput.html",
     "checkbox": "widgets/checkboxinput.html",
     "select": "widgets/selectinput.html",
     "date": "widgets/dateinput.html",

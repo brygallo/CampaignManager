@@ -1,4 +1,4 @@
-"""Vistas: login, logout, perfil del usuario actual."""
+"""Views: login, logout, and current user profile."""
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required

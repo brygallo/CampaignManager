@@ -1,0 +1,29 @@
+{% if form.non_field_errors %}
+  <div class="alert alert-danger d-flex align-items-center p-5 mb-7">
+    <i class="ki-outline ki-shield-cross fs-2hx text-danger me-4"></i>
+    <div class="d-flex flex-column">
+      <span class="fw-bold mb-1">Revise la información del formulario</span>
+      {% for error in form.non_field_errors %}
+        <span>{{ error }}</span>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% if form.has_fieldsets %}
+  {% for fieldset in form.get_fieldsets %}
+    {% include "forms/fieldset.html" with title=fieldset.title fieldset=fieldset.fieldset %}
+  {% endfor %}
+{% else %}
+  <div class="row g-5">
+    {% for field in form.visible_fields %}
+      <div class="col-md-6">
+        {% include "forms/formgroup.html" with field=field %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% for field in form.hidden_fields %}
+  {{ field }}
+{% endfor %}

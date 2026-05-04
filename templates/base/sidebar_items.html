@@ -1,5 +1,5 @@
 {% load menu_tags %}
-{# Renderiza recursivamente el árbol del menú con el patrón "active / here show" de Metronic. #}
+{# Recursively render the menu tree with Metronic's "active / here show" pattern. #}
 {% for item in menu %}
   {% if item.submenus %}
     {% with item_open=item|branch_active:request.path %}

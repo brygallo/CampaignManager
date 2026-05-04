@@ -1,4 +1,4 @@
-"""Crea Profile automáticamente al crear un User."""
+"""Create a Profile automatically when a User is created."""
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 

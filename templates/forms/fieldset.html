@@ -1,0 +1,21 @@
+<fieldset class="mb-8">
+  {% if title %}
+    <div class="d-flex align-items-center mb-4">
+      <span class="bullet bullet-vertical h-30px bg-primary me-3"></span>
+      <h4 class="text-gray-800 fw-bold mb-0 text-uppercase fs-6">{{ title|capfirst }}</h4>
+    </div>
+    <div class="separator separator-dashed mb-5"></div>
+  {% endif %}
+
+  {% for row in fieldset %}
+    <div class="row g-5 mb-4">
+      {% for field in row.fields %}
+        {% if not field.is_hidden %}
+          <div class="col-md-{{ field.field.widget.attrs.column|default:row.bs_cols }}">
+            {% include "forms/formgroup.html" with field=field %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endfor %}
+</fieldset>

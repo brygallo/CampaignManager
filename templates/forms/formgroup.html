@@ -1,0 +1,21 @@
+{% load superadmin_forms %}
+
+<div class="fv-row mb-7 {% if field.errors %}validated{% endif %}">
+  {% if field.field.widget.input_type == "checkbox" %}
+    <div class="form-check form-switch form-check-custom form-check-solid">
+      {{ field|add_class:"form-check-input" }}
+      <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    </div>
+  {% else %}
+    <label for="{{ field.id_for_label }}" class="form-label">
+      {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+    </label>
+    {% render_field field class="form-control" %}
+  {% endif %}
+  {% if field.help_text %}
+    <div class="form-text text-muted small">{{ field.help_text }}</div>
+  {% endif %}
+  {% if field.errors %}
+    <div class="text-danger small mt-1">{{ field.errors|join:" · " }}</div>
+  {% endif %}
+</div>

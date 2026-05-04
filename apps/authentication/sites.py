@@ -1,4 +1,4 @@
-"""Registro de modelos en superadmin."""
+"""Register models in superadmin."""
 from django.contrib.auth.models import Group, Permission
 from tracing.models import Trace
 

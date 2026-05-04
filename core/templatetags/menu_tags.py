@@ -1,21 +1,20 @@
-"""Helpers para resaltar el item activo del sidebar Metronic.
+"""Helpers for highlighting the active Metronic sidebar item.
 
-El árbol de menú producido por `superadmin.context_processors.menu`
-tiene la forma:
+The menu tree produced by `superadmin.context_processors.menu` has this shape:
 
     {"name": ..., "icon": ..., "url": ..., "submenus": [...]}
 
-Cada ítem-hoja apunta a una URL de listado (típicamente `/<app>/<model>/listar/`).
-Las páginas de detalle / formulario quedan bajo `/<app>/<model>/<pk>/...`.
+Each leaf item points to a list URL, usually `/<app>/<model>/listar/`.
+Detail and form pages live under `/<app>/<model>/<pk>/...`.
 
-Para que el sidebar marque correctamente:
-  - el `<a>` hoja con `active`
-  - los acordeones padre con `here show`
+To let the sidebar mark these elements correctly:
+  - the leaf `<a>` with `active`
+  - parent accordions with `here show`
 
-ofrecemos dos filtros:
+two filters are exposed:
 
-  - `url_active`     → True si `request.path` cae dentro de la URL del ítem.
-  - `branch_active`  → True si cualquier descendiente del ítem está activo.
+  - `url_active`     -> True when `request.path` falls within the item URL.
+  - `branch_active`  -> True when any descendant item is active.
 """
 from django import template
 
@@ -28,7 +27,7 @@ def _normalize(path: str) -> str:
 
 @register.filter
 def url_active(item_url: str, current_path: str) -> bool:
-    """Compara la URL del ítem con la ruta actual considerando hijos."""
+    """Compare an item URL with the current path, including child pages."""
     if not item_url or not current_path:
         return False
 
@@ -38,9 +37,9 @@ def url_active(item_url: str, current_path: str) -> bool:
     if path == url:
         return True
 
-    # Las URLs de listado de superadmin terminan en "/listar".
-    # Sus detalles/formularios viven bajo el mismo prefijo
-    # (ej. /sites_mgmt/site/listar  →  /sites_mgmt/site/123/editar).
+    # Superadmin list URLs end in "/listar".
+    # Their detail and form pages live under the same prefix
+    # (for example, /sites_mgmt/site/listar -> /sites_mgmt/site/123/editar).
     if url.endswith("/listar"):
         base = url[: -len("/listar")]
         return path == base or path.startswith(base + "/")
@@ -51,7 +50,7 @@ def url_active(item_url: str, current_path: str) -> bool:
 
 @register.filter
 def branch_active(node: dict, current_path: str) -> bool:
-    """True si el nodo o algún descendiente apunta a la ruta actual."""
+    """Return True when the node or any descendant points to the current path."""
     if not node:
         return False
 

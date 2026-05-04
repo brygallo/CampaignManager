@@ -1,15 +1,3 @@
-"""Modelos para campañas electorales.
-
-`Campaign` es el modelo principal. Se relaciona con catálogos de:
-  - `Election`            (Elección — proceso electoral, p.ej. "Seccionales 2027")
-  - `Candidate`           (Candidato)
-  - `PoliticalMovement`   (Movimiento político / partido)
-  - `Position`            (Cargo al que aspira)
-
-El campo `state` es un FSM (django-fsm) cuyo workflow se define en
-`apps.campaigns.workflows.CampaignWorkflow` y cuyas transiciones viven
-en `apps.campaigns.transitions.CampaignTransitions` (patrón sim).
-"""
 from django.db import models
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
@@ -17,11 +5,7 @@ from tracing.models import BaseModel
 from apps.campaigns.transitions import CampaignTransitions
 
 
-# ---------- Catálogos ----------
-
 class Election(BaseModel):
-    """Proceso electoral (p.ej. "Elecciones Seccionales 2027")."""
-
     name = models.CharField("Nombre", max_length=128, unique=True)
     election_date = models.DateField("Fecha de elección", null=True, blank=True)
     description = models.TextField("Descripción", blank=True)
@@ -36,7 +20,7 @@ class Election(BaseModel):
 
 
 class PoliticalMovement(BaseModel):
-    """Movimiento político o partido."""
+    """Political movement or party."""
 
     name = models.CharField("Nombre", max_length=128, unique=True)
     acronym = models.CharField("Siglas", max_length=16, blank=True)
@@ -54,7 +38,7 @@ class PoliticalMovement(BaseModel):
 
 
 class Position(BaseModel):
-    """Cargo / dignidad al que se aspira (Alcalde, Concejal, Prefecto, ...)."""
+    """Target office or role, such as mayor, council member, or prefect."""
 
     name = models.CharField("Cargo", max_length=128, unique=True)
     scope = models.CharField(
@@ -79,7 +63,7 @@ class Position(BaseModel):
 
 
 class Candidate(BaseModel):
-    """Persona candidata."""
+    """Candidate person."""
 
     full_name = models.CharField("Nombre completo", max_length=180)
     identification = models.CharField(
@@ -99,10 +83,8 @@ class Candidate(BaseModel):
         return self.full_name
 
 
-# ---------- Campaña electoral ----------
-
 class Campaign(BaseModel, CampaignTransitions):
-    """Campaña electoral."""
+    """Election campaign."""
 
     workflow = CampaignTransitions.workflow
 

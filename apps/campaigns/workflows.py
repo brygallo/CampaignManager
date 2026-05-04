@@ -1,8 +1,8 @@
-"""Definición del workflow de Campaña electoral.
+"""Election campaign workflow definition.
 
-Sigue el patrón del proyecto sim: cada estado se declara como
-`(value, label, dict(custom_attrs))` donde `dict.visible=False`
-oculta el estado del stepper visual.
+Follows the sim project pattern: each state is declared as
+`(value, label, dict(custom_attrs))`, where `dict.visible=False`
+hides the state from the visual stepper.
 """
 from apps.workflows import Workflow, WorkflowChoices
 

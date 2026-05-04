@@ -3,14 +3,50 @@
 
 {% block title %}{{ site.title|default:site.model_name|title }} | {{ block.super }}{% endblock %}
 
+{% block css %}
+  {{ block.super }}
+  <style>
+    .table-search .tagify {
+      --tags-border-color: var(--bs-gray-300);
+      --tags-hover-border-color: var(--bs-primary);
+      --tags-focus-border-color: var(--bs-primary);
+      min-height: 43px;
+      border-radius: .475rem;
+      background-color: var(--bs-gray-100);
+      border-color: transparent;
+      padding-left: 2.75rem;
+    }
+
+    .table-search .tagify__input {
+      min-width: 12rem;
+      margin: 0;
+      padding: .55rem .25rem;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
   <div class="card-header border-0 pt-6">
-    <div class="card-title">
-      <div class="d-flex align-items-center position-relative my-1">
-        <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5"></i>
-        <input type="text" data-kt-table-filter="search" class="form-control form-control-solid w-250px ps-12" placeholder="Buscar...">
-      </div>
+    <div class="card-title flex-grow-1 me-3">
+      <form id="list-search-form" method="get" class="table-search w-100">
+        {% if request.GET.paginate_by %}
+          <input type="hidden" name="paginate_by" value="{{ request.GET.paginate_by }}">
+        {% endif %}
+        <div class="d-flex align-items-center gap-2 position-relative my-1">
+          <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5 z-index-1"></i>
+          <input id="id_table_search"
+                 type="text"
+                 class="form-control form-control-solid flex-grow-1 ps-12"
+                 name="search"
+                 value="{{ request.GET.search|default:'' }}"
+                 placeholder="Buscar en esta lista, separa términos con comas"
+                 title="Puedes escribir varios términos separados por coma. Presiona Enter para buscar.">
+          <button id="search_button_id" class="btn btn-primary flex-shrink-0" type="submit" title="Buscar">
+            <i class="ki-outline ki-magnifier fs-2"></i>
+          </button>
+        </div>
+      </form>
     </div>
     <div class="card-toolbar">
       <div class="d-flex justify-content-end align-items-center gap-2">
@@ -119,10 +155,6 @@
           order: [],
           columnDefs: [{ orderable: false, targets: -1 }]
         });
-        const searchEl = document.querySelector('[data-kt-table-filter="search"]');
-        if (searchEl) {
-          searchEl.addEventListener("keyup", function (e) { dt.search(e.target.value).draw(); });
-        }
       }
     }
   });
