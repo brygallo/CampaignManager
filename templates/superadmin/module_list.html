@@ -1,0 +1,123 @@
+{# Pattern P1 - SuperAdmin landing (module grid). Ref: 02_DESIGN_SYSTEM section 8 P1. #}
+{% extends "base/base.html" %}
+
+{% block title %}Panel de administración | {{ block.super }}{% endblock %}
+
+{% block content %}
+  <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+    <div class="col-12">
+      <div class="card card-flush bg-primary">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-5 py-8">
+          <div class="d-flex align-items-center">
+            <span class="symbol symbol-50px me-5">
+              <span class="symbol-label bg-white bg-opacity-25">
+                <i class="ki-outline ki-element-11 fs-2x text-white"></i>
+              </span>
+            </span>
+            <div class="d-flex flex-column">
+              <h2 class="text-white fw-bolder mb-2">Panel de administración</h2>
+              <span class="text-white opacity-75 fs-6">
+                Configura y supervisa los módulos del sistema. Selecciona una sección para gestionar sus registros.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% for section in sections %}
+    {% if section.is_group %}
+      <div class="d-flex flex-stack flex-wrap mb-5">
+        <div class="d-flex flex-column">
+          <h3 class="fw-bolder text-gray-900 mb-1">{{ section.name }}</h3>
+          {% if section.description %}
+            <span class="fs-7 text-muted">{{ section.description }}</span>
+          {% endif %}
+        </div>
+        <span class="badge badge-light-{{ section.color }} fs-7 fw-bold">
+          {{ section.submenus|length }}
+          {% if section.submenus|length == 1 %}módulo{% else %}módulos{% endif %}
+        </span>
+      </div>
+
+      <div class="row g-5 g-xl-8 mb-10">
+        {% for module in section.submenus %}
+          <div class="col-md-6 col-xl-4">
+            <a href="{{ module.url|default:'#' }}"
+               class="card card-flush border border-2 border-gray-200 border-hover-{{ module.color }} h-100 module-card">
+              <div class="card-body d-flex flex-column p-7">
+                <div class="d-flex align-items-center mb-4">
+                  <span class="symbol symbol-50px me-4">
+                    <span class="symbol-label bg-light-{{ module.color }}">
+                      <i class="ki-outline ki-{{ module.icon }} fs-2x text-{{ module.color }}"></i>
+                    </span>
+                  </span>
+                  <div class="d-flex flex-column flex-grow-1">
+                    <span class="fs-4 fw-bolder text-gray-900 mb-1">{{ module.name }}</span>
+                    <span class="fs-8 text-muted text-uppercase fw-bold">{{ section.name }}</span>
+                  </div>
+                  <i class="ki-outline ki-arrow-right fs-2 text-gray-500"></i>
+                </div>
+
+                {% if module.description %}
+                  <span class="fs-6 text-gray-700 fw-semibold mb-2">{{ module.description }}</span>
+                {% endif %}
+
+                <div class="mt-auto pt-4 d-flex align-items-center text-{{ module.color }} fw-bold fs-7">
+                  <span>Abrir módulo</span>
+                  <i class="ki-outline ki-arrow-right fs-3 ms-2"></i>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {# Top-level leaf (no group) - render as a simple full-width card. #}
+      <div class="row g-5 mb-8">
+        <div class="col-12">
+          <a href="{{ section.url|default:'#' }}"
+             class="card card-flush border border-2 border-gray-200 border-hover-{{ section.color }}">
+            <div class="card-body d-flex align-items-center gap-5 p-6">
+              <span class="symbol symbol-50px">
+                <span class="symbol-label bg-light-{{ section.color }}">
+                  <i class="ki-outline ki-{{ section.icon }} fs-2x text-{{ section.color }}"></i>
+                </span>
+              </span>
+              <div class="d-flex flex-column flex-grow-1">
+                <span class="fs-4 fw-bolder text-gray-900">{{ section.name }}</span>
+                {% if section.description %}
+                  <span class="fs-7 text-muted">{{ section.description }}</span>
+                {% endif %}
+              </div>
+              <i class="ki-outline ki-arrow-right fs-2 text-gray-500"></i>
+            </div>
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  {% empty %}
+    <div class="card card-flush">
+      <div class="card-body text-center py-15">
+        <i class="ki-outline ki-element-11 fs-3hx text-muted mb-3 d-block"></i>
+        <h3 class="fs-3 fw-bolder text-gray-900 mb-2">Aún no hay módulos disponibles</h3>
+        <p class="text-muted fs-6 mb-0">
+          Ejecuta <code>python manage.py menu --build</code> para construir el menú a partir de <code>menu.yaml</code>.
+        </p>
+      </div>
+    </div>
+  {% endfor %}
+{% endblock %}
+
+{% block extra_css %}
+  <style>
+    .module-card {
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .module-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.06);
+    }
+  </style>
+{% endblock %}

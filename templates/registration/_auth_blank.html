@@ -1,0 +1,71 @@
+{# Reusable split-layout shell for unauthenticated auth pages. #}
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <base href="{{ request.scheme }}://{{ request.get_host }}/">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block auth_title %}{% endblock %} | {{ brand_name|default:"Control de Campaña" }}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static brand_icon|default:'assets/img/control-campana.svg' %}" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
+  <link href="{% static 'assets/plugins/global/plugins.bundle.css' %}" rel="stylesheet" type="text/css" />
+  <link href="{% static 'assets/css/style.bundle.css' %}" rel="stylesheet" type="text/css" />
+</head>
+<body id="kt_body" class="app-blank">
+  <script>
+    var defaultThemeMode = "{{ default_theme|default:'light' }}"; var themeMode;
+    if (document.documentElement) {
+      themeMode = localStorage.getItem("data-bs-theme") || defaultThemeMode;
+      if (themeMode === "system") {
+        themeMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-bs-theme", themeMode);
+    }
+  </script>
+
+  <div class="d-flex flex-column flex-root" id="kt_app_root">
+    <div class="d-flex flex-column flex-lg-row flex-column-fluid">
+
+      <div class="d-flex flex-column flex-lg-row-fluid w-lg-50 p-10 order-2 order-lg-1">
+        <div class="d-flex flex-center flex-column flex-lg-row-fluid">
+          <div class="w-lg-500px p-10">
+            {% block auth_content %}{% endblock %}
+          </div>
+        </div>
+
+        <div class="d-flex flex-center flex-wrap px-5">
+          <div class="d-flex fw-semibold text-primary fs-base">
+            <a href="#" class="px-5">Términos</a>
+            <a href="#" class="px-5">Privacidad</a>
+            <a href="#" class="px-5">Contacto</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-none d-lg-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-2"
+           style="background-image: url({% static 'assets/media/auth/bg10.jpeg' %})">
+        <div class="d-flex flex-column flex-center py-7 py-lg-15 px-5 px-md-15 w-100">
+          <a href="{% url 'home' %}" class="mb-0 mb-lg-12">
+            <span class="d-inline-flex align-items-center gap-4">
+              <img src="{% static brand_icon|default:'assets/img/control-campana.svg' %}" class="h-60px" alt="{{ brand_name|default:'Control de Campaña' }}">
+              <span class="display-5 fw-bolder text-white">{{ brand_name|default:"Control de Campaña" }}</span>
+            </span>
+          </a>
+          <img class="d-none d-lg-block mx-auto w-275px w-md-50 w-xl-500px mb-10 mb-lg-20"
+               src="{% static 'assets/media/misc/auth-screens.png' %}" alt="">
+          <h1 class="d-none d-lg-block text-white fs-2qx fw-bolder text-center mb-7">
+            {% block auth_aside_title %}Control operativo de campaña política{% endblock %}
+          </h1>
+          <div class="d-none d-lg-block text-white fs-base text-center">
+            {% block auth_aside_text %}Organiza territorios, responsables, actividades y aprobaciones desde un solo panel de trabajo.{% endblock %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="{% static 'assets/plugins/global/plugins.bundle.js' %}"></script>
+  <script src="{% static 'assets/js/scripts.bundle.js' %}"></script>
+</body>
+</html>

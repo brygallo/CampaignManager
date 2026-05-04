@@ -92,10 +92,6 @@ class CampaignSite(BaseSite):
         "Detalle": (
             ("description",),
         ),
-        "Auditoría": (
-            ("created_user", "created_date"),
-            ("modified_user", "modified_date"),
-        ),
     }
     search_params = (
         "name__icontains",

@@ -1,10 +1,9 @@
 <fieldset class="mb-8">
   {% if title %}
-    <div class="d-flex align-items-center mb-4">
-      <span class="bullet bullet-vertical h-30px bg-primary me-3"></span>
-      <h4 class="text-gray-800 fw-bold mb-0 text-uppercase fs-6">{{ title|capfirst }}</h4>
+    <div class="mb-5">
+      <div class="fw-bold fs-4 text-dark mb-1">{{ title|capfirst }}</div>
+      <div class="h-3px w-100 bg-primary"></div>
     </div>
-    <div class="separator separator-dashed mb-5"></div>
   {% endif %}
 
   {% for row in fieldset %}

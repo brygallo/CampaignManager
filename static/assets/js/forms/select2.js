@@ -67,8 +67,13 @@
   }
 
   function prepareField($field, placeholder) {
-    if (!$field.prop("multiple") && $field.find('option[value=""]').length === 0) {
-      $field.prepend(new Option("", "", false, !$field.val()));
+    if (!$field.prop("multiple")) {
+      var $emptyOption = $field.find('option[value=""]').first();
+      if ($emptyOption.length === 0) {
+        $field.prepend(new Option("", "", false, !$field.val()));
+      } else {
+        $emptyOption.text("");
+      }
     }
 
     if ($field.prop("multiple")) {
@@ -78,6 +83,7 @@
     $field.attr("data-control", "");
     $field.attr("data-kt-initialized", "1");
     $field.attr("data-placeholder", placeholder);
+    $field.attr("data-theme", "bootstrap5");
   }
 
   function initField(field) {
@@ -99,7 +105,10 @@
       width: "100%",
       dropdownAutoWidth: true,
       selectionCssClass: ":all:",
-      placeholder: placeholder,
+      placeholder: {
+        id: "",
+        text: placeholder
+      },
       allowClear: allowClear,
       dropdownParent: dropdownParent.length ? dropdownParent : $(document.body),
       language: {

@@ -40,6 +40,15 @@
           </a>
         </div>
 
+        {% if user.is_staff %}
+          <div class="menu-item">
+            <a class="menu-link{% if request.resolver_match.url_name == 'superadmin_home' %} active{% endif %}" href="{% url 'superadmin_home' %}">
+              <span class="menu-icon"><i class="ki-outline ki-element-11 fs-2"></i></span>
+              <span class="menu-title">Panel administrativo</span>
+            </a>
+          </div>
+        {% endif %}
+
         {% include "base/sidebar_items.html" with menu=menu_tree %}
       </div>
     </div>

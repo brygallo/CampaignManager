@@ -11,6 +11,44 @@
     return selector;
   }
 
+  function findAll(scope, selector) {
+    var elements = [];
+    if (scope.matches && scope.matches(selector)) {
+      elements.push(scope);
+    }
+    return elements.concat([].slice.call(scope.querySelectorAll(selector)));
+  }
+
+  function initFlatpickr(scope) {
+    if (!window.flatpickr) {
+      return;
+    }
+
+    findAll(scope, ".js-flatpickr-date").forEach(function (element) {
+      if (element._flatpickr) {
+        return;
+      }
+      window.flatpickr(element, {
+        allowInput: true,
+        dateFormat: "Y-m-d",
+        disableMobile: true
+      });
+    });
+
+    findAll(scope, ".js-flatpickr-datetime").forEach(function (element) {
+      if (element._flatpickr) {
+        return;
+      }
+      window.flatpickr(element, {
+        allowInput: true,
+        dateFormat: "Y-m-d H:i",
+        disableMobile: true,
+        enableTime: true,
+        time_24hr: true
+      });
+    });
+  }
+
   window.initFormWidgets = function (selector) {
     var scope = getScope(selector);
 
@@ -34,6 +72,8 @@
       window.KTPasswordMeter.createInstances('[data-kt-password-meter="true"]');
     }
 
+    initFlatpickr(scope);
+
     if (window.autosize) {
       window.autosize(scope.querySelectorAll('[data-kt-autosize="true"], textarea.form-control'));
     }
@@ -51,6 +91,17 @@
       });
     }
   };
+
+  document.addEventListener("click", function (event) {
+    var toggle = event.target.closest(".js-flatpickr-toggle");
+    if (!toggle) {
+      return;
+    }
+    var input = toggle.closest(".input-group").querySelector(".js-flatpickr-date, .js-flatpickr-datetime");
+    if (input && input._flatpickr) {
+      input._flatpickr.open();
+    }
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {

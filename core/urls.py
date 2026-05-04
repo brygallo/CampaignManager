@@ -11,6 +11,7 @@ from . import views as core_views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", core_views.home, name="home"),
+    path("admin-panel/", core_views.SuperAdminLandingView.as_view(), name="superadmin_home"),
     path("", include("apps.authentication.urls")),
     path("", include("apps.insoles.urls")),
     path("", include("apps.workflows.urls")),

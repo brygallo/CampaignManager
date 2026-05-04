@@ -17,6 +17,9 @@ def _model_from(value):
         return value
     if isinstance(value, Model):
         return value.__class__
+    meta_model = getattr(getattr(value, "_meta", None), "model", None)
+    if isinstance(meta_model, type) and issubclass(meta_model, Model):
+        return meta_model
     model = getattr(value, "model", None)
     if isinstance(model, type) and issubclass(model, Model):
         return model

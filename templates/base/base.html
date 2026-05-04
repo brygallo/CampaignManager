@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static %}{% load breadcrumbs %}<!doctype html>
 <html lang="es">
 <head>
   <base href="{{ request.scheme }}://{{ request.get_host }}/">
@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ brand_name|default:"Control de Campaña" }}{% endblock %}</title>
   {% block css %}{% include "base/css.html" %}{% endblock %}
+  {% block extra_css %}{% endblock %}
 </head>
 <body id="kt_app_body"
       data-kt-app-header-fixed="true"
@@ -65,17 +66,18 @@
                 {% endif %}
 
                 {% block toolbar %}
-                  {% if breadcrumbs or page_title %}
+                  {% breadcrumb_trail as trail %}
+                  {% if trail or page_title %}
                     <div class="d-flex flex-wrap flex-stack mb-6">
                       <div class="d-flex flex-column">
-                        {% if page_title or breadcrumbs %}
+                        {% if page_title or trail %}
                           <h1 class="page-heading text-dark fw-bolder fs-2x my-0">
-                            {% if page_title %}{{ page_title }}{% else %}{% with last=breadcrumbs|last %}{{ last.0 }}{% endwith %}{% endif %}
+                            {% if page_title %}{{ page_title }}{% else %}{% with last=trail|last %}{{ last.0 }}{% endwith %}{% endif %}
                           </h1>
                         {% endif %}
-                        {% if breadcrumbs %}
+                        {% if trail %}
                           <ul class="breadcrumb breadcrumb-separatorless fw-semibold fs-7 my-0 pt-1">
-                            {% for label, url in breadcrumbs %}
+                            {% for label, url in trail %}
                               {% if forloop.last %}
                                 <li class="breadcrumb-item text-gray-700">{{ label }}</li>
                               {% else %}
@@ -113,5 +115,6 @@
   {% block modals %}{% endblock %}
 
   {% block js %}{% include "base/js.html" %}{% endblock %}
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

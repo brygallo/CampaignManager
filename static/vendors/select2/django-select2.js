@@ -62,6 +62,12 @@
     var settings = $.extend({}, options);
     $.each(this, function (i, element) {
       var $element = $(element);
+      if (settings.theme) {
+        $element.attr("data-theme", settings.theme);
+      }
+      if (settings.placeholder && typeof settings.placeholder === "string") {
+        $element.attr("data-placeholder", settings.placeholder);
+      }
       if ($element.hasClass("django-select2-heavy")) {
         initHeavy($element, settings);
       } else {
