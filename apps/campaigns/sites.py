@@ -2,6 +2,7 @@
 from superadmin.decorators import register
 
 from core.base import BaseSite
+from core.list_mixins import WorkflowStateFilterMixin
 
 from .forms import (
     CampaignForm,
@@ -69,6 +70,7 @@ class CandidateSite(BaseSite):
 @register("campaigns.Campaign")
 class CampaignSite(BaseSite):
     form_class = CampaignForm
+    list_mixins = (WorkflowStateFilterMixin,)
     list_fields = (
         "name",
         "election",

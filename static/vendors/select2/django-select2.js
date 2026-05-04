@@ -35,10 +35,20 @@
           return result;
         },
         processResults: function (data) {
+          var results = [];
+          var more = false;
+
+          if ($.isArray(data)) {
+            results = data;
+          } else if (data && $.isArray(data.results)) {
+            results = data.results;
+            more = Boolean(data.more || (data.pagination && data.pagination.more));
+          }
+
           return {
-            results: data.results,
+            results: results,
             pagination: {
-              more: data.more
+              more: more
             }
           };
         }

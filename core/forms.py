@@ -58,7 +58,7 @@ def _resolve_model_meta(model):
 def select2_attrs(model, attrs=None, allow_create=True):
     """Build the data attrs used by django-select2 and the related create modal."""
     defaults = {
-        "class": "form-select",
+        "class": "django-select2 form-select form-select-solid",
         "data-minimum-input-length": 0,
     }
     if allow_create:

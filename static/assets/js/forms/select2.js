@@ -1,35 +1,154 @@
-(function (window, $) {
+(function (window, document, $) {
   "use strict";
 
-  window.initSelect2 = function (selector) {
-    var $scope = selector ? $(selector) : $(document);
-    $scope.find(".django-select2").each(function () {
-      var $field = $(this);
-      if ($field.data("campaign-select2-initialized")) {
-        return;
+  var DEFAULT_PLACEHOLDER = "Seleccione un elemento";
+  var INIT_FLAG = "campaign-select2-initialized";
+
+  function getScope(selector) {
+    if (!selector) {
+      return $(document);
+    }
+    return selector.jquery ? selector : $(selector);
+  }
+
+  function getFields(selector) {
+    var $scope = getScope(selector);
+    return $scope.is(".django-select2")
+      ? $scope
+      : $scope.find(".django-select2");
+  }
+
+  function getPlaceholder($field) {
+    var placeholder = $field.attr("data-placeholder") || $field.data("placeholder");
+    placeholder = placeholder || DEFAULT_PLACEHOLDER;
+    $field.attr("data-placeholder", placeholder);
+    return placeholder;
+  }
+
+  function normalizeResults(data) {
+    var rawResults = [];
+    var more = false;
+
+    if ($.isArray(data)) {
+      rawResults = data;
+    } else if (data && $.isArray(data.results)) {
+      rawResults = data.results;
+      more = Boolean(data.more || (data.pagination && data.pagination.more));
+    }
+
+    return {
+      results: rawResults,
+      pagination: {
+        more: more
       }
-      var dropdownParent = $field.closest(".modal");
-      $field.djangoSelect2({
-        placeholder: "Seleccione un elemento",
-        dropdownAutoWidth: true,
-        width: "100%",
-        dropdownParent: dropdownParent.length ? dropdownParent : undefined,
-        language: {
-          noResults: function () {
-            if ($field.data("app") && $field.data("model")) {
-              return "<button type=\"button\" class=\"btn btn-sm btn-primary w-100\" onclick=\"select2create(this)\">Crear nuevo</button>";
-            }
-            return "Sin resultados";
-          },
-          searching: function () {
-            return "Buscando...";
-          }
-        },
-        escapeMarkup: function (markup) {
-          return markup;
+    };
+  }
+
+  function ajaxOptions($field) {
+    return {
+      data: function (params) {
+        var result = {
+          term: params.term,
+          page: params.page,
+          field_id: $field.data("field_id")
+        };
+        var dependentFields = $field.data("select2-dependent-fields");
+
+        if (dependentFields) {
+          $.each(String(dependentFields).trim().split(/\s+/), function (i, dependentField) {
+            result[dependentField] = $("[name=" + dependentField + "]", $field.closest("form")).val();
+          });
         }
+
+        return result;
+      },
+      processResults: normalizeResults
+    };
+  }
+
+  function prepareField($field, placeholder) {
+    if (!$field.prop("multiple") && $field.find('option[value=""]').length === 0) {
+      $field.prepend(new Option("", "", false, !$field.val()));
+    }
+
+    if ($field.prop("multiple")) {
+      $field.find('option[value=""]').prop("selected", false);
+    }
+
+    $field.attr("data-control", "");
+    $field.attr("data-kt-initialized", "1");
+    $field.attr("data-placeholder", placeholder);
+  }
+
+  function initField(field) {
+    var $field = $(field);
+
+    if ($field.data(INIT_FLAG)) {
+      return;
+    }
+
+    if ($field.hasClass("select2-hidden-accessible")) {
+      $field.select2("destroy");
+    }
+
+    var placeholder = getPlaceholder($field);
+    var dropdownParent = $field.closest(".modal");
+    var allowClear = String($field.data("allow-clear")) === "true" && !$field.prop("multiple");
+    var options = {
+      theme: "bootstrap5",
+      width: "100%",
+      dropdownAutoWidth: true,
+      selectionCssClass: ":all:",
+      placeholder: placeholder,
+      allowClear: allowClear,
+      dropdownParent: dropdownParent.length ? dropdownParent : $(document.body),
+      language: {
+        noResults: function () {
+          if ($field.data("app") && $field.data("model")) {
+            return '<button type="button" class="btn btn-sm btn-primary w-100" onclick="select2create(this)">Crear nuevo</button>';
+          }
+          return "Sin resultados";
+        },
+        searching: function () {
+          return "Buscando...";
+        },
+        errorLoading: function () {
+          return "No se pudieron cargar los resultados.";
+        },
+        loadingMore: function () {
+          return "Cargando mas resultados...";
+        }
+      },
+      escapeMarkup: function (markup) {
+        return markup;
+      }
+    };
+
+    prepareField($field, placeholder);
+
+    if ($field.hasClass("django-select2-heavy")) {
+      options.ajax = ajaxOptions($field);
+    }
+
+    $field.select2(options);
+
+    $field.on("select2:select.campaign-select2", function (event) {
+      var name = $(event.currentTarget).attr("name");
+      $("[data-select2-dependent-fields=" + name + "]").each(function () {
+        $(this).val("").trigger("change");
       });
-      $field.data("campaign-select2-initialized", true);
+    });
+
+    $field.data(INIT_FLAG, true);
+  }
+
+  window.initSelect2 = function (selector) {
+    if (!$ || !$.fn || !$.fn.select2) {
+      return;
+    }
+
+    getFields(selector).each(function () {
+      initField(this);
     });
   };
 
@@ -106,8 +225,4 @@
     bootstrap.Modal.getOrCreateInstance(document.getElementById("insoles-forms")).hide();
     form.reset();
   });
-
-  $(function () {
-    window.initSelect2();
-  });
-})(window, window.jQuery);
+})(window, document, window.jQuery);

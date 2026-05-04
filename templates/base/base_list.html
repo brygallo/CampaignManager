@@ -51,6 +51,15 @@
     <div class="card-toolbar">
       <div class="d-flex justify-content-end align-items-center gap-2">
         {% block list_extra_actions %}{% endblock %}
+        {% if site.current_filters %}
+          <button type="button"
+                  id="clear-filters-btn"
+                  class="btn btn-light-danger"
+                  data-url="{% url 'site:session' site.app_name site.model_name %}"
+                  title="Quitar todos los filtros activos">
+            <i class="ki-outline ki-eraser fs-2"></i>Limpiar filtros
+          </button>
+        {% endif %}
         {% if site.urls.create %}
           <a href="{{ site.urls.create }}" class="btn btn-primary">
             <i class="ki-outline ki-plus fs-2"></i>Nuevo
@@ -59,6 +68,21 @@
       </div>
     </div>
   </div>
+
+  {% if site.current_filters %}
+    <div class="card-body pt-0 pb-3 border-bottom">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="text-muted fw-semibold fs-7 me-1">Filtros activos:</span>
+        {% for filter in site.current_filters %}
+          <span class="badge badge-light-primary fw-semibold d-inline-flex align-items-center gap-2 py-2 px-3">
+            <span class="text-muted">{{ filter.field_label }}</span>
+            <span class="text-gray-500">{{ filter.lookup_label|default:'=' }}</span>
+            <strong>{{ filter.search_label|default:filter.search }}</strong>
+          </span>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
 
   {% block list_filters %}
     {% if state_filter_items %}
@@ -156,6 +180,32 @@
           columnDefs: [{ orderable: false, targets: -1 }]
         });
       }
+    }
+
+    // Clear active filters: POST with only CSRF to site:session — superadmin
+    // replaces stored params with {} for the (app, model) key.
+    const clearBtn = document.getElementById("clear-filters-btn");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", async () => {
+        const url = clearBtn.dataset.url;
+        if (!url) return;
+        const csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1];
+        try {
+          const fd = new FormData();
+          await fetch(url, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrf ? decodeURIComponent(csrf) : "",
+              "X-Requested-With": "XMLHttpRequest",
+            },
+            body: fd,
+            credentials: "same-origin",
+          });
+          window.location.href = window.location.pathname;
+        } catch (err) {
+          console.error("clear filters", err);
+        }
+      });
     }
   });
 </script>

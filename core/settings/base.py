@@ -109,6 +109,7 @@ TEMPLATES = [
                 # `core` is not in INSTALLED_APPS, so its template tags
                 # are registered manually.
                 "menu_tags": "core.templatetags.menu_tags",
+                "model_meta": "core.templatetags.model_meta",
             },
         },
     },

@@ -4,6 +4,16 @@
 {% block title %}{{ object }} | {{ block.super }}{% endblock %}
 
 {% block content %}
+{# Workflow stepper + transition CTAs (only when the model exposes get_visible_states). #}
+{% if object.get_visible_states %}
+  {% include "workflows/workflow.html" %}
+{% endif %}
+
+{# Pending requirements before next transition (only when the model exposes transition_requirements). #}
+{% if object.transition_requirements %}
+  {% include "workflows/includes/transition_requirements.html" %}
+{% endif %}
+
 <div class="card">
   <div class="card-header border-bottom">
     <div class="card-title">
@@ -12,6 +22,22 @@
       </h2>
     </div>
     <div class="card-toolbar gap-2">
+      {% if site.nav %}
+        <div class="btn-group" role="group" aria-label="Navegación">
+          <a href="{{ site.nav.previous_url|default:'#' }}"
+             class="btn btn-icon btn-light{% if not site.nav.previous_url %} disabled{% endif %}"
+             {% if not site.nav.previous_url %}aria-disabled="true" tabindex="-1"{% endif %}
+             title="Anterior">
+            <i class="ki-outline ki-arrow-left fs-2"></i>
+          </a>
+          <a href="{{ site.nav.next_url|default:'#' }}"
+             class="btn btn-icon btn-light{% if not site.nav.next_url %} disabled{% endif %}"
+             {% if not site.nav.next_url %}aria-disabled="true" tabindex="-1"{% endif %}
+             title="Siguiente">
+            <i class="ki-outline ki-arrow-right fs-2"></i>
+          </a>
+        </div>
+      {% endif %}
       {% if site.urls.list %}
         <a href="{{ site.urls.list }}" class="btn btn-light">
           <i class="ki-outline ki-arrow-left fs-2"></i>Volver
@@ -90,5 +116,32 @@
       {% block detail_extra_panes %}{% endblock %}
     </div>
   </div>
+
+  {% if object.created_date or object.modified_date %}
+    <div class="card-footer py-3 bg-light">
+      <div class="d-flex flex-wrap gap-4 align-items-center text-muted small">
+        {% if object.created_date %}
+          <span class="d-inline-flex align-items-center gap-2">
+            <i class="ki-outline ki-add-files fs-5"></i>
+            <span class="fw-semibold">Creado:</span>
+            {{ object.created_date|date:"d/m/Y H:i" }}
+            {% if object.created_user %}
+              · <span class="fw-semibold">por</span> {{ object.creation_user|default:object.created_user }}
+            {% endif %}
+          </span>
+        {% endif %}
+        {% if object.modified_date %}
+          <span class="d-inline-flex align-items-center gap-2">
+            <i class="ki-outline ki-pencil fs-5"></i>
+            <span class="fw-semibold">Modificado:</span>
+            {{ object.modified_date|date:"d/m/Y H:i" }}
+            {% if object.modified_user %}
+              · <span class="fw-semibold">por</span> {{ object.modification_user|default:object.modified_user }}
+            {% endif %}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
