@@ -527,9 +527,15 @@ class CampaignSite(ModelSite):
 
 - En `DropdownFilterMixin`, expandir `current_value` en `current_value_gte` y
   `current_value_lte` leyendo `params[name__gte]` y `params[name__lte]`.
-- El badge debe mostrar "entre X y Y" cuando ambos están; "desde X" / "hasta Y"
-  cuando hay uno solo. Esto requiere extender `FilterMixin.get_current_filters`
-  o post-procesarlo en `DropdownFilterMixin`.
+- UI: un único `<input>` con **flatpickr** `mode: "range"` (mismo widget que
+  Metronic v8 demo55 usa en `apps/ecommerce/sales/listing.html`). Dos
+  `<input type="hidden">` con `name="<campo>__gte"` y `__lte` reciben las
+  fechas vía `onChange` en formato `DD/MM/YYYY` (formato que exige
+  `SessionView.save_params` para `DateField`).
+- `flatpickr` ya está bundleado en `static/assets/plugins/global/plugins.bundle.js`,
+  no se agrega ningún asset nuevo.
+- El badge sigue mostrando dos entradas (una por bound) con `lookup_label`
+  "Mayor o igual que" / "Menor o igual que" que ya provee `FilterService`.
 
 ### 9.2 Inputs libres (sin choices)
 
