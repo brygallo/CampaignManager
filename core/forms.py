@@ -4,7 +4,9 @@ Adapted from ``superadmin.forms.ModelForm``: lets you describe a Bootstrap
 column layout via tuples / dicts in ``Meta.fieldsets``.
 """
 from django import forms
+from django.apps import apps
 from django.forms.forms import DeclarativeFieldsMetaclass
+from django_select2 import forms as s2forms
 
 
 class BaseForm(forms.BaseForm, metaclass=DeclarativeFieldsMetaclass):
@@ -42,3 +44,74 @@ class BaseForm(forms.BaseForm, metaclass=DeclarativeFieldsMetaclass):
     def has_fieldsets(self):
         meta = getattr(self, "Meta", None)
         return bool(getattr(meta, "fieldsets", None))
+
+
+def _resolve_model_meta(model):
+    if isinstance(model, str):
+        app_label, model_name = model.split(".", 1)
+        model_class = apps.get_model(app_label, model_name)
+    else:
+        model_class = model
+    return model_class._meta.app_label, model_class._meta.object_name
+
+
+def select2_attrs(model, attrs=None, allow_create=True):
+    """Build the data attrs used by django-select2 and the related create modal."""
+    defaults = {
+        "class": "form-select",
+        "data-minimum-input-length": 0,
+    }
+    if allow_create:
+        app_label, object_name = _resolve_model_meta(model)
+        defaults.update(
+            {
+                "data-app": app_label,
+                "data-model": object_name,
+            }
+        )
+    if attrs:
+        if attrs.get("class"):
+            attrs = {**attrs, "class": f"{defaults['class']} {attrs['class']}"}
+        defaults.update(attrs)
+    return defaults
+
+
+def model_select2_widget(
+    model,
+    search_fields,
+    *,
+    multiple=False,
+    max_results=100,
+    dependent_fields=None,
+    attrs=None,
+    allow_create=True,
+):
+    widget_class = (
+        s2forms.ModelSelect2MultipleWidget
+        if multiple
+        else s2forms.ModelSelect2Widget
+    )
+    kwargs = {
+        "model": model,
+        "search_fields": search_fields,
+        "max_results": max_results,
+        "attrs": select2_attrs(model, attrs=attrs, allow_create=allow_create),
+    }
+    if dependent_fields:
+        kwargs["dependent_fields"] = dependent_fields
+    return widget_class(**kwargs)
+
+
+class Select2ModelFormMixin:
+    """Apply ModelSelect2 widgets from a declarative ``Meta.select2_fields`` map."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, config in self.get_select2_fields().items():
+            if field_name not in self.fields:
+                continue
+            self.fields[field_name].widget = model_select2_widget(**config)
+
+    def get_select2_fields(self):
+        meta = getattr(self, "Meta", None)
+        return getattr(meta, "select2_fields", {})
