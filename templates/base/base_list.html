@@ -92,11 +92,12 @@
         <div class="d-flex align-items-center position-relative my-1">
           <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5 z-index-1"></i>
           <input id="id_table_search"
-                 type="text"
-                 class="form-control form-control-solid w-250px ps-12"
+                 type="search"
+                 class="form-control form-control-solid w-100 w-md-250px ps-12"
                  name="search"
                  value="{{ request.GET.search|default:'' }}"
                  placeholder="Buscar en esta lista"
+                 aria-label="Buscar en esta lista"
                  title="Puedes escribir varios términos separados por coma. Presiona Enter para buscar.">
         </div>
       </form>
@@ -204,17 +205,17 @@
             {% endfor %}
             <td class="text-end text-nowrap">
               {% if row.urls.detail %}
-                <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver">
+                <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver" aria-label="Ver detalle">
                   <i class="ki-outline ki-eye fs-2"></i>
                 </a>
               {% endif %}
               {% if row.urls.update %}
-                <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar">
+                <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar" aria-label="Editar registro">
                   <i class="ki-outline ki-pencil fs-2"></i>
                 </a>
               {% endif %}
               {% if row.urls.delete %}
-                <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar">
+                <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
                   <i class="ki-outline ki-trash fs-2"></i>
                 </a>
               {% endif %}
@@ -228,7 +229,24 @@
               <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
             {% endif %}
               <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
-              <p class="text-muted fs-6 mb-0">No hay registros que mostrar.</p>
+              {% if site.current_filters or request.GET.search %}
+                <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
+                <p class="text-muted fs-6 mb-4">No encontramos registros que cumplan los filtros aplicados.</p>
+                <a href="?" class="btn btn-light-primary btn-sm">
+                  <i class="ki-outline ki-eraser fs-3"></i>Limpiar filtros
+                </a>
+              {% else %}
+                <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
+                <p class="text-muted fs-6 mb-4">
+                  Comienza creando el primer registro de
+                  {% firstof site|verbose_name_plural site.model_name|title %}.
+                </p>
+                {% if site.urls.create %}
+                  <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">
+                    <i class="ki-outline ki-plus fs-3"></i>Crear el primero
+                  </a>
+                {% endif %}
+              {% endif %}
             </td>
           </tr>
         {% endfor %}
@@ -314,10 +332,22 @@
         deleteBtn.addEventListener("click", async () => {
           const ids = getSelected().map(c => c.value).filter(Boolean);
           if (ids.length === 0) return;
-          const confirmed = window.confirm(
-            `¿Eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"}? Esta acción no se puede deshacer.`
-          );
-          if (!confirmed) return;
+
+          const result = await Swal.fire({
+            title: `¿Eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"}?`,
+            text: "Esta acción no se puede deshacer.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, eliminar",
+            cancelButtonText: "Cancelar",
+            buttonsStyling: false,
+            customClass: {
+              confirmButton: "btn btn-danger",
+              cancelButton: "btn btn-light ms-2",
+            },
+          });
+          if (!result.isConfirmed) return;
+
           const csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1];
           const fd = new FormData();
           ids.forEach(id => fd.append("ids", id));
@@ -336,7 +366,13 @@
             window.location.reload();
           } catch (err) {
             console.error("bulk delete", err);
-            window.alert("No se pudo eliminar. Intenta de nuevo.");
+            Swal.fire({
+              title: "No se pudo eliminar",
+              text: "Intenta de nuevo en unos segundos.",
+              icon: "error",
+              buttonsStyling: false,
+              customClass: { confirmButton: "btn btn-primary" },
+            });
             deleteBtn.disabled = false;
           }
         });

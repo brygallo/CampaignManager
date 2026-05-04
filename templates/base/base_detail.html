@@ -34,17 +34,17 @@
     <div class="d-flex align-items-center gap-2 gap-lg-3">
       {% block toolbar_actions %}{% endblock %}
       {% if site.nav %}
-        <div class="btn-group" role="group" aria-label="Navegación">
+        <div class="btn-group" role="group" aria-label="Navegación entre registros">
           <a href="{{ site.nav.previous_url|default:'#' }}"
              class="btn btn-icon btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px{% if not site.nav.previous_url %} disabled{% endif %}"
              {% if not site.nav.previous_url %}aria-disabled="true" tabindex="-1"{% endif %}
-             title="Anterior">
+             title="Anterior" aria-label="Registro anterior">
             <i class="ki-outline ki-arrow-left fs-2"></i>
           </a>
           <a href="{{ site.nav.next_url|default:'#' }}"
              class="btn btn-icon btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px{% if not site.nav.next_url %} disabled{% endif %}"
              {% if not site.nav.next_url %}aria-disabled="true" tabindex="-1"{% endif %}
-             title="Siguiente">
+             title="Siguiente" aria-label="Siguiente registro">
             <i class="ki-outline ki-arrow-right fs-2"></i>
           </a>
         </div>
@@ -60,7 +60,7 @@
         </a>
       {% endif %}
       {% if site.urls.delete %}
-        <a href="{{ site.urls.delete }}" class="btn btn-icon btn-light-danger h-40px" data-bs-toggle="tooltip" title="Eliminar">
+        <a href="{{ site.urls.delete }}" class="btn btn-icon btn-light-danger h-40px" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
           <i class="ki-outline ki-trash fs-2"></i>
         </a>
       {% endif %}
@@ -191,15 +191,15 @@
             <i class="ki-outline ki-cross fs-1"></i>
           </button>
         </div>
-        <div class="modal-body p-0 position-relative" style="height: 80vh;">
-          <div id="pdf-preview-loading" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-3 bg-light">
-            <span class="spinner-border text-primary" role="status"></span>
+        <div class="modal-body p-0 position-relative bg-body" style="height: 80vh;">
+          <div id="pdf-preview-loading" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-3 bg-body">
+            <span class="spinner-border text-primary" role="status" aria-label="Cargando"></span>
             <span class="fw-semibold text-muted">Cargando previsualización…</span>
           </div>
           <iframe id="pdf-preview-frame"
                   title="Previsualización PDF"
                   src="about:blank"
-                  style="width: 100%; height: 100%; border: 0; background: #fff;"></iframe>
+                  class="w-100 h-100 border-0 bg-body"></iframe>
         </div>
         <div class="modal-footer">
           <a id="pdf-preview-open" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-light-primary">

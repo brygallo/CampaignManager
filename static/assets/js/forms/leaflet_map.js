@@ -20,11 +20,20 @@
     }
   }
 
-  function setPoint(container, marker, latField, lngField, latlng, map) {
+  function setPoint(container, marker, latField, lngField, latlng, map, options) {
+    options = options || {};
     latField.value = latlng.lat.toFixed(6);
     lngField.value = latlng.lng.toFixed(6);
     latField.dispatchEvent(new Event("change", { bubbles: true }));
     lngField.dispatchEvent(new Event("change", { bubbles: true }));
+    if (options.manualField) {
+      options.manualField.value = options.manual ? "True" : "False";
+      options.manualField.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    if (options.accuracyField && options.accuracy !== undefined && options.accuracy !== null) {
+      options.accuracyField.value = Number(options.accuracy).toFixed(2);
+      options.accuracyField.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     marker.setLatLng(latlng).addTo(map);
     setStatus(container, "Lat: " + latField.value + " / Lng: " + lngField.value);
   }
@@ -37,6 +46,8 @@
     var form = container.closest("form");
     var latField = findField(form, container.dataset.latField);
     var lngField = findField(form, container.dataset.lngField);
+    var manualField = findField(form, container.dataset.manualField);
+    var accuracyField = findField(form, container.dataset.accuracyField);
     var canvas = container.querySelector(".leaflet-map-widget__canvas");
     if (!latField || !lngField || !canvas) {
       return;
@@ -64,11 +75,11 @@
     }
 
     map.on("click", function (event) {
-      setPoint(container, marker, latField, lngField, event.latlng, map);
+      setPoint(container, marker, latField, lngField, event.latlng, map, { manualField: manualField, manual: true });
     });
 
     marker.on("dragend", function () {
-      setPoint(container, marker, latField, lngField, marker.getLatLng(), map);
+      setPoint(container, marker, latField, lngField, marker.getLatLng(), map, { manualField: manualField, manual: true });
     });
 
     var locationButton = container.querySelector("[data-leaflet-current-location]");
@@ -83,7 +94,12 @@
           function (position) {
             var current = window.L.latLng(position.coords.latitude, position.coords.longitude);
             map.setView(current, 17);
-            setPoint(container, marker, latField, lngField, current, map);
+            setPoint(container, marker, latField, lngField, current, map, {
+              manualField: manualField,
+              manual: false,
+              accuracyField: accuracyField,
+              accuracy: position.coords.accuracy
+            });
           },
           function () {
             setStatus(container, "No se pudo obtener la ubicación actual.");

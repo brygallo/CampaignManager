@@ -35,6 +35,10 @@
     }
   </script>
 
+  <a href="#kt_app_content_container" class="visually-hidden-focusable position-absolute top-0 start-50 translate-middle-x mt-2 btn btn-sm btn-primary" style="z-index: 1100;">
+    Saltar al contenido principal
+  </a>
+
   <div class="d-flex flex-column flex-root app-root" id="kt_app_root">
     <div class="app-page flex-column flex-column-fluid" id="kt_app_page">
 
@@ -50,19 +54,38 @@
               <div id="kt_app_content_container" class="app-container container-fluid">
 
                 {% if messages %}
-                  <div class="mb-5">
-                    {% for message in messages %}
-                      <div class="alert alert-{{ message.tags|default:'primary' }} alert-dismissible d-flex align-items-center fade show" role="alert">
-                        <i class="ki-outline ki-information-5 fs-2hx text-{{ message.tags|default:'primary' }} me-3"></i>
-                        <div class="d-flex flex-column">
-                          <span>{{ message }}</span>
-                        </div>
-                        <button type="button" class="position-absolute position-sm-relative m-2 m-sm-0 top-0 end-0 btn btn-icon ms-auto" data-bs-dismiss="alert">
+                  {% for message in messages %}
+                    {% if message.tags == 'error' %}
+                      <div class="alert alert-danger alert-dismissible d-flex align-items-center fade show mb-5" role="alert">
+                        <i class="ki-outline ki-shield-cross fs-2hx text-danger me-3"></i>
+                        <div class="d-flex flex-column"><span>{{ message }}</span></div>
+                        <button type="button" class="position-absolute position-sm-relative m-2 m-sm-0 top-0 end-0 btn btn-icon ms-auto" data-bs-dismiss="alert" aria-label="Cerrar">
                           <i class="ki-outline ki-cross fs-1"></i>
                         </button>
                       </div>
-                    {% endfor %}
-                  </div>
+                    {% endif %}
+                  {% endfor %}
+                  <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                      if (typeof toastr === "undefined") return;
+                      toastr.options = {
+                        positionClass: "toastr-top-right",
+                        timeOut: 4000,
+                        progressBar: true,
+                        closeButton: true,
+                        newestOnTop: true,
+                      };
+                      {% for message in messages %}
+                        {% if message.tags != 'error' %}
+                          {% if message.tags == 'success' or message.tags == 'warning' or message.tags == 'info' %}
+                            toastr["{{ message.tags }}"]("{{ message|escapejs }}");
+                          {% else %}
+                            toastr.info("{{ message|escapejs }}");
+                          {% endif %}
+                        {% endif %}
+                      {% endfor %}
+                    });
+                  </script>
                 {% endif %}
 
                 {% block toolbar %}

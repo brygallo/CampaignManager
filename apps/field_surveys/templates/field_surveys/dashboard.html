@@ -1,0 +1,46 @@
+{% extends "base/base.html" %}
+
+{% block title %}Dashboard levantamiento | {{ block.super }}{% endblock %}
+
+{% block toolbar %}
+<div class="d-flex flex-wrap flex-stack mb-6 gap-3">
+  <h1 class="page-heading text-dark fw-bold fs-3 my-0">Dashboard de levantamiento</h1>
+  <div class="d-flex gap-2">
+    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-light">Listado</a>
+    <a href="{% url 'field_surveys:map' %}" class="btn btn-light-primary"><i class="ki-outline ki-map fs-2"></i>Mapa</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-5"><div class="card-body">{% include "field_surveys/_filters.html" %}</div></div>
+<div class="row g-5 mb-5">
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Visitas</div><div class="fs-2hx fw-bold">{{ metrics.total_visits }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Votantes</div><div class="fs-2hx fw-bold">{{ metrics.total_voters }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Apoyan</div><div class="fs-2hx fw-bold text-success">{{ metrics.support }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Indecisos</div><div class="fs-2hx fw-bold text-warning">{{ metrics.undecided }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">No apoyan</div><div class="fs-2hx fw-bold text-danger">{{ metrics.not_support }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Publicidad propia</div><div class="fs-2hx fw-bold">{{ metrics.own_ads }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Publicidad competencia</div><div class="fs-2hx fw-bold">{{ metrics.competitor_ads }}</div></div></div></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3 class="card-title">Ranking de brigadistas</h3></div>
+  <div class="card-body">
+    <table class="table align-middle">
+      <thead><tr class="text-muted fw-bold text-uppercase fs-7"><th>Brigadista</th><th>Visitas</th><th>Votantes</th></tr></thead>
+      <tbody>
+      {% for row in brigadier_ranking %}
+        <tr>
+          <td>{% firstof row.brigadier__first_name row.brigadier__username %} {{ row.brigadier__last_name }}</td>
+          <td>{{ row.visits }}</td>
+          <td>{{ row.voters|default:0 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" class="text-muted text-center py-8">Sin datos.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

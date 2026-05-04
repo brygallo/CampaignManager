@@ -16,6 +16,21 @@ Campañas:
     model: position
 
 Control territorial:
+  Levantamientos de campo:
+    app: field_surveys
+    model: fieldsurvey
+  Resultados de levantamiento:
+    app: field_surveys
+    model: surveyresultoption
+  Competidores:
+    app: field_surveys
+    model: competitor
+  Publicidad propia colocada:
+    app: field_surveys
+    model: ownadvertisingplacement
+  Detecciones de competencia:
+    app: field_surveys
+    model: competitoradvertisingdetection
   Publicidad física:
     app: territorial_ads
     model: physicaladvertisement

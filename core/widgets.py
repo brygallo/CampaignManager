@@ -66,6 +66,8 @@ class LeafletMapWidget(forms.Widget):
                  data-leaflet-map="true"
                  data-lat-field="{}"
                  data-lng-field="{}"
+                 data-manual-field="{}"
+                 data-accuracy-field="{}"
                  data-default-lat="{}"
                  data-default-lng="{}"
                  data-default-zoom="{}">
@@ -86,6 +88,8 @@ class LeafletMapWidget(forms.Widget):
             widget_id,
             self.lat_field,
             self.lng_field,
+            attrs.get("data-manual-field", ""),
+            attrs.get("data-accuracy-field", ""),
             self.default_lat,
             self.default_lng,
             self.default_zoom,

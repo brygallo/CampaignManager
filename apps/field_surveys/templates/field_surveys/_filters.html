@@ -1,0 +1,57 @@
+<form method="get" class="row g-3 align-items-end">
+  <div class="col-12 col-md-3">
+    <label class="form-label">Campaña</label>
+    <select name="campaign" class="form-select">
+      <option value="">Todas</option>
+      {% for campaign in filter_campaigns %}
+        <option value="{{ campaign.id }}" {% if request.GET.campaign == campaign.id|stringformat:"s" %}selected{% endif %}>
+          {{ campaign.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% if can_view_all %}
+  <div class="col-12 col-md-3">
+    <label class="form-label">Brigadista</label>
+    <select name="brigadier" class="form-select">
+      <option value="">Todos</option>
+      {% for brigadier in filter_brigadiers %}
+        <option value="{{ brigadier.brigadier_id }}" {% if request.GET.brigadier == brigadier.brigadier_id|stringformat:"s" %}selected{% endif %}>
+          {% firstof brigadier.brigadier__first_name brigadier.brigadier__username %} {{ brigadier.brigadier__last_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div class="col-12 col-md-2">
+    <label class="form-label">Resultado</label>
+    <select name="result" class="form-select">
+      <option value="">Todos</option>
+      {% for result in filter_results %}
+        <option value="{{ result.id }}" {% if request.GET.result == result.id|stringformat:"s" %}selected{% endif %}>{{ result.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label">Desde</label>
+    <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-control">
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label">Hasta</label>
+    <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-control">
+  </div>
+  <div class="col-12 col-md-3">
+    <label class="form-label">Parroquia</label>
+    <input type="text" name="parish" value="{{ request.GET.parish }}" class="form-control">
+  </div>
+  <div class="col-12 col-md-3">
+    <label class="form-label">Barrio</label>
+    <input type="text" name="neighborhood" value="{{ request.GET.neighborhood }}" class="form-control">
+  </div>
+  <div class="col-12 col-md-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary flex-grow-1">
+      <i class="ki-outline ki-filter fs-2"></i>Filtrar
+    </button>
+    <a href="{{ request.path }}" class="btn btn-light">Limpiar</a>
+  </div>
+</form>

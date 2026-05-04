@@ -1,0 +1,56 @@
+from django.contrib import admin
+
+from .models import (
+    Competitor,
+    CompetitorAdvertisingDetection,
+    FieldSurvey,
+    OwnAdvertisingPlacement,
+    SurveyResultOption,
+)
+
+
+@admin.register(SurveyResultOption)
+class SurveyResultOptionAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+
+
+class OwnAdvertisingPlacementInline(admin.TabularInline):
+    model = OwnAdvertisingPlacement
+    extra = 0
+
+
+class CompetitorAdvertisingDetectionInline(admin.TabularInline):
+    model = CompetitorAdvertisingDetection
+    extra = 0
+    fields = ("competitor", "advertising_type", "latitude", "longitude", "photo")
+
+
+@admin.register(FieldSurvey)
+class FieldSurveyAdmin(admin.ModelAdmin):
+    list_display = ("campaign", "brigadier", "parish", "neighborhood", "voters_count", "created_date")
+    list_filter = ("campaign", "brigadier", "parish", "created_date")
+    search_fields = ("person_name", "person_phone", "address", "reference", "neighborhood")
+    filter_horizontal = ("results",)
+    inlines = (OwnAdvertisingPlacementInline, CompetitorAdvertisingDetectionInline)
+
+
+@admin.register(Competitor)
+class CompetitorAdmin(admin.ModelAdmin):
+    list_display = ("campaign", "list_number", "political_organization", "candidate_name", "is_active")
+    list_filter = ("campaign", "is_active")
+    search_fields = ("list_number", "political_organization", "candidate_name")
+
+
+@admin.register(OwnAdvertisingPlacement)
+class OwnAdvertisingPlacementAdmin(admin.ModelAdmin):
+    list_display = ("field_survey", "advertising_type", "created_by", "created_date")
+    list_filter = ("advertising_type", "created_date")
+
+
+@admin.register(CompetitorAdvertisingDetection)
+class CompetitorAdvertisingDetectionAdmin(admin.ModelAdmin):
+    list_display = ("campaign", "competitor", "brigadier", "advertising_type", "created_date")
+    list_filter = ("campaign", "competitor", "advertising_type", "created_date")
+    search_fields = ("address", "reference", "observation")

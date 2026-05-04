@@ -1,0 +1,14 @@
+{% extends "base/base_list.html" %}
+
+{% block list_extra_actions %}
+  <a href="{% url 'field_surveys:dashboard' %}" class="btn btn-flex btn-light-primary h-40px fs-7 fw-bold">
+    <i class="ki-outline ki-chart-simple fs-2"></i>Dashboard
+  </a>
+  <a href="{% url 'field_surveys:map' %}" class="btn btn-flex btn-light-primary h-40px fs-7 fw-bold">
+    <i class="ki-outline ki-map fs-2"></i>Mapa
+  </a>
+  <a href="{% url 'field_surveys:survey_create' %}" class="btn btn-flex btn-success h-40px fs-7 fw-bold">
+    <i class="ki-outline ki-geolocation fs-2"></i>Formulario rápido
+  </a>
+  {{ block.super }}
+{% endblock %}
