@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: campaignmanager
+          POSTGRES_PASSWORD: campaignmanager
+          POSTGRES_DB: campaignmanager
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DJANGO_SETTINGS_MODULE: core.settings.test
+      DJANGO_SECRET_KEY: test-key-not-for-production
+      DATABASE_URL: postgres://campaignmanager:campaignmanager@localhost:5432/campaignmanager
+      REDIS_URL: redis://localhost:6379/1
+      TEST_DATABASE_NAME: test_campaignmanager
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip pipenv
+          pipenv install --system --dev --skip-lock
+          pip install pytest-cov factory-boy
+      - name: Check migrations are not stale
+        run: python manage.py makemigrations --check --dry-run
+      - name: Run tests
+        run: pytest --cov --cov-report=term-missing --cov-fail-under=20

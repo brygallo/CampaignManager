@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -106,12 +106,21 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
 
         context.update(get_filter_context(self.request))
         context["can_view_all"] = can_view_all_field_surveys(self.request.user)
+        # Single aggregate query for all per-result counts; previously each
+        # filter+count round-tripped to the DB independently.
+        result_counts = surveys.aggregate(
+            total_visits=Count("id", distinct=True),
+            total_voters=Sum("voters_count"),
+            support=Count("id", filter=Q(results__code="APOYA"), distinct=True),
+            undecided=Count("id", filter=Q(results__code="INDECISO"), distinct=True),
+            not_support=Count("id", filter=Q(results__code="NO_APOYA"), distinct=True),
+        )
         context["metrics"] = {
-            "total_visits": surveys.count(),
-            "total_voters": surveys.aggregate(total=Sum("voters_count"))["total"] or 0,
-            "support": surveys.filter(results__code="APOYA").distinct().count(),
-            "undecided": surveys.filter(results__code="INDECISO").distinct().count(),
-            "not_support": surveys.filter(results__code="NO_APOYA").distinct().count(),
+            "total_visits": result_counts["total_visits"] or 0,
+            "total_voters": result_counts["total_voters"] or 0,
+            "support": result_counts["support"] or 0,
+            "undecided": result_counts["undecided"] or 0,
+            "not_support": result_counts["not_support"] or 0,
             "own_ads": own_ads.count(),
             "competitor_ads": competitor_ads.count(),
         }
