@@ -1,4 +1,5 @@
 Campañas:
+  icon: flag
   Elecciones:
     app: campaigns
     model: election
@@ -16,6 +17,7 @@ Campañas:
     model: politicalmovement
 
 Agenda política:
+  icon: calendar-tick
   Solicitudes de agenda:
     app: political_agenda
     model: politicalagendarequest
@@ -24,6 +26,7 @@ Agenda política:
     model: politicalagendaevent
 
 Levantamientos de campo:
+  icon: geolocation
   Levantamientos:
     app: field_surveys
     model: fieldsurvey
@@ -38,11 +41,13 @@ Levantamientos de campo:
     model: competitor
 
 Publicidad territorial:
+  icon: picture
   Publicidad física:
     app: territorial_ads
     model: physicaladvertisement
 
 Geografía:
+  icon: map
   Provincias:
     app: locations
     model: province
@@ -57,6 +62,7 @@ Geografía:
     model: sector
 
 Catálogos:
+  icon: setting-2
   Resultados de levantamiento:
     app: field_surveys
     model: surveyresultoption
@@ -68,6 +74,7 @@ Catálogos:
     model: competitoradvertisingtype
 
 Sistema:
+  icon: setting-3
   Usuarios:
     app: authentication
     model: user

@@ -1,0 +1,281 @@
+"""Siembra levantamientos de campo, competidores, colocaciones de
+publicidad propia y detecciones de competencia para campañas activas.
+
+Coordenadas centradas en Macas (Morona Santiago):
+    lat ~ -2.31, lon ~ -78.12
+
+Uso:
+    python manage.py tenant_command seed_field_surveys --schema=<tenant>
+
+Requiere previamente:
+    seed_campaigns, seed_field_survey_results, seed_sectors
+"""
+import io
+import random
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from PIL import Image
+
+from apps.campaigns.models import Campaign
+from apps.field_surveys.models import (
+    Competitor,
+    CompetitorAdvertisingDetection,
+    CompetitorAdvertisingType,
+    FieldSurvey,
+    OwnAdvertisingPlacement,
+    OwnAdvertisingType,
+    SurveyResultOption,
+)
+from apps.locations.models import Parish, Sector
+
+
+User = get_user_model()
+
+# Centro aproximado de Macas
+LAT_BASE = Decimal("-2.310")
+LON_BASE = Decimal("-78.120")
+
+PERSON_NAMES = [
+    "Juan Carlos Pérez", "María Elena Tankamash", "Pedro Antonio López",
+    "Rosa Beatriz Naichap", "Hugo Wisuma Tiwi", "Carmen Lucía Pinchupá",
+    "Manuel Andrés Calle", "Ana Patricia Sharup", "Luis Eduardo Vargas",
+    "Sandra Liliana Mejía", "Jorge Luis Antún", "Verónica Tsamaraint",
+    "Diego Armando Ortiz", "Mariana Isabel Zhunio", "Edwin Chiriap Wajai",
+    "Patricia Esperanza Rivadeneira", "Roberto Tunki Awananch",
+    "Gladys Margarita Sharup", "Jaime Vinicio Andrade", "Cecilia Tankamash",
+    "Fernando Benigno Cobo", "Daniela Sharup Pinchupá", "Wilson Naichap",
+    "Mónica Yajaira Calle", "Galo Patricio Tello",
+]
+
+ADDRESSES = [
+    "Av. Don Bosco entre 24 de Mayo y 9 de Octubre",
+    "Calle Soasti y Bolívar, casa esquinera",
+    "Av. 29 de Mayo, frente al parque central",
+    "Calle Cuenca y Domingo Comín",
+    "Av. Amazonas, sector La Loma",
+    "Calle Sucre, junto a la Catedral",
+    "Av. 13 de Abril, barrio Yantzaza",
+    "Calle Tarqui y Riobamba",
+    "Av. Pasaje Tres de Noviembre",
+    "Calle 10 de Agosto y Quito",
+    "Vía a Sevilla, km 2",
+    "Recinto Yukutais, casa de tabla",
+    "Comunidad Tunants, vía principal",
+    "Sevilla Don Bosco, frente a la escuela",
+    "General Proaño, junto a la iglesia",
+    "San Isidro centro, casa color azul",
+    "Comunidad Kuamar, sector alto",
+    "Cuchaentza centro",
+    "Sinaí, vía a Mera",
+]
+
+NOTES = [
+    "Promete asistir a la próxima reunión barrial.",
+    "Pidió no recibir más visitas.",
+    "Se comprometió a difundir mensaje en el barrio.",
+    "Familia con 5 votantes hábiles.",
+    "Solicita ayuda con tema de servicios básicos.",
+    "Sin novedad, casa cerrada.",
+    "Ya tiene definido su voto.",
+    "Apoyará si se incluye obra de su sector.",
+    "Pidió material publicitario.",
+    "Líder informal del sector, contactar nuevamente.",
+    "",
+]
+
+# competidores plausibles para el contexto local
+COMPETITORS = [
+    ("RC", "5", "Revolución Ciudadana", "Fausto Tankamash R.", "#1AAE52"),
+    ("ADN", "7", "Acción Democrática Nacional", "Bryan Calle Ortiz", "#1E4DB7"),
+    ("PSC", "6", "Partido Social Cristiano", "Mauricio Antún", "#E40521"),
+    ("ID", "12", "Izquierda Democrática", "Estela Naichap", "#D81B60"),
+    ("SUMA", "23", "SUMA", "Patricia Vargas", "#FF6F00"),
+    ("CREO", "21", "CREO", "Hernán Chiriap", "#003594"),
+]
+
+
+def _make_image_bytes(label: str) -> bytes:
+    img = Image.new("RGB", (240, 180), color=(245, 240, 230))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=70)
+    return buf.getvalue()
+
+
+def _jitter(base: Decimal, spread: float = 0.02) -> Decimal:
+    return base + Decimal(str(random.uniform(-spread, spread))).quantize(Decimal("0.000001"))
+
+
+class Command(BaseCommand):
+    help = "Siembra levantamientos de campo, competidores, colocaciones y detecciones."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reset",
+            action="store_true",
+            help="Borra colocaciones, detecciones, levantamientos y competidores antes de sembrar.",
+        )
+        parser.add_argument(
+            "--surveys",
+            type=int,
+            default=30,
+            help="Cantidad de levantamientos a generar (default: 30).",
+        )
+
+    @transaction.atomic
+    def handle(self, *args, **opts):
+        random.seed(42)
+
+        if opts.get("reset"):
+            CompetitorAdvertisingDetection.objects.all().delete()
+            OwnAdvertisingPlacement.objects.all().delete()
+            FieldSurvey.objects.all().delete()
+            Competitor.objects.all().delete()
+            self.stdout.write(self.style.WARNING("Datos previos borrados."))
+
+        # campaña activa preferida
+        campaign = (
+            Campaign.objects.filter(name="Macas para Todos").first()
+            or Campaign.objects.filter(state__gt=0).order_by("-start_date").first()
+        )
+        if campaign is None:
+            self.stderr.write(self.style.ERROR(
+                "No hay campaña disponible. Corre primero seed_campaigns."
+            ))
+            return
+
+        # brigadista (usuario admin del tenant)
+        brigadier = User.objects.filter(is_superuser=True).first() or User.objects.first()
+        if brigadier is None:
+            self.stderr.write(self.style.ERROR("No hay usuarios. Crea uno antes de sembrar."))
+            return
+
+        # competidores
+        competitors = []
+        for _, list_no, org, candidate, color in COMPETITORS:
+            obj, _created = Competitor.objects.get_or_create(
+                campaign=campaign,
+                list_number=list_no,
+                political_organization=org,
+                defaults={"candidate_name": candidate, "color": color},
+            )
+            competitors.append(obj)
+        self.stdout.write(self.style.SUCCESS(f"Competidores: {len(competitors)}"))
+
+        # parroquias y sectores disponibles (foco Morona)
+        parishes = list(Parish.objects.filter(canton__code="1401"))
+        sectors_by_parish = {p.id: list(Sector.objects.filter(parish=p)) for p in parishes}
+
+        result_options = list(SurveyResultOption.objects.filter(is_active=True))
+        result_priority = {
+            "APOYA": 0.45, "INDECISO": 0.20, "NO_APOYA": 0.10,
+            "ATENDIO": 0.15, "NO_ATENDIO": 0.10,
+        }
+        # ponderación para muestreo
+        priority_pool = []
+        for code, weight in result_priority.items():
+            priority_pool.extend([code] * int(weight * 100))
+
+        own_types = list(OwnAdvertisingType.objects.filter(is_active=True))
+        comp_types = list(CompetitorAdvertisingType.objects.filter(is_active=True))
+
+        n = opts["surveys"]
+        surveys = []
+        for i in range(n):
+            parish = random.choice(parishes) if parishes else None
+            sectors = sectors_by_parish.get(parish.id, []) if parish else []
+            sector = random.choice(sectors) if sectors else None
+            person = random.choice(PERSON_NAMES)
+            survey = FieldSurvey.objects.create(
+                campaign=campaign,
+                brigadier=brigadier,
+                latitude=_jitter(LAT_BASE),
+                longitude=_jitter(LON_BASE),
+                gps_accuracy=Decimal(str(round(random.uniform(3, 12), 2))),
+                location_was_manually_adjusted=random.random() < 0.15,
+                address=random.choice(ADDRESSES),
+                reference="" if random.random() < 0.5 else "Cerca de la tienda del barrio",
+                parish=parish,
+                neighborhood=sector,
+                person_name=person,
+                person_phone=f"09{random.randint(10000000, 99999999)}",
+                voters_count=random.choice([1, 1, 2, 2, 3, 3, 4, 5]),
+                notes=random.choice(NOTES),
+                created_by=brigadier,
+            )
+            # asignar 1-2 resultados
+            picked_codes = {random.choice(priority_pool)}
+            if random.random() < 0.35:
+                picked_codes.add(random.choice(["ACEPTA_PUBLICIDAD", "RECHAZA_PUBLICIDAD", "REQUIERE_SEGUIMIENTO"]))
+            survey.results.set([r for r in result_options if r.code in picked_codes])
+            surveys.append(survey)
+        self.stdout.write(self.style.SUCCESS(f"Levantamientos: {len(surveys)}"))
+
+        # publicidad propia colocada
+        placements_created = 0
+        if own_types:
+            for survey in random.sample(surveys, k=min(15, len(surveys))):
+                ad_type = random.choice(own_types)
+                placement = OwnAdvertisingPlacement(
+                    field_survey=survey,
+                    advertising_type=ad_type,
+                    latitude=_jitter(survey.latitude, spread=0.0008),
+                    longitude=_jitter(survey.longitude, spread=0.0008),
+                    observation=random.choice([
+                        "Pegado en pared exterior con permiso del dueño.",
+                        "Sticker en vidrio de la tienda.",
+                        "Lona de 2x1m colgada en el frente.",
+                        "Afiche en cartelera comunitaria.",
+                        "",
+                    ]),
+                    created_by=brigadier,
+                )
+                placement.photo.save(
+                    f"placement_{survey.pk}.jpg",
+                    ContentFile(_make_image_bytes(ad_type.code)),
+                    save=False,
+                )
+                placement.save()
+                placements_created += 1
+        self.stdout.write(self.style.SUCCESS(f"Publicidad propia colocada: {placements_created}"))
+
+        # detecciones de competencia
+        detections_created = 0
+        if comp_types and competitors:
+            for survey in random.sample(surveys, k=min(12, len(surveys))):
+                detection = CompetitorAdvertisingDetection(
+                    campaign=campaign,
+                    competitor=random.choice(competitors),
+                    brigadier=brigadier,
+                    field_survey=survey if random.random() < 0.7 else None,
+                    advertising_type=random.choice(comp_types),
+                    latitude=_jitter(survey.latitude, spread=0.001),
+                    longitude=_jitter(survey.longitude, spread=0.001),
+                    gps_accuracy=Decimal(str(round(random.uniform(4, 15), 2))),
+                    location_was_manually_adjusted=random.random() < 0.1,
+                    address=random.choice(ADDRESSES),
+                    reference="" if random.random() < 0.5 else "Esquina concurrida",
+                    observation=random.choice([
+                        "Lona en buen estado, alta visibilidad.",
+                        "Afiche reciente, sin daños.",
+                        "Sticker pequeño en poste.",
+                        "Valla grande junto a la vía principal.",
+                        "",
+                    ]),
+                    created_by=brigadier,
+                )
+                # foto opcional
+                if random.random() < 0.6:
+                    detection.photo.save(
+                        f"detection_{survey.pk}.jpg",
+                        ContentFile(_make_image_bytes("comp")),
+                        save=False,
+                    )
+                detection.save()
+                detections_created += 1
+        self.stdout.write(self.style.SUCCESS(f"Detecciones de competencia: {detections_created}"))
+
+        self.stdout.write(self.style.SUCCESS("✔ Siembra de field_surveys completa."))

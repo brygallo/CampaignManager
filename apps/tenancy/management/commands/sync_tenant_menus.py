@@ -2,6 +2,7 @@
 import yaml
 from django.db import transaction
 from django.core.management.base import BaseCommand, CommandError
+from django.utils.text import slugify
 from django_tenants.utils import schema_context
 from superadmin.management.commands.base import build_menu
 
@@ -39,7 +40,8 @@ class Command(BaseCommand):
         from apps.tenancy.models import Tenant
         from superadmin.models import Action, Menu
 
-        menu_data = self._load_menu(options["menu_file"])
+        raw_menu = self._load_menu(options["menu_file"])
+        menu_data, icons = self._extract_icons(raw_menu)
         schemas = self._get_schemas(Tenant, options)
 
         if options["include_public"]:
@@ -55,11 +57,41 @@ class Command(BaseCommand):
                     Menu.objects.all().delete()
                     Action.objects.all().delete()
                     build_menu(menu_data)
+                    self._apply_icons(Menu, icons)
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"{schema_name}: synced {Menu.objects.count()} menu rows"
                     )
                 )
+
+    def _extract_icons(self, node, parent_path=""):
+        """Strip ``icon`` keys from the menu tree and collect them by route."""
+        icons = {}
+        if not isinstance(node, dict):
+            return node, icons
+        cleaned = {}
+        for key, value in node.items():
+            if key == "icon":
+                continue
+            path = f"{parent_path}/{slugify(key)}" if parent_path else slugify(key)
+            if isinstance(value, dict):
+                if isinstance(value.get("icon"), str):
+                    icons[path] = value["icon"]
+                sub_cleaned, sub_icons = self._extract_icons(value, path)
+                cleaned[key] = sub_cleaned
+                icons.update(sub_icons)
+            else:
+                cleaned[key] = value
+        return cleaned, icons
+
+    def _apply_icons(self, Menu, icons):
+        if not icons:
+            return
+        for menu in Menu.objects.all():
+            icon = icons.get(menu.route)
+            if icon and menu.icon_class != icon:
+                menu.icon_class = icon
+                menu.save(update_fields=["icon_class"])
 
     def _load_menu(self, menu_file):
         try:
