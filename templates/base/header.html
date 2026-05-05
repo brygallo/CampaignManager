@@ -20,6 +20,120 @@
     <div class="app-navbar flex-lg-grow-1" id="kt_app_header_navbar">
       <div class="app-navbar-item d-flex flex-lg-grow-1 me-1 me-lg-0"></div>
 
+      {% if user.is_authenticated %}
+      <div class="app-navbar-item ms-1 ms-md-3">
+        <button type="button"
+                class="btn btn-icon btn-custom btn-color-gray-500 btn-active-light btn-active-color-primary w-35px h-35px w-md-40px h-md-40px"
+                data-kt-menu-trigger="click"
+                data-kt-menu-attach="parent"
+                data-kt-menu-placement="bottom-end"
+                aria-label="Crear rápido"
+                aria-haspopup="menu">
+          <i class="ki-outline ki-plus-square fs-1"></i>
+        </button>
+        <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-primary fw-semibold py-4 fs-base w-275px"
+             data-kt-menu="true">
+          <div class="menu-item px-3 my-0">
+            <div class="menu-content text-muted text-uppercase fs-8 ls-1 fw-bolder pt-3 pb-2 px-3">
+              Crear rápido
+            </div>
+          </div>
+          <div class="menu-item px-3 my-0">
+            <a href="/campaigns/campaign/agregar/" class="menu-link px-3 py-2">
+              <span class="menu-icon"><i class="ki-outline ki-flag fs-3 text-primary"></i></span>
+              <span class="menu-title">Nueva campaña</span>
+            </a>
+          </div>
+          <div class="menu-item px-3 my-0">
+            <a href="/campaigns/candidate/agregar/" class="menu-link px-3 py-2">
+              <span class="menu-icon"><i class="ki-outline ki-user-tick fs-3 text-success"></i></span>
+              <span class="menu-title">Nuevo candidato</span>
+            </a>
+          </div>
+          <div class="menu-item px-3 my-0">
+            <a href="/territorial_ads/physicaladvertisement/agregar/" class="menu-link px-3 py-2">
+              <span class="menu-icon"><i class="ki-outline ki-billboard fs-3 text-warning"></i></span>
+              <span class="menu-title">Nueva publicidad física</span>
+            </a>
+          </div>
+          <div class="separator my-2"></div>
+          <div class="menu-item px-3 my-0">
+            <a href="/campaigns/election/agregar/" class="menu-link px-3 py-2">
+              <span class="menu-icon"><i class="ki-outline ki-calendar-tick fs-3 text-info"></i></span>
+              <span class="menu-title">Nueva elección</span>
+            </a>
+          </div>
+          <div class="menu-item px-3 my-0">
+            <a href="/campaigns/politicalmovement/agregar/" class="menu-link px-3 py-2">
+              <span class="menu-icon"><i class="ki-outline ki-abstract-26 fs-3 text-warning"></i></span>
+              <span class="menu-title">Nuevo movimiento político</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if user.is_authenticated %}
+      <div class="app-navbar-item ms-1 ms-md-3">
+        <button type="button"
+                class="btn btn-icon btn-custom btn-color-gray-500 btn-active-light btn-active-color-primary w-35px h-35px w-md-40px h-md-40px position-relative"
+                data-kt-menu-trigger="click"
+                data-kt-menu-attach="parent"
+                data-kt-menu-placement="bottom-end"
+                aria-label="Notificaciones{% if pending_notifications_count %} ({{ pending_notifications_count }} pendientes){% endif %}"
+                aria-haspopup="menu">
+          <i class="ki-outline ki-notification-status fs-1"></i>
+          {% if pending_notifications_count %}
+            <span class="bullet bullet-dot bg-danger h-6px w-6px position-absolute translate-middle top-0 start-50 animation-blink"></span>
+          {% endif %}
+        </button>
+        <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded fw-semibold py-4 fs-6 w-325px"
+             data-kt-menu="true">
+          <div class="d-flex flex-column align-items-stretch px-7 pb-3">
+            <div class="d-flex flex-stack">
+              <span class="fs-5 text-dark fw-bold">Notificaciones</span>
+              {% if pending_notifications_count %}
+                <span class="badge badge-light-danger fs-8 fw-bold">{{ pending_notifications_count }} nueva{{ pending_notifications_count|pluralize:"s" }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="separator border-gray-200"></div>
+          <div class="scroll-y mh-325px my-3">
+            {% if pending_notifications %}
+              {% for n in pending_notifications %}
+                <div class="d-flex flex-stack px-7 py-3">
+                  <div class="d-flex align-items-center">
+                    <span class="symbol symbol-35px me-3">
+                      <span class="symbol-label bg-light-{{ n.color|default:'primary' }}">
+                        <i class="ki-outline ki-{{ n.icon|default:'information-5' }} fs-3 text-{{ n.color|default:'primary' }}"></i>
+                      </span>
+                    </span>
+                    <div class="d-flex flex-column">
+                      <a href="{{ n.url|default:'#' }}" class="text-gray-800 text-hover-primary fs-7 fw-bold">{{ n.title }}</a>
+                      <span class="text-muted fs-8">{{ n.subtitle|default:'' }}</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-light fs-8">{{ n.timestamp|default:'' }}</span>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="text-center py-8 px-5">
+                <i class="ki-outline ki-notification-status fs-3hx text-muted mb-3 d-block"></i>
+                <span class="d-block fs-6 fw-semibold text-gray-700">Sin notificaciones nuevas</span>
+                <span class="d-block fs-7 text-muted">Te avisaremos cuando algo requiera tu atención.</span>
+              </div>
+            {% endif %}
+          </div>
+          <div class="separator border-gray-200"></div>
+          <div class="py-3 text-center">
+            <a href="/tracing/trace/listar/" class="btn btn-sm btn-light-primary">
+              <i class="ki-outline ki-time fs-3"></i>Ver auditoría
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="app-navbar-item ms-1 ms-md-3">
         <button type="button"
              class="btn btn-icon btn-custom btn-color-gray-500 btn-active-light btn-active-color-primary w-35px h-35px w-md-40px h-md-40px"

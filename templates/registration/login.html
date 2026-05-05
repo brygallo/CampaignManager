@@ -30,12 +30,23 @@
       {% if form.username.errors %}<div class="text-danger small mt-2">{{ form.username.errors|join:", " }}</div>{% endif %}
     </div>
 
-    <div class="fv-row mb-3">
+    <div class="fv-row mb-3" data-kt-password-meter="true">
       <label for="id_password" class="form-label fs-6 fw-bolder text-dark">Contraseña</label>
-      <input type="password" name="password" id="id_password"
-             class="form-control bg-transparent {% if form.password.errors %}is-invalid{% endif %}"
-             placeholder="••••••••" required>
-      {% if form.password.errors %}<div class="text-danger small mt-2">{{ form.password.errors|join:", " }}</div>{% endif %}
+      <div class="position-relative">
+        <input type="password" name="password" id="id_password"
+               class="form-control bg-transparent {% if form.password.errors %}is-invalid{% endif %}"
+               placeholder="••••••••" autocomplete="current-password" required
+               aria-describedby="id_password-toggle">
+        <button type="button"
+                id="id_password-toggle"
+                class="btn btn-sm btn-icon position-absolute translate-middle top-50 end-0 me-n2"
+                data-kt-password-meter-control="visibility"
+                aria-label="Mostrar u ocultar contraseña">
+          <i class="ki-outline ki-eye-slash fs-2"></i>
+          <i class="ki-outline ki-eye fs-2 d-none"></i>
+        </button>
+      </div>
+      {% if form.password.errors %}<div class="invalid-feedback d-block" role="alert">{{ form.password.errors|join:", " }}</div>{% endif %}
     </div>
 
     <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">

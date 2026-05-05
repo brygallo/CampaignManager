@@ -4,11 +4,13 @@
     {% for entry in processed_traces %}
       {% with t=entry.trace %}
         <div class="timeline-item">
-          <div class="timeline-line"></div>
-          <div class="timeline-icon">
-            <i class="ki-outline ki-{% if t.action == 1 %}plus-squared text-success{% elif t.action == 2 %}pencil text-warning{% else %}trash text-danger{% endif %} fs-2"></i>
+          <div class="timeline-line w-40px"></div>
+          <div class="timeline-icon symbol symbol-circle symbol-40px">
+            <span class="symbol-label bg-light-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}">
+              <i class="ki-outline ki-{% if t.action == 1 %}plus-squared{% elif t.action == 2 %}pencil{% else %}trash{% endif %} fs-3 text-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}"></i>
+            </span>
           </div>
-          <div class="timeline-content mb-10 mt-n2">
+          <div class="timeline-content mb-8 mt-n1">
             <div class="overflow-auto pe-3">
               <div class="fs-5 fw-semibold mb-2 d-flex flex-wrap align-items-center gap-2">
                 <span class="text-gray-900">{{ t.user|default:"sistema" }}</span>
@@ -16,20 +18,20 @@
                   {{ t.get_action_display }}
                 </span>
               </div>
-              <div class="d-flex align-items-center mt-1 fs-7 text-muted">
-                <i class="ki-outline ki-calendar fs-7 me-1"></i>{{ t.date|date:"d/m/Y H:i" }}
-                {% if t.ip %}<span class="mx-2">·</span><i class="ki-outline ki-wifi fs-7 me-1"></i>{{ t.ip }}{% endif %}
-                {% if t.os %}<span class="mx-2">·</span><i class="ki-outline ki-screen fs-7 me-1"></i>{{ t.os }}{% endif %}
+              <div class="d-flex align-items-center mt-1 fs-7 text-muted gap-2 flex-wrap">
+                <span class="d-inline-flex align-items-center gap-1"><i class="ki-outline ki-calendar fs-7"></i>{{ t.date|date:"d/m/Y H:i" }}</span>
+                {% if t.ip %}<span class="bullet bg-gray-300 w-4px h-4px"></span><span class="d-inline-flex align-items-center gap-1"><i class="ki-outline ki-wifi fs-7"></i>{{ t.ip }}</span>{% endif %}
+                {% if t.os %}<span class="bullet bg-gray-300 w-4px h-4px"></span><span class="d-inline-flex align-items-center gap-1"><i class="ki-outline ki-screen fs-7"></i>{{ t.os }}</span>{% endif %}
               </div>
               {% if entry.changes %}
-                <div class="row g-3 mt-3">
+                <div class="row g-3 mt-3 bg-light-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %} bg-opacity-25 rounded p-4">
                   {% for ch in entry.changes %}
                     <div class="col-md-6">
                       <div class="text-gray-500 fs-7 fw-semibold text-uppercase">{{ ch.verbose_name }}</div>
                       {% if ch.is_image and ch.href %}
-                        <a href="{{ ch.href }}" target="_blank"><img src="{{ ch.href }}" class="rounded mt-1" style="max-height:64px"></a>
+                        <a href="{{ ch.href }}" target="_blank" rel="noopener"><img src="{{ ch.href }}" class="rounded mt-1" style="max-height:64px" alt="{{ ch.verbose_name }}"></a>
                       {% elif ch.href %}
-                        <a href="{{ ch.href }}" target="_blank" class="text-primary fw-bold">{{ ch.value }}</a>
+                        <a href="{{ ch.href }}" target="_blank" rel="noopener" class="text-primary fw-bold">{{ ch.value }}</a>
                       {% elif ch.is_bool %}
                         <span class="badge badge-light-{% if ch.bool_state %}success{% else %}secondary{% endif %}">{{ ch.value }}</span>
                       {% else %}
@@ -46,8 +48,13 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="text-center py-10">
-    <i class="ki-outline ki-time fs-3hx text-muted mb-3 d-block"></i>
-    <p class="text-muted fs-6 mb-0">Sin movimientos registrados.</p>
+  <div class="text-center py-15">
+    <span class="symbol symbol-100px symbol-circle d-inline-block mb-5">
+      <span class="symbol-label bg-light-info">
+        <i class="ki-outline ki-time fs-3hx text-info"></i>
+      </span>
+    </span>
+    <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin movimientos registrados</h4>
+    <p class="text-muted fs-6 mb-0">Cuando este registro tenga cambios, los verás aquí.</p>
   </div>
 {% endif %}

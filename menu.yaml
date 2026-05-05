@@ -35,6 +35,14 @@ Control territorial:
     app: territorial_ads
     model: physicaladvertisement
 
+Agenda política:
+  Solicitudes de agenda:
+    app: political_agenda
+    model: politicalagendarequest
+  Eventos de agenda:
+    app: political_agenda
+    model: politicalagendaevent
+
 Sistema:
   Usuarios:
     app: authentication

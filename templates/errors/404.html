@@ -1,13 +1,22 @@
 {% extends "base/base.html" %}
 {% load static %}
+{% block title %}Página no encontrada (404) | {{ block.super }}{% endblock %}
 {% block content %}
-<div class="d-flex flex-column flex-center text-center py-10">
-  <img src="{% static 'assets/media/auth/404-error.png' %}" class="theme-light-show mb-10 mw-100 h-200px" alt="404">
-  <img src="{% static 'assets/media/auth/404-error-dark.png' %}" class="theme-dark-show mb-10 mw-100 h-200px" alt="404">
-  <h1 class="fw-bolder fs-2hx text-gray-900 mb-4">Página no encontrada</h1>
-  <p class="fs-5 fw-semibold text-gray-500 mb-7">La URL solicitada no existe.</p>
-  <a href="{% url 'home' %}" class="btn btn-primary">
-    <i class="ki-outline ki-home fs-2"></i>Volver al inicio
-  </a>
+<div class="d-flex flex-column flex-center text-center py-15">
+  <h1 class="fw-bolder fs-3qx text-gray-300 mb-1" aria-hidden="true">404</h1>
+  <img src="{% static 'assets/media/auth/404-error.png' %}" class="theme-light-show mb-7 mw-100 h-200px" alt="">
+  <img src="{% static 'assets/media/auth/404-error-dark.png' %}" class="theme-dark-show mb-7 mw-100 h-200px" alt="">
+  <h2 class="fw-bolder fs-2hx text-gray-900 mb-3">Página no encontrada</h2>
+  <p class="fs-5 fw-semibold text-gray-500 mb-7 mw-450px mx-auto">
+    La URL solicitada no existe o fue movida. Verifica el enlace o vuelve al panel principal.
+  </p>
+  <div class="d-flex flex-wrap justify-content-center gap-3">
+    <a href="javascript:history.back()" class="btn btn-light">
+      <i class="ki-outline ki-arrow-left fs-2"></i>Volver atrás
+    </a>
+    <a href="{% url 'home' %}" class="btn btn-primary">
+      <i class="ki-outline ki-home fs-2"></i>Ir al inicio
+    </a>
+  </div>
 </div>
 {% endblock %}

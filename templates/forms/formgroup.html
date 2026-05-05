@@ -1,26 +1,53 @@
 {% load superadmin_forms %}
 
-<div class="fv-row mb-7 {% if field.errors %}validated{% endif %}">
-  {% if field.field.widget.input_type == "checkbox" %}
+{% if field.field.widget.input_type == "checkbox" %}
+  <div class="fv-row mb-7">
     <div class="form-check form-switch form-check-custom form-check-solid">
-      {{ field|add_class:"form-check-input" }}
-      <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.errors %}
+        {{ field|add_class:"form-check-input is-invalid" }}
+      {% else %}
+        {{ field|add_class:"form-check-input" }}
+      {% endif %}
+      <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">
+        {{ field.label }}
+      </label>
     </div>
-  {% elif field.field.widget.input_type == "select" %}
-    <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
-      {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+    {% if field.help_text %}
+      <div id="{{ field.id_for_label }}-help" class="form-text text-muted small">{{ field.help_text }}</div>
+    {% endif %}
+    {% if field.errors %}
+      <div id="{{ field.id_for_label }}-errors" class="invalid-feedback d-block" role="alert">
+        {{ field.errors|join:" · " }}
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="fv-row mb-7">
+    <label for="{{ field.id_for_label }}" class="form-label fw-semibold{% if field.field.required %} required{% endif %}">
+      {{ field.label }}
     </label>
-    {{ field|add_class:"form-select form-select-solid" }}
-  {% else %}
-    <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
-      {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
-    </label>
-    {{ field|add_class:"form-control form-control-solid" }}
-  {% endif %}
-  {% if field.help_text %}
-    <div class="form-text text-muted small">{{ field.help_text }}</div>
-  {% endif %}
-  {% if field.errors %}
-    <div class="text-danger small mt-1">{{ field.errors|join:" · " }}</div>
-  {% endif %}
-</div>
+
+    {% if field.field.widget.input_type == "select" %}
+      {% if field.errors %}
+        {{ field|add_class:"form-select is-invalid" }}
+      {% else %}
+        {{ field|add_class:"form-select" }}
+      {% endif %}
+    {% else %}
+      {% if field.errors %}
+        {{ field|add_class:"form-control is-invalid" }}
+      {% else %}
+        {{ field|add_class:"form-control" }}
+      {% endif %}
+    {% endif %}
+
+    {% if field.help_text %}
+      <div id="{{ field.id_for_label }}-help" class="form-text text-muted small">{{ field.help_text|safe }}</div>
+    {% endif %}
+    {% if field.errors %}
+      <div id="{{ field.id_for_label }}-errors" class="invalid-feedback d-block" role="alert">
+        {{ field.errors|join:" · " }}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}

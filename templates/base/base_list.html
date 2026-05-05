@@ -25,8 +25,8 @@
     <div class="d-flex align-items-center gap-2 gap-lg-3">
       {% block list_extra_actions %}{% endblock %}
       {% if site.urls.create %}
-        <a href="{{ site.urls.create }}" class="btn btn-flex btn-primary h-40px fs-7 fw-bold">
-          <i class="ki-outline ki-plus fs-2"></i>Nuevo
+        <a href="{{ site.urls.create }}" class="btn btn-flex btn-primary h-40px fs-7 fw-bold" aria-label="Crear nuevo registro">
+          <i class="ki-outline ki-plus fs-2"></i><span class="d-none d-sm-inline">Nuevo</span>
         </a>
       {% endif %}
     </div>

@@ -1,13 +1,22 @@
 {% extends "base/base.html" %}
 {% load static %}
+{% block title %}Acceso denegado (403) | {{ block.super }}{% endblock %}
 {% block content %}
-<div class="d-flex flex-column flex-center text-center py-10">
-  <img src="{% static 'assets/media/auth/agency.png' %}" class="theme-light-show mb-10 mw-100 h-200px" alt="403">
-  <img src="{% static 'assets/media/auth/agency-dark.png' %}" class="theme-dark-show mb-10 mw-100 h-200px" alt="403">
-  <h1 class="fw-bolder fs-2hx text-gray-900 mb-4">Acceso denegado</h1>
-  <p class="fs-5 fw-semibold text-gray-500 mb-7">No tienes permisos para ver esta página.</p>
-  <a href="{% url 'home' %}" class="btn btn-primary">
-    <i class="ki-outline ki-home fs-2"></i>Volver al inicio
-  </a>
+<div class="d-flex flex-column flex-center text-center py-15">
+  <h1 class="fw-bolder fs-3qx text-gray-300 mb-1" aria-hidden="true">403</h1>
+  <img src="{% static 'assets/media/auth/agency.png' %}" class="theme-light-show mb-7 mw-100 h-200px" alt="">
+  <img src="{% static 'assets/media/auth/agency-dark.png' %}" class="theme-dark-show mb-7 mw-100 h-200px" alt="">
+  <h2 class="fw-bolder fs-2hx text-gray-900 mb-3">Acceso denegado</h2>
+  <p class="fs-5 fw-semibold text-gray-500 mb-7 mw-450px mx-auto">
+    No tienes permisos para acceder a esta sección. Si crees que es un error, contacta a un administrador.
+  </p>
+  <div class="d-flex flex-wrap justify-content-center gap-3">
+    <a href="javascript:history.back()" class="btn btn-light">
+      <i class="ki-outline ki-arrow-left fs-2"></i>Volver atrás
+    </a>
+    <a href="{% url 'home' %}" class="btn btn-primary">
+      <i class="ki-outline ki-home fs-2"></i>Ir al inicio
+    </a>
+  </div>
 </div>
 {% endblock %}

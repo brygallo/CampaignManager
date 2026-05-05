@@ -1,13 +1,22 @@
 {% extends "base/base.html" %}
 {% load static %}
+{% block title %}Error interno (500) | {{ block.super }}{% endblock %}
 {% block content %}
-<div class="d-flex flex-column flex-center text-center py-10">
-  <img src="{% static 'assets/media/auth/500-error.png' %}" class="theme-light-show mb-10 mw-100 h-200px" alt="500">
-  <img src="{% static 'assets/media/auth/500-error-dark.png' %}" class="theme-dark-show mb-10 mw-100 h-200px" alt="500">
-  <h1 class="fw-bolder fs-2hx text-gray-900 mb-4">Error interno del servidor</h1>
-  <p class="fs-5 fw-semibold text-gray-500 mb-7">Algo salió mal. Por favor, intenta más tarde.</p>
-  <a href="{% url 'home' %}" class="btn btn-primary">
-    <i class="ki-outline ki-home fs-2"></i>Volver al inicio
-  </a>
+<div class="d-flex flex-column flex-center text-center py-15">
+  <h1 class="fw-bolder fs-3qx text-gray-300 mb-1" aria-hidden="true">500</h1>
+  <img src="{% static 'assets/media/auth/500-error.png' %}" class="theme-light-show mb-7 mw-100 h-200px" alt="">
+  <img src="{% static 'assets/media/auth/500-error-dark.png' %}" class="theme-dark-show mb-7 mw-100 h-200px" alt="">
+  <h2 class="fw-bolder fs-2hx text-gray-900 mb-3">Algo salió mal</h2>
+  <p class="fs-5 fw-semibold text-gray-500 mb-7 mw-450px mx-auto">
+    Ocurrió un error en el servidor. Nuestro equipo ya fue notificado. Intenta recargar en unos minutos.
+  </p>
+  <div class="d-flex flex-wrap justify-content-center gap-3">
+    <a href="javascript:location.reload()" class="btn btn-light">
+      <i class="ki-outline ki-arrows-circle fs-2"></i>Reintentar
+    </a>
+    <a href="{% url 'home' %}" class="btn btn-primary">
+      <i class="ki-outline ki-home fs-2"></i>Ir al inicio
+    </a>
+  </div>
 </div>
 {% endblock %}

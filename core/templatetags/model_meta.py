@@ -36,3 +36,18 @@ def verbose_name(value):
 def verbose_name_plural(value):
     model = _model_from(value)
     return model._meta.verbose_name_plural if model else ""
+
+
+@register.filter
+def is_wide_form_widget(bound_field):
+    """Return True when a form field should span the full form row."""
+    widget = getattr(getattr(bound_field, "field", None), "widget", None)
+    widget_class_name = widget.__class__.__name__ if widget else ""
+    return widget_class_name in {
+        "Textarea",
+        "CKEditorWidget",
+        "CKEditor5Widget",
+        "ClearableFileInput",
+        "FileInput",
+        "LeafletMapWidget",
+    }

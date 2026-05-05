@@ -69,8 +69,10 @@ LOCAL_APPS = [
     "apps.insoles",
     "apps.workflows",
     "apps.campaigns",
+    "apps.locations",
     "apps.territorial_ads",
     "apps.field_surveys",
+    "apps.political_agenda",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -212,6 +214,7 @@ TEMPLATE_WIDGETS = {
     "email": "widgets/textinput.html",
     "number": "widgets/textinput.html",
     "ckeditor": "widgets/ckeditorinput.html",
+    "leafletmap": "widgets/textinput.html",
 }
 
 TEMPLATE_WIDGETS_DETAIL = {

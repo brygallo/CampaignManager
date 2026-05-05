@@ -48,8 +48,8 @@
         </div>
       {% endif %}
       {% if site.urls.list %}
-        <a href="{{ site.urls.list }}" class="btn btn-flex btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px fs-7 fw-bold">
-          <i class="ki-outline ki-arrow-left fs-2"></i>Volver
+        <a href="{{ site.urls.list }}" class="btn btn-flex btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px fs-7 fw-bold" aria-label="Volver al listado">
+          <i class="ki-outline ki-arrow-left fs-2"></i><span class="d-none d-md-inline">Volver</span>
         </a>
       {% endif %}
       {% if object and site.urls.delete %}
@@ -136,6 +136,7 @@
     document.addEventListener("DOMContentLoaded", function () {
       const form = document.getElementById("main-form");
       if (!form) return;
+
       form.addEventListener("submit", function (event) {
         const trigger = event.submitter;
         if (!trigger || !trigger.matches('[data-kt-form-submit="true"]')) return;
@@ -145,6 +146,14 @@
           if (btn !== trigger) btn.disabled = true;
         });
       });
+
+      const firstInvalid = form.querySelector(".is-invalid");
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (typeof firstInvalid.focus === "function") {
+          firstInvalid.focus({ preventScroll: true });
+        }
+      }
     });
   </script>
 {% endblock %}

@@ -26,7 +26,7 @@
          data-kt-scroll="true"
          data-kt-scroll-activate="true"
          data-kt-scroll-height="auto"
-         data-kt-scroll-dependencies="#kt_app_sidebar_logo, #kt_app_sidebar_footer"
+         data-kt-scroll-dependencies="#kt_app_sidebar_logo"
          data-kt-scroll-wrappers="#kt_app_sidebar_menu"
          data-kt-scroll-offset="5px">
 
@@ -54,29 +54,5 @@
     </div>
   </div>
 
-  <div class="app-sidebar-footer d-flex align-items-center px-8 pb-6" id="kt_app_sidebar_footer">
-    {% if user.is_authenticated %}
-      <div class="d-flex align-items-center w-100">
-        <div class="symbol symbol-40px me-3">
-          {% if user.profile.avatar %}
-            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" />
-          {% else %}
-            <span class="symbol-label fs-3 bg-light-primary text-primary fw-bolder">
-              {{ user.get_full_name|default:user.username|first|upper }}
-            </span>
-          {% endif %}
-        </div>
-        <div class="d-flex flex-column flex-grow-1">
-          <span class="fs-7 fw-bold text-gray-900 lh-1">{{ user.get_full_name|default:user.username }}</span>
-          <span class="fs-8 text-muted">{{ user.email|truncatechars:24 }}</span>
-        </div>
-        <form method="post" action="{% url 'authentication:logout' %}" class="m-0">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-icon btn-active-light-danger" data-bs-toggle="tooltip" title="Cerrar sesión">
-            <i class="ki-outline ki-exit-right fs-3"></i>
-          </button>
-        </form>
-      </div>
-    {% endif %}
-  </div>
+  {# Sidebar footer eliminado: el menú de usuario completo (perfil + cerrar sesión) está en el header. #}
 </div>

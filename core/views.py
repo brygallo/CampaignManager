@@ -1,4 +1,6 @@
 """Generic views: home dashboard, Select2 AutoResponse, error pages."""
+from datetime import date, timedelta
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render
@@ -41,8 +43,94 @@ class AutoResponseView(BaseAutoResponseView):
 
 @login_required
 def home(request):
-    """Dashboard landing page with summary cards for the active Site."""
+    """Dashboard landing page: KPI cards + upcoming elections + recent campaigns + charts."""
+    from django.db.models import Count
+    from django.db.models.functions import TruncMonth
+
+    from apps.campaigns.models import Campaign, Candidate, Election
+    from apps.campaigns.workflows import CampaignWorkflow
+    from apps.territorial_ads.models import PhysicalAdvertisement
+    from apps.territorial_ads.workflows import PhysicalAdWorkflow
+
+    today = date.today()
+    horizon = today + timedelta(days=90)
+
+    upcoming_elections_qs = Election.objects.filter(
+        election_date__gte=today, election_date__lte=horizon
+    ).order_by("election_date")
+
+    stats = {
+        "campaigns": Campaign.objects.count(),
+        "candidates": Candidate.objects.count(),
+        "ads": PhysicalAdvertisement.objects.count(),
+        "elections_upcoming": upcoming_elections_qs.count(),
+    }
+
+    recent_campaigns = (
+        Campaign.objects
+        .select_related("candidate", "election", "movement")
+        .order_by("-created_date")[:5]
+    )
+
+    # Trend: campaigns created per month, last 6 months (oldest -> newest).
+    six_months_ago = (today.replace(day=1) - timedelta(days=180)).replace(day=1)
+    monthly = (
+        Campaign.objects
+        .filter(created_date__gte=six_months_ago)
+        .annotate(month=TruncMonth("created_date"))
+        .values("month")
+        .annotate(total=Count("id"))
+        .order_by("month")
+    )
+    months_index = {row["month"].strftime("%Y-%m"): row["total"] for row in monthly}
+    month_labels, month_values = [], []
+    cursor = six_months_ago
+    es_months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    for _ in range(6):
+        key = cursor.strftime("%Y-%m")
+        month_labels.append(es_months[cursor.month - 1])
+        month_values.append(months_index.get(key, 0))
+        # advance one month
+        next_year = cursor.year + (1 if cursor.month == 12 else 0)
+        next_month = 1 if cursor.month == 12 else cursor.month + 1
+        cursor = cursor.replace(year=next_year, month=next_month)
+
+    # Distribution: physical ads by state (workflow choices order).
+    ad_workflow = PhysicalAdWorkflow()
+    ad_state_counts = dict(
+        PhysicalAdvertisement.objects
+        .values_list("state")
+        .annotate(total=Count("id"))
+        .values_list("state", "total")
+    )
+    ad_distribution = [
+        {"label": label, "value": ad_state_counts.get(value, 0)}
+        for value, label in ad_workflow.choices
+    ]
+
+    # Distribution: campaigns by visible state.
+    campaign_workflow = CampaignWorkflow()
+    campaign_state_counts = dict(
+        Campaign.objects
+        .values_list("state")
+        .annotate(total=Count("id"))
+        .values_list("state", "total")
+    )
+    campaign_distribution = [
+        {"label": label, "value": campaign_state_counts.get(value, 0)}
+        for value, label in campaign_workflow.choices
+    ]
+
     context = {
+        "stats": stats,
+        "upcoming_elections": list(upcoming_elections_qs[:5]),
+        "recent_campaigns": list(recent_campaigns),
+        "today": today,
+        "chart_data": {
+            "trend": {"labels": month_labels, "values": month_values},
+            "ads": ad_distribution,
+            "campaigns": campaign_distribution,
+        },
         "breadcrumbs": [("Inicio", None)],
     }
     return render(request, "home.html", context)

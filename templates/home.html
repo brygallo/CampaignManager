@@ -5,17 +5,24 @@
 {% block content %}
 <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
   <div class="col-12">
-    <div class="card bg-primary card-flush h-md-100">
-      <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-5">
+    <div class="card bg-primary card-flush">
+      <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-5 py-7">
         <div class="d-flex align-items-center">
-          <i class="ki-outline ki-rocket text-white fs-3qx me-5"></i>
+          <span class="symbol symbol-50px me-5">
+            <span class="symbol-label bg-white bg-opacity-25">
+              <i class="ki-outline ki-rocket text-white fs-2x"></i>
+            </span>
+          </span>
           <div class="d-flex flex-column">
-            <h2 class="text-white fw-bolder mb-2">Hola, {{ user.get_full_name|default:user.username }}</h2>
+            <h2 class="text-white fw-bolder mb-1">Hola, {{ user.get_full_name|default:user.username }}</h2>
             <span class="text-white opacity-75 fs-6">
               Panel operativo para coordinar campañas, equipos y actividades territoriales.
             </span>
           </div>
         </div>
+        <a href="/campaigns/campaign/listar/" class="btn btn-light btn-active-color-primary fw-bold">
+          <i class="ki-outline ki-flag fs-2"></i>Ir a campañas
+        </a>
       </div>
     </div>
   </div>
@@ -23,7 +30,7 @@
 
 <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
   <div class="col-md-6 col-xl-3">
-    <a href="/campaigns/campaign/listar/" class="card card-flush h-100">
+    <a href="/campaigns/campaign/listar/" class="card card-flush border-hover-primary text-decoration-none h-100">
       <div class="card-header pt-5">
         <div class="card-title d-flex flex-column">
           <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ stats.campaigns|default:'—' }}</span>
@@ -31,46 +38,335 @@
         </div>
       </div>
       <div class="card-body d-flex flex-column justify-content-end pe-0">
-        <span class="symbol symbol-50px symbol-circle bg-light-success text-success mb-3">
-          <span class="symbol-label"><i class="ki-outline ki-rocket fs-2 text-success"></i></span>
+        <span class="symbol symbol-50px symbol-circle bg-light-primary mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-flag fs-2 text-primary"></i></span>
         </span>
-        <span class="text-gray-700 fs-6 fw-bold">Ver →</span>
+        <span class="text-primary fw-bold fs-7 d-flex align-items-center gap-1">
+          Ver listado<i class="ki-outline ki-arrow-right fs-3"></i>
+        </span>
       </div>
     </a>
   </div>
 
   <div class="col-md-6 col-xl-3">
-    <a href="/dynamicforms/form/listar/" class="card card-flush h-100">
+    <a href="/campaigns/candidate/listar/" class="card card-flush border-hover-success text-decoration-none h-100">
       <div class="card-header pt-5">
         <div class="card-title d-flex flex-column">
-          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ stats.forms|default:'—' }}</span>
-          <span class="text-gray-500 pt-1 fw-semibold fs-6">Formularios</span>
+          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ stats.candidates|default:'—' }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Candidatos</span>
         </div>
       </div>
       <div class="card-body d-flex flex-column justify-content-end pe-0">
-        <span class="symbol symbol-50px symbol-circle bg-light-warning text-warning mb-3">
-          <span class="symbol-label"><i class="ki-outline ki-questionnaire-tablet fs-2 text-warning"></i></span>
+        <span class="symbol symbol-50px symbol-circle bg-light-success mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-user-tick fs-2 text-success"></i></span>
         </span>
-        <span class="text-gray-700 fs-6 fw-bold">Ver →</span>
+        <span class="text-success fw-bold fs-7 d-flex align-items-center gap-1">
+          Ver listado<i class="ki-outline ki-arrow-right fs-3"></i>
+        </span>
       </div>
     </a>
   </div>
 
   <div class="col-md-6 col-xl-3">
-    <a href="/tracing/trace/listar/" class="card card-flush h-100">
+    <a href="/territorial_ads/physicaladvertisement/listar/" class="card card-flush border-hover-warning text-decoration-none h-100">
       <div class="card-header pt-5">
         <div class="card-title d-flex flex-column">
-          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ stats.traces|default:'—' }}</span>
-          <span class="text-gray-500 pt-1 fw-semibold fs-6">Auditoría</span>
+          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ stats.ads|default:'—' }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Publicidad física</span>
         </div>
       </div>
       <div class="card-body d-flex flex-column justify-content-end pe-0">
-        <span class="symbol symbol-50px symbol-circle bg-light-info text-info mb-3">
-          <span class="symbol-label"><i class="ki-outline ki-time fs-2 text-info"></i></span>
+        <span class="symbol symbol-50px symbol-circle bg-light-warning mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-billboard fs-2 text-warning"></i></span>
         </span>
-        <span class="text-gray-700 fs-6 fw-bold">Ver →</span>
+        <span class="text-warning fw-bold fs-7 d-flex align-items-center gap-1">
+          Ver listado<i class="ki-outline ki-arrow-right fs-3"></i>
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <a href="/campaigns/election/listar/" class="card card-flush border-hover-info text-decoration-none h-100">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ stats.elections_upcoming|default:'—' }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Elecciones próximas</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-info mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-calendar-tick fs-2 text-info"></i></span>
+        </span>
+        <span class="text-info fw-bold fs-7 d-flex align-items-center gap-1">
+          Próximos 90 días<i class="ki-outline ki-arrow-right fs-3"></i>
+        </span>
       </div>
     </a>
   </div>
 </div>
+
+<div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+  <div class="col-xl-8">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Tendencia de campañas</span>
+          <span class="text-muted fw-semibold fs-7">Creadas por mes — últimos 6 meses</span>
+        </h3>
+      </div>
+      <div class="card-body pt-2">
+        <div id="kt_chart_campaigns_trend" class="min-h-275px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Publicidad por estado</span>
+          <span class="text-muted fw-semibold fs-7">Distribución del flujo</span>
+        </h3>
+      </div>
+      <div class="card-body pt-2 d-flex flex-column">
+        <div id="kt_chart_ads_distribution" class="d-flex justify-content-center"></div>
+        <div class="mt-4 d-flex flex-column gap-2" id="kt_chart_ads_legend"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-5 g-xl-10">
+  <div class="col-xl-7">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Campañas recientes</span>
+          <span class="text-muted fw-semibold fs-7">Últimas creadas en el sistema</span>
+        </h3>
+        <div class="card-toolbar">
+          <a href="/campaigns/campaign/listar/" class="btn btn-sm btn-light-primary">
+            <i class="ki-outline ki-arrow-right fs-3"></i>Ver todas
+          </a>
+        </div>
+      </div>
+      <div class="card-body pt-3">
+        {% if recent_campaigns %}
+          <div class="table-responsive">
+            <table class="table table-row-dashed align-middle gs-0 gy-4 mb-0">
+              <thead>
+                <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                  <th>Campaña</th>
+                  <th>Candidato</th>
+                  <th>Elección</th>
+                  <th class="text-end">Inicio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in recent_campaigns %}
+                  <tr>
+                    <td>
+                      <span class="d-flex align-items-center gap-2">
+                        <span class="bullet bullet-vertical h-30px bg-primary"></span>
+                        <span class="text-dark fw-bold">{{ c.name }}</span>
+                      </span>
+                    </td>
+                    <td><span class="text-gray-700">{{ c.candidate }}</span></td>
+                    <td><span class="text-gray-700">{{ c.election }}</span></td>
+                    <td class="text-end text-muted fs-7">
+                      {% if c.start_date %}{{ c.start_date|date:"d/m/Y" }}{% else %}—{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-10">
+            <i class="ki-outline ki-flag fs-3hx text-muted mb-3 d-block"></i>
+            <h4 class="fs-5 fw-bold text-gray-900 mb-2">Aún no hay campañas</h4>
+            <p class="text-muted mb-4">Crea la primera para empezar a organizar candidatos y territorio.</p>
+            <a href="/campaigns/campaign/agregar/" class="btn btn-sm btn-primary">
+              <i class="ki-outline ki-plus fs-3"></i>Crear primera campaña
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Próximas elecciones</span>
+          <span class="text-muted fw-semibold fs-7">Hasta 90 días</span>
+        </h3>
+      </div>
+      <div class="card-body pt-3">
+        {% if upcoming_elections %}
+          <div class="timeline">
+            {% for e in upcoming_elections %}
+              <div class="timeline-item">
+                <div class="timeline-line w-40px"></div>
+                <div class="timeline-icon symbol symbol-circle symbol-40px">
+                  <span class="symbol-label bg-light-info">
+                    <i class="ki-outline ki-calendar-tick fs-3 text-info"></i>
+                  </span>
+                </div>
+                <div class="timeline-content mb-6 mt-n1">
+                  <div class="pe-3 mb-2">
+                    <div class="fs-5 fw-bold text-dark">{{ e.name }}</div>
+                    <div class="d-flex align-items-center mt-1 fs-7 text-muted gap-2">
+                      <i class="ki-outline ki-time fs-7"></i>
+                      <span>{{ e.election_date|date:"l d M Y" }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-10">
+            <i class="ki-outline ki-calendar fs-3hx text-muted mb-3 d-block"></i>
+            <h4 class="fs-5 fw-bold text-gray-900 mb-1">Sin eventos próximos</h4>
+            <p class="text-muted fs-7 mb-0">No hay elecciones programadas en los próximos 90 días.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {{ chart_data|json_script:"dashboard-chart-data" }}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (typeof ApexCharts === "undefined") return;
+      var raw = document.getElementById("dashboard-chart-data");
+      if (!raw) return;
+      var data;
+      try { data = JSON.parse(raw.textContent); } catch (e) { return; }
+
+      var styles = getComputedStyle(document.documentElement);
+      var colorPrimary  = styles.getPropertyValue("--bs-primary").trim()  || "#009ef7";
+      var colorSuccess  = styles.getPropertyValue("--bs-success").trim()  || "#50cd89";
+      var colorWarning  = styles.getPropertyValue("--bs-warning").trim()  || "#ffc700";
+      var colorInfo     = styles.getPropertyValue("--bs-info").trim()     || "#7239ea";
+      var colorDanger   = styles.getPropertyValue("--bs-danger").trim()   || "#f1416c";
+      var colorSecondary= styles.getPropertyValue("--bs-secondary").trim()|| "#a1a5b7";
+      var bodyColor     = styles.getPropertyValue("--bs-body-color").trim() || "#3f4254";
+      var borderColor   = styles.getPropertyValue("--bs-border-color").trim() || "#eff2f5";
+      var isDark        = document.documentElement.getAttribute("data-bs-theme") === "dark";
+
+      // Trend chart (area)
+      var trendEl = document.getElementById("kt_chart_campaigns_trend");
+      if (trendEl && data.trend) {
+        new ApexCharts(trendEl, {
+          chart: { type: "area", height: 275, toolbar: { show: false } },
+          series: [{ name: "Campañas", data: data.trend.values }],
+          xaxis: {
+            categories: data.trend.labels,
+            labels: { style: { colors: bodyColor, fontSize: "12px" } },
+            axisBorder: { show: false }, axisTicks: { show: false },
+          },
+          yaxis: {
+            labels: { style: { colors: bodyColor, fontSize: "12px" }, formatter: function (v) { return Math.round(v); } },
+          },
+          dataLabels: { enabled: false },
+          stroke: { curve: "smooth", width: 3 },
+          fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
+          colors: [colorPrimary],
+          grid: { borderColor: borderColor, strokeDashArray: 4 },
+          tooltip: { theme: isDark ? "dark" : "light" },
+          markers: { size: 4, colors: [colorPrimary], strokeColors: "#fff", strokeWidth: 2 },
+        }).render();
+      }
+
+      // Ads distribution (donut + custom legend)
+      var adsEl = document.getElementById("kt_chart_ads_distribution");
+      var legendEl = document.getElementById("kt_chart_ads_legend");
+      if (adsEl && data.ads && data.ads.length) {
+        var palette = [colorWarning, colorSuccess, colorInfo, colorPrimary, colorDanger, colorSecondary];
+        var labels = data.ads.map(function (d) { return d.label; });
+        var values = data.ads.map(function (d) { return d.value; });
+        var total = values.reduce(function (a, b) { return a + b; }, 0);
+
+        if (total === 0) {
+          var empty = document.createElement("div");
+          empty.className = "text-center py-10 w-100";
+          var emptyIcon = document.createElement("i");
+          emptyIcon.className = "ki-outline ki-billboard fs-3hx text-muted mb-3 d-block";
+          var emptyText = document.createElement("span");
+          emptyText.className = "text-muted fs-6";
+          emptyText.textContent = "Aún no hay publicidad registrada.";
+          empty.appendChild(emptyIcon);
+          empty.appendChild(emptyText);
+          adsEl.appendChild(empty);
+        } else {
+          new ApexCharts(adsEl, {
+            chart: { type: "donut", height: 230 },
+            series: values,
+            labels: labels,
+            colors: palette.slice(0, labels.length),
+            legend: { show: false },
+            dataLabels: { enabled: false },
+            stroke: { width: 2 },
+            plotOptions: {
+              pie: {
+                donut: {
+                  size: "70%",
+                  labels: {
+                    show: true,
+                    total: { show: true, label: "Total", fontSize: "12px", fontWeight: 600, color: bodyColor, formatter: function () { return String(total); } },
+                    value: { fontSize: "20px", fontWeight: 700, color: bodyColor },
+                  },
+                },
+              },
+            },
+            tooltip: { theme: isDark ? "dark" : "light" },
+          }).render();
+
+          if (legendEl) {
+            data.ads.forEach(function (d, i) {
+              var color = palette[i % palette.length];
+              var pct = total ? Math.round((d.value / total) * 100) : 0;
+
+              var row = document.createElement("div");
+              row.className = "d-flex align-items-center justify-content-between";
+
+              var leftSide = document.createElement("div");
+              leftSide.className = "d-flex align-items-center gap-2";
+              var dot = document.createElement("span");
+              dot.className = "bullet bullet-dot h-8px w-8px";
+              dot.style.backgroundColor = color;
+              var label = document.createElement("span");
+              label.className = "fs-7 text-gray-700";
+              label.textContent = d.label;
+              leftSide.appendChild(dot);
+              leftSide.appendChild(label);
+
+              var rightSide = document.createElement("div");
+              rightSide.className = "d-flex align-items-center gap-2";
+              var valueEl = document.createElement("span");
+              valueEl.className = "fs-7 fw-bold text-gray-900";
+              valueEl.textContent = String(d.value);
+              var pctEl = document.createElement("span");
+              pctEl.className = "fs-8 text-muted";
+              pctEl.textContent = "(" + pct + "%)";
+              rightSide.appendChild(valueEl);
+              rightSide.appendChild(pctEl);
+
+              row.appendChild(leftSide);
+              row.appendChild(rightSide);
+              legendEl.appendChild(row);
+            });
+          }
+        }
+      }
+    });
+  </script>
 {% endblock %}
