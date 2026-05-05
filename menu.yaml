@@ -1,21 +1,48 @@
 Campañas:
+  Elecciones:
+    app: campaigns
+    model: election
   Campañas electorales:
     app: campaigns
     model: campaign
   Candidatos:
     app: campaigns
     model: candidate
-  Elecciones:
-    app: campaigns
-    model: election
-  Movimientos políticos:
-    app: campaigns
-    model: politicalmovement
   Cargos:
     app: campaigns
     model: position
+  Movimientos políticos:
+    app: campaigns
+    model: politicalmovement
 
-Control territorial:
+Agenda política:
+  Solicitudes de agenda:
+    app: political_agenda
+    model: politicalagendarequest
+  Eventos de agenda:
+    app: political_agenda
+    model: politicalagendaevent
+
+Levantamientos de campo:
+  Levantamientos:
+    app: field_surveys
+    model: fieldsurvey
+  Publicidad propia colocada:
+    app: field_surveys
+    model: ownadvertisingplacement
+  Detecciones de competencia:
+    app: field_surveys
+    model: competitoradvertisingdetection
+  Competidores:
+    app: field_surveys
+    model: competitor
+
+Publicidad territorial:
+  Publicidad física:
+    app: territorial_ads
+    model: physicaladvertisement
+
+Geografía:
   Provincias:
     app: locations
     model: province
@@ -28,9 +55,8 @@ Control territorial:
   Sectores / barrios:
     app: locations
     model: sector
-  Levantamientos de campo:
-    app: field_surveys
-    model: fieldsurvey
+
+Catálogos:
   Resultados de levantamiento:
     app: field_surveys
     model: surveyresultoption
@@ -40,26 +66,6 @@ Control territorial:
   Tipos de publicidad de competencia:
     app: field_surveys
     model: competitoradvertisingtype
-  Competidores:
-    app: field_surveys
-    model: competitor
-  Publicidad propia colocada:
-    app: field_surveys
-    model: ownadvertisingplacement
-  Detecciones de competencia:
-    app: field_surveys
-    model: competitoradvertisingdetection
-  Publicidad física:
-    app: territorial_ads
-    model: physicaladvertisement
-
-Agenda política:
-  Solicitudes de agenda:
-    app: political_agenda
-    model: politicalagendarequest
-  Eventos de agenda:
-    app: political_agenda
-    model: politicalagendaevent
 
 Sistema:
   Usuarios:
