@@ -1,7 +1,6 @@
 """URL configuration for CampaignManager."""
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.urls import include, path
 
 import superadmin
@@ -9,7 +8,6 @@ import superadmin
 from . import views as core_views
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     path("", core_views.home, name="home"),
     path("admin-panel/", core_views.SuperAdminLandingView.as_view(), name="superadmin_home"),
     path("", include("apps.authentication.urls")),

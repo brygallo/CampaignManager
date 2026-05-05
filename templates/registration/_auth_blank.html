@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block auth_title %}{% endblock %} | {{ brand_name|default:"Control de Campaña" }}</title>
-  <link rel="icon" type="image/svg+xml" href="{% static brand_icon|default:'assets/img/control-campana.svg' %}" />
+  <link rel="icon" type="image/svg+xml" href="{{ brand_icon_url }}" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
   <link href="{% static 'assets/plugins/global/plugins.bundle.css' %}" rel="stylesheet" type="text/css" />
   <link href="{% static 'assets/css/style.bundle.css' %}" rel="stylesheet" type="text/css" />
@@ -83,7 +83,7 @@
         <div class="d-flex flex-column flex-center py-7 py-lg-15 px-5 px-md-15 w-100">
           <a href="{% url 'home' %}" class="mb-0 mb-lg-12">
             <span class="d-inline-flex align-items-center gap-4">
-              <img src="{% static brand_icon|default:'assets/img/control-campana.svg' %}" class="h-60px" alt="{{ brand_name|default:'Control de Campaña' }}">
+              <img src="{{ brand_icon_url }}" class="h-60px" alt="{{ brand_name|default:'Control de Campaña' }}">
               <span class="display-5 fw-bolder text-white">{{ brand_name|default:"Control de Campaña" }}</span>
             </span>
           </a>

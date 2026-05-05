@@ -4,12 +4,15 @@ from .base import *  # noqa: F401,F403
 DEBUG = False
 SECRET_KEY = "test-secret-key"  # noqa: S105
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    },
+DATABASES["default"]["ENGINE"] = "django_tenants.postgresql_backend"  # noqa: F405
+DATABASES["default"]["TEST"] = {  # noqa: F405
+    "NAME": env("TEST_DATABASE_NAME", default="test_campaignmanager"),  # noqa: F405
 }
+
+# Existing Django TestCase tests are not tenant-aware yet, so run their schema
+# in public while keeping the django-tenants PostgreSQL backend active.
+SHARED_APPS = INSTALLED_APPS  # noqa: F405
+TENANT_APPS = ["django.contrib.contenttypes"]
 
 CACHES = {
     "default": {

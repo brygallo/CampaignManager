@@ -40,19 +40,27 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# ----- Apps -----
-DJANGO_APPS = [
+# ----- Apps (django-tenants split) -----
+# SHARED_APPS live in the "public" schema. Only the tenant registry and the
+# bare minimum Django plumbing needed to serve the public landing/signup.
+SHARED_APPS = [
+    "apps.tenancy",
+    "django_tenants",
+    "django.contrib.contenttypes",
+    "django.contrib.staticfiles",
+]
+
+# TENANT_APPS get a separate copy of their tables inside every tenant schema.
+# User, sessions, admin and all domain apps live here so each party is fully
+# isolated (its own users, its own permissions, its own data).
+TENANT_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
     "django.contrib.humanize",
     "django.contrib.postgres",
-]
-
-THIRD_PARTY_APPS = [
     "superadmin",
     "tracing",
     "django_select2",
@@ -62,9 +70,6 @@ THIRD_PARTY_APPS = [
     "mathfilters",
     "ckeditor",
     "notifications",
-]
-
-LOCAL_APPS = [
     "apps.authentication",
     "apps.insoles",
     "apps.workflows",
@@ -75,10 +80,21 @@ LOCAL_APPS = [
     "apps.political_agenda",
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+# Django requires a single INSTALLED_APPS list; dedupe shared entries.
+INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
+
+TENANT_MODEL = "tenancy.Tenant"
+TENANT_DOMAIN_MODEL = "tenancy.Domain"
+SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 # ----- Middleware -----
+# TenantMainMiddleware MUST be first: it resolves request.tenant from the
+# host header and switches the connection to the right PostgreSQL schema
+# before any other middleware (sessions, auth) touches the DB.
 MIDDLEWARE = [
+    "django_tenants.middleware.main.TenantMainMiddleware",
+    # Path-based fallback: resolves /<slug>/... when the host didn't match a Domain.
+    "core.middleware.TenantPathRoutingMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -90,7 +106,10 @@ MIDDLEWARE = [
     "tracing.middleware.TracingMiddleware",
 ]
 
+# Tenant URL conf is the existing "core.urls"; the public schema (root domain)
+# uses a dedicated, much smaller URL conf for landing + signup + super-admin.
 ROOT_URLCONF = "core.urls"
+PUBLIC_SCHEMA_URLCONF = "core.urls_public"
 WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
@@ -128,6 +147,13 @@ DATABASES = {
         default="postgres://campaignmanager:campaignmanager@localhost:5432/campaignmanager",
     ),
 }
+# Override the engine parsed from DATABASE_URL: django-tenants needs its own
+# backend that injects "SET search_path" on every connection checkout.
+DATABASES["default"]["ENGINE"] = "django_tenants.postgresql_backend"
+
+# Ensures migrations run only in the schema where the app belongs
+# (SHARED_APPS in public, TENANT_APPS in tenant schemas).
+DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 # ----- Static / Media -----
 STATIC_URL = "/static/"
@@ -140,14 +166,14 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Django 4.2+: use STORAGES dict instead of DEFAULT_FILE_STORAGE / STATICFILES_STORAGE.
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": "core.storage.TenantFileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 # ----- Cache (Redis) -----
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/1")

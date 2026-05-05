@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 django = "~=4.2.18"
+django-tenants = "~=3.7"
 environs = "~=11.0"
 dj-database-url = "~=2.2"
 djangorestframework = "~=3.15"

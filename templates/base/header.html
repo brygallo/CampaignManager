@@ -12,7 +12,7 @@
         <i class="ki-outline ki-abstract-14 fs-2"></i>
       </button>
       <a href="{% url 'home' %}" class="d-flex align-items-center">
-        <img src="{% static brand_icon|default:'assets/img/control-campana.svg' %}" class="h-35px me-2" alt="{{ brand_name|default:'Control de Campaña' }}">
+        <img src="{{ brand_icon_url }}" class="h-35px me-2" alt="{{ brand_name|default:'Control de Campaña' }}">
         <span class="fs-3 fw-bolder text-gray-900">{{ brand_name|default:"Control de Campaña" }}</span>
       </a>
     </div>
