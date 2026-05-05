@@ -3,7 +3,9 @@ from django.contrib import admin
 from .models import (
     Competitor,
     CompetitorAdvertisingDetection,
+    CompetitorAdvertisingType,
     FieldSurvey,
+    OwnAdvertisingType,
     OwnAdvertisingPlacement,
     SurveyResultOption,
 )
@@ -11,6 +13,20 @@ from .models import (
 
 @admin.register(SurveyResultOption)
 class SurveyResultOptionAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+
+
+@admin.register(OwnAdvertisingType)
+class OwnAdvertisingTypeAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+
+
+@admin.register(CompetitorAdvertisingType)
+class CompetitorAdvertisingTypeAdmin(admin.ModelAdmin):
     list_display = ("code", "name", "order", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "name")
@@ -31,7 +47,7 @@ class CompetitorAdvertisingDetectionInline(admin.TabularInline):
 class FieldSurveyAdmin(admin.ModelAdmin):
     list_display = ("campaign", "brigadier", "parish", "neighborhood", "voters_count", "created_date")
     list_filter = ("campaign", "brigadier", "parish", "created_date")
-    search_fields = ("person_name", "person_phone", "address", "reference", "neighborhood")
+    search_fields = ("person_name", "person_phone", "address", "reference", "neighborhood__name")
     filter_horizontal = ("results",)
     inlines = (OwnAdvertisingPlacementInline, CompetitorAdvertisingDetectionInline)
 

@@ -8,10 +8,11 @@ from django.test import TestCase
 from apps.campaigns.models import Campaign, Candidate, Election, PoliticalMovement, Position
 from apps.field_surveys.forms import FieldSurveyQuickForm
 from apps.field_surveys.models import (
-    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
+    CompetitorAdvertisingType,
     FieldSurvey,
+    OwnAdvertisingType,
     OwnAdvertisingPlacement,
 )
 from apps.field_surveys.views import fieldsurvey_queryset_for_user
@@ -41,6 +42,8 @@ class FieldSurveyRulesTests(TestCase):
             movement=movement,
             position=position,
         )
+        self.own_ad_type = OwnAdvertisingType.objects.get(code="AFICHE")
+        self.competitor_ad_type = CompetitorAdvertisingType.objects.get(code="AFICHE")
         self.survey = FieldSurvey.objects.create(
             campaign=self.campaign,
             brigadier=self.user,
@@ -77,7 +80,7 @@ class FieldSurveyRulesTests(TestCase):
     def test_own_advertising_requires_photo_and_coordinates(self):
         placement = OwnAdvertisingPlacement(
             field_survey=self.survey,
-            advertising_type=AdvertisingType.AFICHE,
+            advertising_type=self.own_ad_type,
             created_by=self.user,
         )
 
@@ -88,7 +91,7 @@ class FieldSurveyRulesTests(TestCase):
         photo = SimpleUploadedFile("evidence.jpg", b"file-content", content_type="image/jpeg")
         placement = OwnAdvertisingPlacement(
             field_survey=self.survey,
-            advertising_type=AdvertisingType.AFICHE,
+            advertising_type=self.own_ad_type,
             photo=photo,
             latitude=Decimal("-2.170998"),
             longitude=Decimal("-79.922359"),
@@ -107,7 +110,7 @@ class FieldSurveyRulesTests(TestCase):
             campaign=self.campaign,
             competitor=competitor,
             brigadier=self.user,
-            advertising_type="AFICHE",
+            advertising_type=self.competitor_ad_type,
             latitude=Decimal("-2.170998"),
             longitude=Decimal("-79.922359"),
             created_by=self.user,

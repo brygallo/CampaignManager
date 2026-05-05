@@ -64,10 +64,10 @@ class PhysicalAdvertisementSite(BaseSite):
         "title__icontains",
         "owner_name__icontains",
         "owner_phone__icontains",
-        "province__icontains",
-        "canton__icontains",
-        "parish__icontains",
-        "sector__icontains",
+        "province__name__icontains",
+        "canton__name__icontains",
+        "parish__name__icontains",
+        "sector__name__icontains",
         "address__icontains",
     )
     filter_fields = (

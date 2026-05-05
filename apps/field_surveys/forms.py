@@ -1,16 +1,17 @@
 from django import forms
-from django_select2.forms import ModelSelect2Widget, ModelSelect2MultipleWidget, Select2Widget
+from django_select2.forms import ModelSelect2Widget, ModelSelect2MultipleWidget
 from superadmin.forms import ModelForm
 
 from core.widgets import LeafletMapWidget
 from apps.campaigns.models import Campaign
+from apps.locations.models import Parish, Sector
 
 from .models import (
-    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
     CompetitorAdvertisingType,
     FieldSurvey,
+    OwnAdvertisingType,
     OwnAdvertisingPlacement,
     SurveyResultOption,
 )
@@ -87,6 +88,18 @@ class FieldSurveyForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "campaigns", "data-model": "Campaign"},
             ),
+            "parish": ModelSelect2Widget(
+                model=Parish,
+                search_fields=["name__icontains", "canton__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
+            ),
+            "neighborhood": ModelSelect2Widget(
+                model=Sector,
+                search_fields=["name__icontains", "parish__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
+            ),
             "results": ModelSelect2MultipleWidget(
                 model=SurveyResultOption,
                 search_fields=["name__icontains", "code__icontains"],
@@ -108,11 +121,16 @@ class FieldSurveyForm(ModelForm):
 
 
 class FieldSurveyQuickForm(FieldSurveyForm):
-    own_advertising_type = forms.ChoiceField(
+    own_advertising_type = forms.ModelChoiceField(
         label="Tipo de publicidad propia",
-        choices=[("", "---------")] + list(AdvertisingType.choices),
+        queryset=OwnAdvertisingType.objects.none(),
         required=False,
-        widget=Select2Widget(attrs={"data-minimum-input-length": 0}),
+        widget=ModelSelect2Widget(
+            model=OwnAdvertisingType,
+            search_fields=["name__icontains", "code__icontains"],
+            max_results=100,
+            attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "OwnAdvertisingType"},
+        ),
     )
     own_photo = forms.ImageField(label="Foto de publicidad propia", required=False)
     own_observation = forms.CharField(label="Observación", widget=forms.Textarea, required=False)
@@ -128,11 +146,16 @@ class FieldSurveyQuickForm(FieldSurveyForm):
             attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "Competitor"},
         ),
     )
-    competitor_advertising_type = forms.ChoiceField(
+    competitor_advertising_type = forms.ModelChoiceField(
         label="Tipo de publicidad competencia",
-        choices=[("", "---------")] + list(CompetitorAdvertisingType.choices),
+        queryset=CompetitorAdvertisingType.objects.none(),
         required=False,
-        widget=Select2Widget(attrs={"data-minimum-input-length": 0}),
+        widget=ModelSelect2Widget(
+            model=CompetitorAdvertisingType,
+            search_fields=["name__icontains", "code__icontains"],
+            max_results=100,
+            attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "CompetitorAdvertisingType"},
+        ),
     )
     competitor_photo = forms.ImageField(label="Foto competencia", required=False)
     competitor_observation = forms.CharField(label="Observación competencia", widget=forms.Textarea, required=False)
@@ -173,6 +196,8 @@ class FieldSurveyQuickForm(FieldSurveyForm):
         super().__init__(*args, **kwargs)
         self.fields.pop("brigadier", None)
         self.fields["results"].queryset = SurveyResultOption.objects.filter(is_active=True).order_by("order", "name")
+        self.fields["own_advertising_type"].queryset = OwnAdvertisingType.objects.filter(is_active=True).order_by("order", "name")
+        self.fields["competitor_advertising_type"].queryset = CompetitorAdvertisingType.objects.filter(is_active=True).order_by("order", "name")
         self.fields["competitor"].queryset = Competitor.objects.filter(is_active=True).order_by(
             "campaign__name", "list_number", "political_organization"
         )
@@ -282,7 +307,12 @@ class CompetitorAdvertisingDetectionForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "Competitor"},
             ),
-            "advertising_type": Select2Widget(attrs={"data-minimum-input-length": 0}),
+            "advertising_type": ModelSelect2Widget(
+                model=CompetitorAdvertisingType,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "CompetitorAdvertisingType"},
+            ),
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),
             "location_was_manually_adjusted": forms.HiddenInput(),

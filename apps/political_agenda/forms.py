@@ -3,6 +3,7 @@ from django_select2.forms import ModelSelect2Widget, Select2Widget
 from superadmin.forms import ModelForm
 
 from apps.campaigns.models import Campaign
+from apps.locations.models import Canton, Parish, Province, Sector
 
 from .models import PoliticalAgendaEvent, PoliticalAgendaRequest
 
@@ -55,6 +56,30 @@ class PoliticalAgendaRequestForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "campaigns", "data-model": "Campaign"},
             ),
+            "province": ModelSelect2Widget(
+                model=Province,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Province"},
+            ),
+            "canton": ModelSelect2Widget(
+                model=Canton,
+                search_fields=["name__icontains", "province__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
+            ),
+            "parish": ModelSelect2Widget(
+                model=Parish,
+                search_fields=["name__icontains", "canton__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
+            ),
+            "sector": ModelSelect2Widget(
+                model=Sector,
+                search_fields=["name__icontains", "parish__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
+            ),
             "event_type": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "priority": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "proposed_start_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
@@ -100,6 +125,30 @@ class PoliticalAgendaEventForm(ModelForm):
                 search_fields=["title__icontains", "requester_name__icontains", "organization__icontains"],
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "PoliticalAgendaRequest"},
+            ),
+            "province": ModelSelect2Widget(
+                model=Province,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Province"},
+            ),
+            "canton": ModelSelect2Widget(
+                model=Canton,
+                search_fields=["name__icontains", "province__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
+            ),
+            "parish": ModelSelect2Widget(
+                model=Parish,
+                search_fields=["name__icontains", "canton__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
+            ),
+            "sector": ModelSelect2Widget(
+                model=Sector,
+                search_fields=["name__icontains", "parish__name__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
             ),
             "event_type": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "start_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),

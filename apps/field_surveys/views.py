@@ -59,9 +59,9 @@ class FieldSurveyFilterMixin:
         if params.get("brigadier") and can_view_all_field_surveys(self.request.user):
             queryset = queryset.filter(brigadier_id=params["brigadier"])
         if params.get("parish"):
-            queryset = queryset.filter(parish__icontains=params["parish"])
+            queryset = queryset.filter(parish__name__icontains=params["parish"])
         if params.get("neighborhood"):
-            queryset = queryset.filter(neighborhood__icontains=params["neighborhood"])
+            queryset = queryset.filter(neighborhood__name__icontains=params["neighborhood"])
         if params.get("result"):
             queryset = queryset.filter(results__id=params["result"])
         if params.get("date_from"):
@@ -139,7 +139,9 @@ class FieldSurveyMapView(LoginRequiredMixin, TemplateView):
 class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
     def get(self, request, *args, **kwargs):
         surveys = self.filtered_queryset()
-        competitor_ads = CompetitorAdvertisingDetection.objects.select_related("competitor", "campaign", "brigadier")
+        competitor_ads = CompetitorAdvertisingDetection.objects.select_related(
+            "competitor", "campaign", "brigadier", "advertising_type"
+        )
         if not can_view_all_field_surveys(request.user):
             competitor_ads = competitor_ads.filter(brigadier=request.user)
         if request.GET.get("campaign"):
@@ -165,17 +167,17 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
                     "id": ad.id,
                     "lat": float(ad.latitude),
                     "lng": float(ad.longitude),
-                    "type": ad.get_advertising_type_display(),
+                    "type": str(ad.advertising_type),
                     "survey_id": ad.field_survey_id,
                 }
-                for ad in OwnAdvertisingPlacement.objects.filter(field_survey__in=surveys)
+                for ad in OwnAdvertisingPlacement.objects.select_related("advertising_type").filter(field_survey__in=surveys)
             ],
             "competitor_ads": [
                 {
                     "id": ad.id,
                     "lat": float(ad.latitude),
                     "lng": float(ad.longitude),
-                    "type": ad.get_advertising_type_display(),
+                    "type": str(ad.advertising_type),
                     "competitor": str(ad.competitor),
                     "color": ad.competitor.color or "#d9214e",
                 }

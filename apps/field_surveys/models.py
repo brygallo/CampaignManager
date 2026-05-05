@@ -5,19 +5,10 @@ from django.db import models
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
+from apps.locations.models import Parish, Sector
 
 
 class SurveyResultOption(BaseModel):
-    class Codes(models.TextChoices):
-        NO_ATENDIO = "NO_ATENDIO", "No atendió"
-        ATENDIO = "ATENDIO", "Atendió"
-        APOYA = "APOYA", "Apoya"
-        INDECISO = "INDECISO", "Indeciso"
-        NO_APOYA = "NO_APOYA", "No apoya"
-        ACEPTA_PUBLICIDAD = "ACEPTA_PUBLICIDAD", "Acepta publicidad"
-        RECHAZA_PUBLICIDAD = "RECHAZA_PUBLICIDAD", "Rechaza publicidad"
-        REQUIERE_SEGUIMIENTO = "REQUIERE_SEGUIMIENTO", "Requiere seguimiento"
-
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
     order = models.PositiveSmallIntegerField("Orden", default=0)
@@ -64,8 +55,22 @@ class FieldSurvey(BaseModel):
     )
     address = models.CharField("Dirección", max_length=255, blank=True)
     reference = models.CharField("Referencia", max_length=255, blank=True)
-    parish = models.CharField("Parroquia", max_length=80, blank=True)
-    neighborhood = models.CharField("Barrio / sector", max_length=120, blank=True)
+    parish = models.ForeignKey(
+        Parish,
+        on_delete=models.PROTECT,
+        related_name="field_surveys",
+        verbose_name="Parroquia",
+        null=True,
+        blank=True,
+    )
+    neighborhood = models.ForeignKey(
+        Sector,
+        on_delete=models.PROTECT,
+        related_name="field_surveys",
+        verbose_name="Barrio / sector",
+        null=True,
+        blank=True,
+    )
     person_name = models.CharField("Nombre de persona", max_length=180, blank=True)
     person_phone = models.CharField("Teléfono", max_length=32, blank=True)
     voters_count = models.PositiveIntegerField("Cantidad de votantes", default=0)
@@ -103,12 +108,18 @@ class FieldSurvey(BaseModel):
         return next((code for code in priority if code in selected), "")
 
 
-class AdvertisingType(models.TextChoices):
-    AFICHE = "AFICHE", "Afiche"
-    STICKER = "STICKER", "Sticker"
-    LONA = "LONA", "Lona"
-    BANNER = "BANNER", "Banner"
-    OTRO = "OTRO", "Otro"
+class OwnAdvertisingType(BaseModel):
+    code = models.CharField("Código", max_length=40, unique=True)
+    name = models.CharField("Nombre", max_length=120)
+    order = models.PositiveSmallIntegerField("Orden", default=0)
+
+    class Meta:
+        verbose_name = "Tipo de publicidad propia"
+        verbose_name_plural = "Tipos de publicidad propia"
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
 
 
 class OwnAdvertisingPlacement(BaseModel):
@@ -118,8 +129,11 @@ class OwnAdvertisingPlacement(BaseModel):
         related_name="own_advertising_placements",
         verbose_name="Levantamiento",
     )
-    advertising_type = models.CharField(
-        "Tipo de publicidad", max_length=16, choices=AdvertisingType.choices
+    advertising_type = models.ForeignKey(
+        OwnAdvertisingType,
+        on_delete=models.PROTECT,
+        related_name="own_advertising_placements",
+        verbose_name="Tipo de publicidad",
     )
     photo = models.ImageField(
         "Foto de evidencia", upload_to="field_surveys/own_advertising/"
@@ -152,7 +166,7 @@ class OwnAdvertisingPlacement(BaseModel):
         ordering = ["-created_date"]
 
     def __str__(self):
-        return f"{self.get_advertising_type_display()} - {self.field_survey}"
+        return f"{self.advertising_type} - {self.field_survey}"
 
     def clean(self):
         errors = {}
@@ -199,13 +213,18 @@ class Competitor(BaseModel):
         return f"Lista {self.list_number} {self.political_organization}{candidate}"
 
 
-class CompetitorAdvertisingType(models.TextChoices):
-    AFICHE = "AFICHE", "Afiche"
-    STICKER = "STICKER", "Sticker"
-    LONA = "LONA", "Lona"
-    BANNER = "BANNER", "Banner"
-    VALLA = "VALLA", "Valla"
-    OTRO = "OTRO", "Otro"
+class CompetitorAdvertisingType(BaseModel):
+    code = models.CharField("Código", max_length=40, unique=True)
+    name = models.CharField("Nombre", max_length=120)
+    order = models.PositiveSmallIntegerField("Orden", default=0)
+
+    class Meta:
+        verbose_name = "Tipo de publicidad de competencia"
+        verbose_name_plural = "Tipos de publicidad de competencia"
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
 
 
 class CompetitorAdvertisingDetection(BaseModel):
@@ -235,8 +254,11 @@ class CompetitorAdvertisingDetection(BaseModel):
         null=True,
         blank=True,
     )
-    advertising_type = models.CharField(
-        "Tipo de publicidad", max_length=16, choices=CompetitorAdvertisingType.choices
+    advertising_type = models.ForeignKey(
+        CompetitorAdvertisingType,
+        on_delete=models.PROTECT,
+        related_name="competitor_advertising_detections",
+        verbose_name="Tipo de publicidad",
     )
     latitude = models.DecimalField(
         "Latitud GPS",
@@ -277,7 +299,7 @@ class CompetitorAdvertisingDetection(BaseModel):
         ordering = ["-created_date"]
 
     def __str__(self):
-        return f"{self.competitor} - {self.get_advertising_type_display()}"
+        return f"{self.competitor} - {self.advertising_type}"
 
     def clean(self):
         errors = {}

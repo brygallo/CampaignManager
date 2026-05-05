@@ -16,12 +16,30 @@ Campañas:
     model: position
 
 Control territorial:
+  Provincias:
+    app: locations
+    model: province
+  Cantones:
+    app: locations
+    model: canton
+  Parroquias:
+    app: locations
+    model: parish
+  Sectores / barrios:
+    app: locations
+    model: sector
   Levantamientos de campo:
     app: field_surveys
     model: fieldsurvey
   Resultados de levantamiento:
     app: field_surveys
     model: surveyresultoption
+  Tipos de publicidad propia:
+    app: field_surveys
+    model: ownadvertisingtype
+  Tipos de publicidad de competencia:
+    app: field_surveys
+    model: competitoradvertisingtype
   Competidores:
     app: field_surveys
     model: competitor
