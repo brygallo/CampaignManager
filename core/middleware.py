@@ -58,6 +58,7 @@ class TenantPathRoutingMiddleware:
         try:
             response = self.get_response(request)
             self._prefix_tenant_redirect(request, response)
+            self._scope_cookies_to_tenant(request, response)
             return response
         finally:
             set_script_prefix(old_script_prefix)
@@ -79,3 +80,21 @@ class TenantPathRoutingMiddleware:
             return
 
         response["Location"] = f"{prefix}{location}"
+
+    def _scope_cookies_to_tenant(self, request, response):
+        """Set cookie ``Path`` to the tenant prefix so cookies don't bleed.
+
+        In path-routed mode (mode C in docs/05_MULTITENANT_SPRINT1.md) every
+        tenant lives on the same root domain. Without scoping, a session
+        cookie issued by ``/pk1/login/`` would also be sent on requests to
+        ``/pk2/...``. Pinning ``Path=/pk1/`` keeps each tenant's cookies in
+        their own URL namespace.
+        """
+        prefix = getattr(request, "tenant_path_prefix", "")
+        if not prefix:
+            return
+        scoped_path = f"{prefix}/"
+        for morsel in response.cookies.values():
+            current_path = morsel["path"] or "/"
+            if current_path == "/" or not current_path.startswith(prefix):
+                morsel["path"] = scoped_path

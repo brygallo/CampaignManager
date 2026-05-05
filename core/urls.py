@@ -1,7 +1,7 @@
 """URL configuration for CampaignManager."""
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 import superadmin
 
@@ -10,6 +10,14 @@ from . import views as core_views
 urlpatterns = [
     path("", core_views.home, name="home"),
     path("admin-panel/", core_views.SuperAdminLandingView.as_view(), name="superadmin_home"),
+    # Authenticated, tenant-scoped media serving. Replaces Django's default
+    # static media handler so tenant A cannot read tenant B's uploads by
+    # guessing the URL.
+    re_path(
+        rf"^{settings.MEDIA_URL.lstrip('/')}(?P<path>.*)$",
+        core_views.serve_protected_media,
+        name="protected_media",
+    ),
     path("", include("apps.authentication.urls")),
     path("", include("apps.insoles.urls")),
     path("", include("apps.workflows.urls")),
@@ -22,7 +30,6 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(
         settings.STATIC_URL,
         document_root=settings.STATICFILES_DIRS[0]

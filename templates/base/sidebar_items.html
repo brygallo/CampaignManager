@@ -1,6 +1,11 @@
 {% load menu_tags %}
-{# Recursively render the menu tree with Metronic's "active / here show" pattern. #}
+{% comment %}
+Recursively render the menu tree with Metronic's "active / here show" pattern.
+Top-level sections are filtered against ``tenant_features`` so disabled
+modules disappear from the sidebar without touching menu.yaml.
+{% endcomment %}
 {% for item in menu %}
+  {% if item|feature_enabled:tenant_features %}
   {% if item.submenus %}
     {% with item_open=item|branch_active:request.path %}
     <div class="menu-item menu-accordion{% if item_open %} here show{% endif %}" data-kt-menu-trigger="click">
@@ -54,5 +59,6 @@
         <span class="menu-title">{{ item.name }}</span>
       </a>
     </div>
+  {% endif %}
   {% endif %}
 {% endfor %}

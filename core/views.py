@@ -1,11 +1,16 @@
 """Generic views: home dashboard, Select2 AutoResponse, error pages."""
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import connection
+from django.http import Http404
 from django.shortcuts import render
 from django.views.generic import TemplateView
+from django.views.static import serve as static_serve
 from django_select2.views import AutoResponseView as BaseAutoResponseView
+from django_tenants.utils import get_public_schema_name
 
 
 class AutoResponseView(BaseAutoResponseView):
@@ -200,6 +205,37 @@ class SuperAdminLandingView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         context["page_title"] = "Panel de administración"
         context["breadcrumbs"] = [("Inicio", "/"), ("Panel de administración", None)]
         return context
+
+
+@login_required
+def serve_protected_media(request, path):
+    """Serve files from MEDIA_ROOT with a tenant ownership check.
+
+    Files under ``tenants/<schema>/...`` are only readable by users whose
+    active tenant matches ``<schema>``. Files under ``tenant_branding/...``
+    (logos/favicons stored in the public schema) are readable by any
+    authenticated user — branding is intentionally cross-tenant since the
+    super-admin manages it.
+
+    Production deployments behind nginx should replace this view with an
+    ``X-Accel-Redirect`` response pointing at an internal location, but the
+    auth + tenant check belongs here either way.
+    """
+    parts = path.split("/", 2)
+    active_schema = getattr(connection, "schema_name", None) or get_public_schema_name()
+
+    if parts and parts[0] == "tenants":
+        if len(parts) < 2 or parts[1] != active_schema:
+            raise Http404
+    elif parts and parts[0] == "tenant_branding":
+        # readable by any authenticated user
+        pass
+    else:
+        # legacy / non-namespaced files: only super-admin can read.
+        if not request.user.is_superuser:
+            raise Http404
+
+    return static_serve(request, path, document_root=settings.MEDIA_ROOT)
 
 
 def error_403(request, exception=None):

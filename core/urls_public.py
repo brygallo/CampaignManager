@@ -8,9 +8,10 @@ For now this is a stub: a placeholder landing page. Fase 6 will add public
 signup; Fase 7 will mount the global super-admin panel.
 """
 from django.conf import settings
-from django.conf.urls.static import static
 from django.http import HttpResponse
-from django.urls import path
+from django.urls import path, re_path
+
+from . import views as core_views
 
 
 def public_landing(request):
@@ -27,8 +28,12 @@ def healthz(request):
 
 urlpatterns = [
     path("healthz", healthz, name="healthz"),
+    # Tenant branding (logos / favicons) is the only media expected on the
+    # public schema. The view enforces auth + path-prefix checks.
+    re_path(
+        rf"^{settings.MEDIA_URL.lstrip('/')}(?P<path>.*)$",
+        core_views.serve_protected_media,
+        name="protected_media",
+    ),
     path("", public_landing, name="public_landing"),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

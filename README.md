@@ -33,21 +33,24 @@ CampaignManager/
 ├── menu.yaml                  # Sidebar tree
 ├── pytest.ini · .env.example
 │
-├── core/                      # Project core (ex sim/sim/)
+├── core/
 │   ├── settings/{base,development,production,test}.py
-│   ├── urls.py · wsgi.py · asgi.py
+│   ├── urls.py · urls_public.py · wsgi.py · asgi.py
 │   ├── base.py                # BaseSite (Spanish URL suffixes + Maxton templates)
 │   ├── audit.py               # AuditContextMixin + build_processed_traces
-│   ├── list_mixins.py         # WorkflowStateFilterMixin
-│   ├── tenancy.py             # ActiveSiteMiddleware + helpers
-│   ├── context_processors.py  # active_site, available_sites, brand
+│   ├── list_mixins.py         # DropdownFilterMixin, WorkflowStateFilterMixin
+│   ├── middleware.py          # TenantPathRoutingMiddleware
+│   ├── storage.py             # TenantFileSystemStorage, PublicFileSystemStorage
+│   ├── cache.py               # tenant-scoped Redis key function
+│   ├── context_processors.py  # brand (reads TenantBranding from public)
 │   └── forms.py · widgets.py · validators.py · notifications.py · select2.py · views.py · mixins.py
 │
 ├── apps/
-│   ├── authentication/        # Custom User + Profile + login
-│   ├── sites_mgmt/            # Site, Domain, SiteMembership (soft multi-tenancy)
+│   ├── tenancy/               # Tenant + Domain + TenantBranding (SHARED_APPS)
+│   ├── authentication/        # Custom User + Profile + login (per-tenant)
+│   ├── campaigns/ · political_agenda/ · territorial_ads/ · field_surveys/ · locations/
 │   ├── insoles/               # Inline AJAX forms/details for any registered model
-│   └── workflows/             # FSM engine (Workflow, ChangeStateView, …)
+│   └── workflows/             # FSM engine (ChangeStateView, …)
 │
 ├── api/                       # DRF v1
 │
@@ -58,8 +61,7 @@ CampaignManager/
 │   ├── registration/login.html
 │   └── errors/{403,404,500}.html
 │
-├── static/                    # Maxton bundle (assets/, sass/, plugins/)
-└── plantilla/maxton/dist/     # HTML demo for reference (not served)
+└── static/                    # Maxton bundle (assets/, sass/, plugins/)
 ```
 
 Each Django app keeps its own `migrations/` directory (per-app, versioned in
@@ -79,10 +81,13 @@ git — no centralized `dbmigrations/`).
 - **State machines**: `apps/workflows` ships the FSM engine. Domain models
   declare a `Workflow` (an enum subclass) and methods decorated with
   `@transition(...)`; the UI exposes them through `ChangeStateView`.
-- **Soft multi-tenancy**: `Site` is the central entity. Users belong to one or
-  more sites via `SiteMembership` and switch the active site from the header.
-  `ActiveSiteMiddleware` exposes `request.active_site` and `SiteScopedModel`
-  scopes any model to a site.
+- **Hard multi-tenancy** (`django-tenants`): every party gets its own
+  PostgreSQL schema. `User`, sessions and all domain data live in
+  `TENANT_APPS` and are isolated automatically by the connection's
+  `search_path`. The `tenancy` app holds only the global registry
+  (`Tenant`, `Domain`, `TenantBranding`) in the `public` schema. Three
+  access modes are supported — custom domain, subdomain, and path
+  (`/<slug>/...` for trial/demo). See `docs/05_MULTITENANT_SPRINT1.md`.
 - **Theme switcher**: `data-bs-theme="light"` by default; a built-in offcanvas
   switches between `light`, `blue-theme`, `dark`, `semi-dark`, `bordered`.
 
@@ -103,12 +108,15 @@ docker compose build
 # 2. Start Postgres + Redis in the background
 docker compose up -d postgres redis
 
-# 3. Initial migrations
-docker compose run --rm app python manage.py makemigrations authentication sites_mgmt
-docker compose run --rm app python manage.py migrate
-
-# 4. Create the first superuser
-docker compose run --rm app python manage.py createsuperuser
+# 3. Migrate the public schema (tenant registry + branding) and create the first tenant
+docker compose run --rm app python manage.py migrate_schemas --shared
+docker compose run --rm app python manage.py create_tenant \
+    --slug partido-demo \
+    --name "Partido Demo" \
+    --domain partido-demo.localhost \
+    --owner-username admin \
+    --owner-email admin@partido-demo.localhost \
+    --owner-password "cambia-esto"
 
 # 5. Start the app
 docker compose up app
@@ -168,10 +176,15 @@ cp .env.example .env
 # Edit .env so DATABASE_URL points at localhost (not "postgres")
 # and REDIS_URL at localhost (not "redis").
 
-# 3. Migrations + superuser
-python manage.py makemigrations authentication sites_mgmt
-python manage.py migrate
-python manage.py createsuperuser
+# 3. Public schema + first tenant
+python manage.py migrate_schemas --shared
+python manage.py create_tenant \
+    --slug partido-demo \
+    --name "Partido Demo" \
+    --domain partido-demo.localhost \
+    --owner-username admin \
+    --owner-email admin@partido-demo.localhost \
+    --owner-password "cambia-esto"
 
 # 4. Start the dev server
 python manage.py runserver
@@ -212,11 +225,11 @@ python manage.py runserver
 
 1. Create the model under `apps/<app>/models.py`. Inherit from
    `tracing.models.BaseModel` to get `created_user/modified_user/...` for free.
-2. Optionally inherit from `apps.sites_mgmt.mixins.SiteScopedModel` to scope
-   the model to a `Site`.
-3. Build a `ModelForm` in `apps/<app>/forms.py` (subclass
+   Tenant isolation is automatic via `django-tenants` — no per-row `tenant_id`
+   needed.
+2. Build a `ModelForm` in `apps/<app>/forms.py` (subclass
    `superadmin.forms.ModelForm` to use `Meta.fieldsets`).
-4. Register a `ModelSite` in `apps/<app>/sites.py`:
+3. Register a `ModelSite` in `apps/<app>/sites.py`:
 
    ```python
    from superadmin.decorators import register
@@ -226,14 +239,14 @@ python manage.py runserver
    @register("<app>.MyModel")
    class MyModelSite(BaseSite):
        form_class = MyModelForm
-       list_fields = ("name", "site", "is_active:Activo")
-       detail_fields = {"General": (("name", "site"), ("description",))}
-       filter_fields = ("site", "is_active")
+       list_fields = ("name", "is_active:Activo")
+       detail_fields = {"General": (("name",), ("description",))}
+       filter_fields = ("is_active",)
        search_params = ("name__icontains",)
    ```
 
-5. Add an entry to `menu.yaml` so the sidebar shows it.
-6. Run `python manage.py makemigrations` + `migrate`.
+4. Add an entry to `menu.yaml` so the sidebar shows it.
+5. Run `python manage.py makemigrations <app>` + `python manage.py migrate_schemas`.
 
 That's it — list, create, update, detail and delete URLs are generated
 automatically.

@@ -221,6 +221,47 @@ python manage.py runserver 0.0.0.0:8000
    conexión, no por transacción. Recomendado pgbouncer en `session` mode
    o nada de pooler externo en local.
 
+## Estado de las fases
+
+| Fase | Descripción | Estado |
+|---|---|---|
+| 1 | django-tenants instalado, modelos, settings, middleware | ✅ |
+| 2 | Migración productiva (`migrate_to_multitenant`) | Listo para ejecutar |
+| 3 | Branding dinámico (`TenantBranding`) | ✅ |
+| 4 | Storage por tenant (`TenantFileSystemStorage`) | ✅ |
+| 5 | `TenantSettings` (feature flags) + menú dinámico | ✅ |
+| 6 | Onboarding público (signup en `urls_public`) | Pendiente |
+| 7 | Panel super-admin global | Pendiente — ver nota abajo |
+| 8 | Auditoría cross-tenant agregada | Pendiente |
+| 9 | Planes / cuotas | Pendiente |
+| 10 | DNS wildcard / deploy | Pendiente |
+
+### Nota sobre Fase 7 — modelo `SuperAdmin`
+
+El panel global (en `core/urls_public.py`) requiere autenticación
+**fuera** del schema de cualquier tenant. Hoy `User` vive en `TENANT_APPS`,
+por lo que `request.user` es `AnonymousUser` cuando se navega por el
+dominio raíz: no hay tabla `auth_user` en `public`.
+
+La solución correcta es introducir un modelo separado `SuperAdmin` (o
+`PlatformOperator`) en `apps.tenancy` (que ya está en `SHARED_APPS`):
+
+```python
+class SuperAdmin(AbstractBaseUser, PermissionsMixin):
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True)
+    USERNAME_FIELD = "email"
+```
+
+Luego un backend de auth separado que solo valide contra esa tabla
+**solo** cuando el schema activo sea `public`, y un par de vistas
+protegidas en `urls_public.py` para listar / crear tenants y editar
+`TenantSettings` y `TenantBranding`. Es una pieza grande (auth, vistas,
+templates) y conviene atacarla en su propio sprint cuando la Fase 6
+(onboarding) esté clara.
+
+Mientras tanto, las altas de tenant se hacen vía `manage.py create_tenant`.
+
 ## Sprint 2 — Migración productiva
 
 Mismo `migrate_to_multitenant` corrido contra la BD productiva, con backup

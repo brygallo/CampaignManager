@@ -4,6 +4,16 @@ from django.db import DatabaseError
 from django.templatetags.static import static
 from django_tenants.utils import get_public_schema_name, schema_context
 
+# Module names listed in menu.yaml whose visibility is gated by TenantSettings
+# flags. Anything not in this set is shown to every tenant.
+GATED_MENU_SECTIONS = {
+    "Campañas",
+    "Agenda política",
+    "Levantamientos de campo",
+    "Publicidad territorial",
+    "Geografía",
+}
+
 
 def _default_brand():
     icon_path = getattr(settings, "BRAND_ICON", "assets/img/control-campana.svg")
@@ -43,3 +53,37 @@ def brand(request):
     if branding.favicon:
         context["brand_icon_url"] = branding.favicon.url
     return context
+
+
+def tenant_features(request):
+    """Expose ``tenant_features`` (set of enabled module names) to templates.
+
+    Reads ``TenantSettings`` from the public schema based on the active
+    tenant. When no row exists yet (legacy tenants), defaults to "everything
+    enabled" so the migration is non-breaking.
+    """
+    tenant = getattr(request, "tenant", None)
+    if not tenant or getattr(tenant, "schema_name", None) == get_public_schema_name():
+        return {"tenant_features": GATED_MENU_SECTIONS}
+
+    try:
+        from apps.tenancy.models import TenantSettings
+
+        with schema_context(get_public_schema_name()):
+            tsettings = (
+                TenantSettings.objects.filter(tenant__schema_name=tenant.schema_name)
+                .only(
+                    "enable_campaigns",
+                    "enable_political_agenda",
+                    "enable_field_surveys",
+                    "enable_territorial_ads",
+                    "enable_locations",
+                )
+                .first()
+            )
+    except DatabaseError:
+        return {"tenant_features": GATED_MENU_SECTIONS}
+
+    if tsettings is None:
+        return {"tenant_features": GATED_MENU_SECTIONS}
+    return {"tenant_features": tsettings.enabled_modules()}

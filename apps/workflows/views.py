@@ -105,26 +105,6 @@ class ChangeStateView(View):
                     "files": self.request.FILES,
                 }
             )
-        # Prefill forms for Sertam tickets on GET (scoped to avoid affecting other apps)
-        if (
-            self.request.method == "GET"
-            and self.kwargs.get("app") == "sertam"
-            and self.kwargs.get("model") == "ticket"
-        ):
-            try:
-                obj = self.get_object()
-                taxpayer = getattr(obj, "taxpayer", None)
-                identification = taxpayer.identification if taxpayer else ""
-                kwargs["initial"] = {
-                    "identification": identification,
-                    "hidden_identification": identification,
-                    "email": getattr(obj, "email", "") or (taxpayer.email if taxpayer else "") or "",
-                    "phone": getattr(obj, "phone", "") or (taxpayer.cellphone if taxpayer else "") or (taxpayer.phone if taxpayer else "") or "",
-                    "address": getattr(obj, "address", "") or (taxpayer.address if taxpayer else "") or "",
-                    "canton": getattr(obj, "city", None),
-                }
-            except Exception:
-                pass
         return kwargs
 
     def get_object(self):

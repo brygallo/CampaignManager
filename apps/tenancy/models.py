@@ -7,6 +7,10 @@ is isolated inside its own PostgreSQL schema, but the registry of tenants
 from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
 
+from core.storage import PublicFileSystemStorage
+
+_public_storage = PublicFileSystemStorage()
+
 
 def tenant_logo_upload_to(instance, filename):
     return f"tenant_branding/{instance.tenant.schema_name}/logo/{filename}"
@@ -75,10 +79,18 @@ class TenantBranding(models.Model):
 
     brand_name = models.CharField("Nombre comercial", max_length=120, blank=True)
     logo = models.ImageField(
-        "Logo", upload_to=tenant_logo_upload_to, blank=True, null=True
+        "Logo",
+        upload_to=tenant_logo_upload_to,
+        storage=_public_storage,
+        blank=True,
+        null=True,
     )
     favicon = models.ImageField(
-        "Favicon", upload_to=tenant_favicon_upload_to, blank=True, null=True
+        "Favicon",
+        upload_to=tenant_favicon_upload_to,
+        storage=_public_storage,
+        blank=True,
+        null=True,
     )
 
     theme_default = models.CharField(
@@ -96,3 +108,47 @@ class TenantBranding(models.Model):
 
     def __str__(self):
         return f"Branding de {self.tenant.name}"
+
+
+class TenantSettings(models.Model):
+    """Per-tenant feature flags driving menu visibility and pricing tiers.
+
+    Each flag toggles a top-level module of the platform. The menu and the
+    super-admin landing read this row to know which sections to render for
+    the active tenant. New flags should be added here AND consumed by the
+    ``tenant_features`` context processor so every template/view can check
+    them uniformly.
+    """
+
+    tenant = models.OneToOneField(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="settings",
+        verbose_name="Partido",
+    )
+
+    enable_campaigns = models.BooleanField("Campañas", default=True)
+    enable_political_agenda = models.BooleanField("Agenda política", default=True)
+    enable_field_surveys = models.BooleanField("Levantamientos de campo", default=True)
+    enable_territorial_ads = models.BooleanField("Publicidad territorial", default=True)
+    enable_locations = models.BooleanField("Geografía", default=True)
+
+    updated_at = models.DateTimeField("Actualizado", auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuración"
+        verbose_name_plural = "Configuraciones"
+
+    def __str__(self):
+        return f"Configuración de {self.tenant.name}"
+
+    def enabled_modules(self) -> set[str]:
+        """Set of menu-section names that should be rendered for this tenant."""
+        mapping = {
+            "Campañas": self.enable_campaigns,
+            "Agenda política": self.enable_political_agenda,
+            "Levantamientos de campo": self.enable_field_surveys,
+            "Publicidad territorial": self.enable_territorial_ads,
+            "Geografía": self.enable_locations,
+        }
+        return {name for name, enabled in mapping.items() if enabled}

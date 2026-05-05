@@ -39,7 +39,7 @@ def url_active(item_url: str, current_path: str) -> bool:
 
     # Superadmin list URLs end in "/listar".
     # Their detail and form pages live under the same prefix
-    # (for example, /sites_mgmt/site/listar -> /sites_mgmt/site/123/editar).
+    # (for example, /campaigns/campaign/listar -> /campaigns/campaign/123/editar).
     if url.endswith("/listar"):
         base = url[: -len("/listar")]
         return path == base or path.startswith(base + "/")
@@ -62,3 +62,23 @@ def branch_active(node: dict, current_path: str) -> bool:
             return True
 
     return False
+
+
+@register.filter
+def feature_enabled(node: dict, tenant_features) -> bool:
+    """Return True if a top-level menu node is enabled for the tenant.
+
+    A node is considered "gated" only when its name appears in
+    ``GATED_MENU_SECTIONS`` (see ``core.context_processors``); other
+    sections (e.g. ``Sistema``, ``Catálogos``) are always shown.
+    """
+    from core.context_processors import GATED_MENU_SECTIONS
+
+    if not node:
+        return False
+    name = node.get("name")
+    if name not in GATED_MENU_SECTIONS:
+        return True
+    if tenant_features is None:
+        return True
+    return name in tenant_features
