@@ -3,17 +3,8 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
-
-# Loose DRF defaults during development.
-REST_FRAMEWORK = {
-    **REST_FRAMEWORK,  # noqa: F405
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
-    ),
-}
+# Allow the dev frontend (any origin) without making it the default in base.
+CORS_ORIGIN_ALLOW_ALL = True
 
 LOGGING = {
     "version": 1,

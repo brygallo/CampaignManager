@@ -11,9 +11,13 @@ APPS_DIR = BASE_DIR / "apps"
 env = Env()
 env.read_env(str(BASE_DIR / ".env"), recurse=False)
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", default="change-me-in-production")
+# SECRET_KEY has no default on purpose: a missing env var must crash at boot
+# rather than silently falling back to a known value (which would compromise
+# session signing, password reset tokens and CSRF). Override per-env settings
+# files (e.g. test.py) supply their own value.
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 # ----- I18N / TZ -----
 LANGUAGE_CODE = "es"
@@ -65,6 +69,7 @@ TENANT_APPS = [
     "tracing",
     "django_select2",
     "rest_framework",
+    "drf_spectacular",
     "django_filters",
     "corsheaders",
     "mathfilters",
@@ -127,6 +132,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "superadmin.context_processors.menu",
                 "core.context_processors.brand",
+                "core.context_processors.tenant_features",
             ],
             "libraries": {
                 # `core` is not in INSTALLED_APPS, so its template tags
@@ -176,11 +182,15 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 # ----- Cache (Redis) -----
+# KEY_FUNCTION prefixes every key with the active tenant schema so two
+# tenants cannot read each other's cached values (Select2 results, view
+# fragments, etc.). See core/cache.py.
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/1")
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": REDIS_URL,
+        "KEY_FUNCTION": "core.cache.tenant_cache_key",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
@@ -197,15 +207,46 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@campaignmanager
 
 # ----- Headers / CORS -----
 X_FRAME_OPTIONS = "SAMEORIGIN"
-CORS_ORIGIN_ALLOW_ALL = env.bool("CORS_ORIGIN_ALLOW_ALL", default=True)
+# CORS is opt-in: allow-all is only useful while iterating locally. Production
+# should enumerate trusted origins via CORS_ALLOWED_ORIGINS.
+CORS_ORIGIN_ALLOW_ALL = env.bool("CORS_ORIGIN_ALLOW_ALL", default=False)
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ["GET", "OPTIONS", "PATCH", "POST", "PUT", "DELETE"]
 
 # ----- DRF -----
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "1000/hour",
+        "anon": "100/hour",
+    },
+    # Versioning is enforced via the URL prefix (/api/v1/...). Bumping to
+    # v2 means a parallel URL include — never mutate v1 in place.
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
+    "DEFAULT_VERSION": "v1",
+    "ALLOWED_VERSIONS": ("v1",),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "CampaignManager API",
+    "DESCRIPTION": "API REST multipartido. Cada tenant accede solo a los datos de su schema.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 # ----- Select2 -----
