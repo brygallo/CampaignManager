@@ -1,0 +1,149 @@
+{% load static %}
+<div class="d-flex flex-column gap-4">
+
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <span class="badge fs-7 fw-bold px-3 py-2"
+          style="background:{{ state_color }};color:#fff;">
+      {{ ad.get_state_display }}
+    </span>
+    {% if ad.campaign %}
+      <span class="text-muted fs-7">
+        <i class="ki-outline ki-rocket fs-6 me-1"></i>{{ ad.campaign.name }}
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-sm-6">
+      <div class="text-muted fw-semibold small text-uppercase mb-1">Tipo</div>
+      <div class="fw-bold">{{ ad.get_advertisement_type_display }}{% if ad.quantity > 1 %} <span class="text-muted">×{{ ad.quantity }}</span>{% endif %}</div>
+    </div>
+    {% if ad.width_meters and ad.height_meters %}
+      <div class="col-sm-6">
+        <div class="text-muted fw-semibold small text-uppercase mb-1">Dimensiones</div>
+        <div class="fw-bold">{{ ad.width_meters }} × {{ ad.height_meters }} m</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="text-muted fw-semibold small text-uppercase mb-1">Lugar</div>
+    <div class="fw-bold">{{ ad.address }}</div>
+    {% if ad.reference %}
+      <div class="text-muted small">{{ ad.reference }}</div>
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-sm-6">
+      <div class="text-muted fw-semibold small text-uppercase mb-1">Contacto</div>
+      <div class="fw-bold">{{ ad.owner_name }}</div>
+      <div class="text-muted small">
+        <a href="tel:{{ ad.owner_phone }}" class="text-muted">{{ ad.owner_phone }}</a>
+      </div>
+    </div>
+    {% if ad.cost_type %}
+      <div class="col-sm-6">
+        <div class="text-muted fw-semibold small text-uppercase mb-1">Costo</div>
+        <div class="fw-bold">
+          {{ ad.cost_type.name }}{% if ad.cost_amount %} <span class="text-muted">· ${{ ad.cost_amount }}</span>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if ad.offered_photo %}
+    <div>
+      <div class="text-muted fw-semibold small text-uppercase mb-2">Foto del lugar ofrecido</div>
+      <a href="{{ ad.offered_photo.url }}" target="_blank" rel="noopener">
+        <img src="{{ ad.offered_photo.url }}" class="img-fluid rounded border" alt="Foto ofrecida" style="max-height:240px;">
+      </a>
+    </div>
+  {% endif %}
+
+  {% if ad.rejected_at %}
+    <div class="bg-light-danger rounded p-4">
+      <div class="d-flex align-items-center gap-2 fw-bold text-danger mb-2">
+        <i class="ki-outline ki-cross-circle fs-3"></i>Rechazada
+      </div>
+      <div class="text-muted small mb-1">{{ ad.rejected_at|date:"d/m/Y H:i" }}{% if ad.rejected_by %} · {{ ad.rejected_by }}{% endif %}</div>
+      {% if ad.rejection_reason %}
+        <div>{{ ad.rejection_reason|linebreaksbr }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if ad.approved_at %}
+    <div class="bg-light-success rounded p-4">
+      <div class="d-flex align-items-center gap-2 fw-bold text-success mb-2">
+        <i class="ki-outline ki-verify fs-3"></i>Aprobada
+      </div>
+      <div class="text-muted small mb-1">{{ ad.approved_at|date:"d/m/Y H:i" }}{% if ad.approved_by %} · {{ ad.approved_by }}{% endif %}</div>
+      {% if ad.installation_instructions %}
+        <div class="small">{{ ad.installation_instructions|linebreaksbr }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if ad.assigned_installer or ad.installer_team %}
+    <div class="bg-light-info rounded p-4">
+      <div class="d-flex align-items-center gap-2 fw-bold text-info mb-2">
+        <i class="ki-outline ki-user fs-3"></i>Asignación de instalación
+      </div>
+      <div class="fw-bold">
+        {% if ad.assigned_installer %}{{ ad.assigned_installer }}{% endif %}
+        {% if ad.installer_team %}{% if ad.assigned_installer %} · {% endif %}{{ ad.installer_team }}{% endif %}
+      </div>
+      {% if ad.assigned_at %}
+        <div class="text-muted small">{{ ad.assigned_at|date:"d/m/Y H:i" }}{% if ad.assigned_by %} · {{ ad.assigned_by }}{% endif %}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if ad.installed_at %}
+    <div class="bg-light-primary rounded p-4">
+      <div class="d-flex align-items-center gap-2 fw-bold text-primary mb-2">
+        <i class="ki-outline ki-check-circle fs-3"></i>Instalada
+      </div>
+      <div class="text-muted small mb-2">{{ ad.installed_at|date:"d/m/Y H:i" }}{% if ad.installed_by %} · {{ ad.installed_by }}{% endif %}</div>
+      {% if ad.installed_latitude and ad.installed_longitude %}
+        <div class="text-muted small mb-2">GPS: {{ ad.installed_latitude }} / {{ ad.installed_longitude }}</div>
+      {% endif %}
+      {% if ad.installation_notes %}
+        <div class="small mb-2">{{ ad.installation_notes|linebreaksbr }}</div>
+      {% endif %}
+      {% if ad.installation_photo %}
+        <a href="{{ ad.installation_photo.url }}" target="_blank" rel="noopener">
+          <img src="{{ ad.installation_photo.url }}" class="img-fluid rounded border" alt="Foto instalación" style="max-height:240px;">
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if ad.damage_reported_at %}
+    <div class="bg-light-warning rounded p-4">
+      <div class="d-flex align-items-center gap-2 fw-bold text-warning mb-2">
+        <i class="ki-outline ki-information-5 fs-3"></i>Daño reportado
+      </div>
+      <div class="text-muted small mb-2">{{ ad.damage_reported_at|date:"d/m/Y H:i" }}{% if ad.damage_reported_by %} · {{ ad.damage_reported_by }}{% endif %}</div>
+      {% if ad.damage_notes %}
+        <div class="small mb-2">{{ ad.damage_notes|linebreaksbr }}</div>
+      {% endif %}
+      {% if ad.damage_photo %}
+        <a href="{{ ad.damage_photo.url }}" target="_blank" rel="noopener">
+          <img src="{{ ad.damage_photo.url }}" class="img-fluid rounded border" alt="Foto daño" style="max-height:240px;">
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if ad.retired_at %}
+    <div class="bg-light rounded p-4">
+      <div class="d-flex align-items-center gap-2 fw-bold text-muted mb-2">
+        <i class="ki-outline ki-cross-circle fs-3"></i>Retirada
+      </div>
+      <div class="text-muted small">{{ ad.retired_at|date:"d/m/Y H:i" }}{% if ad.retired_by %} · {{ ad.retired_by }}{% endif %}</div>
+    </div>
+  {% endif %}
+
+</div>

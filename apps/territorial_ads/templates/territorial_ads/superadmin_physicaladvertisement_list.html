@@ -1,0 +1,8 @@
+{% extends "base/base_list.html" %}
+
+{% block list_extra_actions %}
+  <a href="{% url 'territorial_ads:map' %}" class="btn btn-light-primary btn-sm d-flex align-items-center gap-1">
+    <i class="ki-outline ki-map fs-3"></i>Mapa
+  </a>
+  {{ block.super }}
+{% endblock %}

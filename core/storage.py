@@ -1,5 +1,6 @@
 """Storage helpers for tenant-aware media paths."""
 from django.core.files.storage import FileSystemStorage
+from django.urls import get_script_prefix
 from django_tenants.utils import get_public_schema_name
 
 
@@ -21,7 +22,11 @@ class TenantFileSystemStorage(FileSystemStorage):
         return super()._save(self._tenant_name(name), content)
 
     def url(self, name):
-        return super().url(self._tenant_name(name))
+        url = super().url(self._tenant_name(name))
+        prefix = get_script_prefix()
+        if prefix == "/" or not url.startswith("/") or url.startswith(prefix):
+            return url
+        return f"{prefix.rstrip('/')}{url}"
 
     def _tenant_name(self, name):
         from django.db import connection

@@ -22,6 +22,7 @@ urlpatterns = [
     path("", include("apps.insoles.urls")),
     path("", include("apps.workflows.urls")),
     path("", include("apps.field_surveys.urls")),
+    path("", include("apps.territorial_ads.urls")),
     path("select2/", include("core.select2")),
     path("inbox/notifications/", include("notifications.urls", namespace="notifications")),
     path("api/v1/", include("api.urls")),
