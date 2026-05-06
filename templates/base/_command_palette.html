@@ -1,0 +1,318 @@
+{# Command palette (⌘K / Ctrl+K). Indexes the sidebar links + recent visits. #}
+<div class="modal fade" id="cm-command-palette" tabindex="-1" aria-labelledby="cm-palette-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 640px;">
+    <div class="modal-content overflow-hidden">
+      <div class="modal-header py-2 px-4 border-0 bg-light">
+        <div class="d-flex align-items-center w-100">
+          <i class="ki-outline ki-magnifier fs-2 text-muted me-3"></i>
+          <input type="text"
+                 id="cm-palette-input"
+                 class="form-control form-control-flush border-0 bg-transparent fs-5"
+                 placeholder="Saltar a, crear o buscar…"
+                 aria-label="Buscar comando o sección"
+                 autocomplete="off">
+          <kbd class="d-none d-md-inline-block fs-9 text-muted">Esc</kbd>
+        </div>
+        <h2 class="visually-hidden" id="cm-palette-title">Paleta de comandos</h2>
+      </div>
+      <div class="modal-body p-0">
+        <div id="cm-palette-results" class="overflow-auto" style="max-height: 60vh;" role="listbox" aria-label="Resultados"></div>
+      </div>
+      <div class="modal-footer py-2 px-3 border-top bg-light">
+        <div class="d-flex align-items-center gap-3 fs-8 text-muted w-100 flex-wrap">
+          <span class="d-flex align-items-center gap-1"><kbd class="bg-white border px-2 py-1 fs-9">↑</kbd><kbd class="bg-white border px-2 py-1 fs-9">↓</kbd> navegar</span>
+          <span class="d-flex align-items-center gap-1"><kbd class="bg-white border px-2 py-1 fs-9">↵</kbd> abrir</span>
+          <span class="d-flex align-items-center gap-1"><kbd class="bg-white border px-2 py-1 fs-9">Esc</kbd> cerrar</span>
+          <span class="ms-auto d-none d-md-inline">Tip: presiona <kbd class="bg-white border px-2 py-1 fs-9">?</kbd> para ver atajos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const modalEl = document.getElementById("cm-command-palette");
+    const input   = document.getElementById("cm-palette-input");
+    const results = document.getElementById("cm-palette-results");
+    if (!modalEl || !input || !results) return;
+
+    const RECENT_KEY = "cm.palette.recents";
+    const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+    // ---- Build index from sidebar at first open. ----
+    let index = null;
+
+    const buildIndex = () => {
+      const out = [];
+      const menuRoot = document.getElementById("kt_app_sidebar_menu");
+      if (!menuRoot) return out;
+
+      // Resolve breadcrumb-like context for each leaf link.
+      const accordions = menuRoot.querySelectorAll(".menu-item.menu-accordion");
+      accordions.forEach(acc => {
+        const ownTitleEl = acc.querySelector(":scope > .menu-link .menu-title");
+        const sectionTitle = ownTitleEl ? ownTitleEl.textContent.trim() : "";
+        const iconEl = acc.querySelector(":scope > .menu-link .menu-icon i");
+        const iconClass = iconEl ? iconEl.className : "ki-outline ki-category fs-3";
+        acc.querySelectorAll(":scope > .menu-sub a.menu-link").forEach(a => {
+          const href = a.getAttribute("href");
+          if (!href || href === "#") return;
+          const titleEl = a.querySelector(".menu-title");
+          if (!titleEl) return;
+          out.push({
+            title: titleEl.textContent.trim(),
+            section: sectionTitle,
+            href,
+            iconClass,
+            kind: "nav",
+          });
+        });
+      });
+
+      // Top-level (non-accordion) leaves like "Inicio", "Panel administrativo".
+      menuRoot.querySelectorAll(":scope > .menu-item:not(.menu-accordion) > a.menu-link").forEach(a => {
+        const href = a.getAttribute("href");
+        if (!href || href === "#") return;
+        const titleEl = a.querySelector(".menu-title");
+        const iconEl = a.querySelector(".menu-icon i");
+        if (!titleEl) return;
+        out.push({
+          title: titleEl.textContent.trim(),
+          section: "",
+          href,
+          iconClass: iconEl ? iconEl.className : "ki-outline ki-arrow-right fs-3",
+          kind: "nav",
+        });
+      });
+
+      // "Crear X" actions: harvest from header quick-create dropdown if present.
+      document.querySelectorAll('a.menu-link[href*="agregar"], a.menu-link[href*="/add/"]').forEach(a => {
+        const href = a.getAttribute("href");
+        if (!href || href === "#") return;
+        const titleEl = a.querySelector(".menu-title");
+        const iconEl = a.querySelector(".menu-icon i");
+        if (!titleEl) return;
+        const t = titleEl.textContent.trim();
+        // Avoid duplicating navigation items (those don't usually contain "Nuevo").
+        if (!/^nuevo|^nueva|^crear/i.test(t)) return;
+        out.push({
+          title: t,
+          section: "Crear rápido",
+          href,
+          iconClass: iconEl ? iconEl.className : "ki-outline ki-plus-square fs-3",
+          kind: "create",
+        });
+      });
+
+      return out;
+    };
+
+    const readRecents = () => {
+      try {
+        const v = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+        return Array.isArray(v) ? v.slice(0, 8) : [];
+      } catch (e) { return []; }
+    };
+    const pushRecent = (item) => {
+      let r = readRecents().filter(x => x.href !== item.href);
+      r.unshift({ title: item.title, section: item.section, href: item.href, iconClass: item.iconClass });
+      r = r.slice(0, 8);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(r));
+    };
+
+    let activeIdx = 0;
+    let visible = [];
+
+    const buildRow = (it, idx) => {
+      const a = document.createElement("a");
+      a.href = it.href;
+      a.className = "d-flex align-items-center gap-3 px-4 py-3 text-decoration-none border-bottom border-gray-100 cm-palette-row";
+      a.setAttribute("role", "option");
+      a.dataset.idx = String(idx);
+      if (idx === activeIdx) {
+        a.classList.add("bg-light-primary");
+        a.setAttribute("aria-selected", "true");
+      }
+
+      const sym = document.createElement("span");
+      sym.className = "symbol symbol-30px";
+      const symLabel = document.createElement("span");
+      symLabel.className = "symbol-label bg-light-" + (it.kind === "create" ? "success" : "primary");
+      const i = document.createElement("i");
+      i.className = (it.iconClass || "ki-outline ki-arrow-right fs-3") + " text-" + (it.kind === "create" ? "success" : "primary");
+      symLabel.appendChild(i);
+      sym.appendChild(symLabel);
+
+      const text = document.createElement("div");
+      text.className = "flex-grow-1 min-w-0";
+      const title = document.createElement("div");
+      title.className = "text-gray-900 fw-bold text-truncate";
+      title.textContent = it.title;
+      const sub = document.createElement("div");
+      sub.className = "text-muted fs-8 text-truncate";
+      sub.textContent = it.section || (it.kind === "recent" ? "Reciente" : "");
+      text.appendChild(title);
+      text.appendChild(sub);
+
+      const kbd = document.createElement("span");
+      kbd.className = "d-none d-md-inline-flex align-items-center gap-1 ms-auto fs-8 text-muted";
+      const kbdK = document.createElement("kbd");
+      kbdK.className = "bg-light border px-2 py-1 fs-9";
+      kbdK.textContent = "↵";
+      kbd.appendChild(kbdK);
+
+      a.appendChild(sym);
+      a.appendChild(text);
+      a.appendChild(kbd);
+      return a;
+    };
+
+    const renderEmpty = (msg) => {
+      results.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "text-center py-10 px-5";
+      const icon = document.createElement("i");
+      icon.className = "ki-outline ki-magnifier fs-3hx text-muted mb-3 d-block";
+      const span = document.createElement("span");
+      span.className = "text-muted fs-7";
+      span.textContent = msg;
+      empty.appendChild(icon);
+      empty.appendChild(span);
+      results.appendChild(empty);
+    };
+
+    const renderGroupHeader = (label) => {
+      const h = document.createElement("div");
+      h.className = "px-4 pt-3 pb-1 text-uppercase text-muted fw-bold fs-9 ls-1";
+      h.textContent = label;
+      results.appendChild(h);
+    };
+
+    const render = (q) => {
+      results.replaceChildren();
+      visible = [];
+      activeIdx = 0;
+
+      const query = norm(q);
+
+      if (!query) {
+        const recents = readRecents();
+        if (recents.length) {
+          renderGroupHeader("Recientes");
+          recents.forEach((r, i) => {
+            const item = { ...r, kind: "recent" };
+            visible.push(item);
+            results.appendChild(buildRow(item, visible.length - 1));
+          });
+        }
+        renderGroupHeader("Navegación");
+        index.filter(it => it.kind === "nav").slice(0, 30).forEach(it => {
+          visible.push(it);
+          results.appendChild(buildRow(it, visible.length - 1));
+        });
+        return;
+      }
+
+      const matches = (it) => {
+        const t = norm(it.title);
+        const s = norm(it.section);
+        return t.includes(query) || s.includes(query);
+      };
+
+      const navMatches = index.filter(it => it.kind === "nav" && matches(it));
+      const createMatches = index.filter(it => it.kind === "create" && matches(it));
+
+      if (!navMatches.length && !createMatches.length) {
+        renderEmpty("Sin coincidencias");
+        return;
+      }
+
+      if (navMatches.length) {
+        renderGroupHeader("Navegación");
+        navMatches.forEach(it => {
+          visible.push(it);
+          results.appendChild(buildRow(it, visible.length - 1));
+        });
+      }
+      if (createMatches.length) {
+        renderGroupHeader("Crear");
+        createMatches.forEach(it => {
+          visible.push(it);
+          results.appendChild(buildRow(it, visible.length - 1));
+        });
+      }
+    };
+
+    const setActive = (idx) => {
+      const rows = results.querySelectorAll(".cm-palette-row");
+      if (!rows.length) return;
+      activeIdx = ((idx % rows.length) + rows.length) % rows.length;
+      rows.forEach(r => { r.classList.remove("bg-light-primary"); r.removeAttribute("aria-selected"); });
+      const row = rows[activeIdx];
+      row.classList.add("bg-light-primary");
+      row.setAttribute("aria-selected", "true");
+      row.scrollIntoView({ block: "nearest" });
+    };
+
+    const openItem = (it) => {
+      pushRecent(it);
+      window.location.assign(it.href);
+    };
+
+    modalEl.addEventListener("show.bs.modal", () => {
+      if (!index) index = buildIndex();
+      input.value = "";
+      render("");
+    });
+    modalEl.addEventListener("shown.bs.modal", () => { input.focus(); });
+
+    let debounceTimer;
+    input.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => render(input.value), 60);
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActive(activeIdx + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIdx - 1); }
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        const it = visible[activeIdx];
+        if (it) openItem(it);
+      }
+    });
+
+    results.addEventListener("click", (e) => {
+      const row = e.target.closest(".cm-palette-row");
+      if (!row) return;
+      e.preventDefault();
+      const idx = parseInt(row.dataset.idx, 10);
+      const it = visible[idx];
+      if (it) openItem(it);
+    });
+
+    // Track current page in recents (so refresh picks it up immediately).
+    (function trackCurrent() {
+      const path = window.location.pathname;
+      const titleEl = document.querySelector("h1.page-heading");
+      const trail = document.querySelector(".breadcrumb");
+      if (!titleEl) return;
+      const sectionEl = trail ? trail.querySelector(".breadcrumb-item.text-muted a") : null;
+      const item = {
+        title: titleEl.textContent.trim().slice(0, 80),
+        section: sectionEl ? sectionEl.textContent.trim() : "",
+        href: path,
+        iconClass: "ki-outline ki-time fs-3",
+      };
+      if (item.title && item.href && item.href !== "/") {
+        try {
+          const r = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]")
+            .filter(x => x.href !== item.href);
+          r.unshift(item);
+          localStorage.setItem(RECENT_KEY, JSON.stringify(r.slice(0, 8)));
+        } catch (e) { /* ignore */ }
+      }
+    })();
+  })();
+</script>

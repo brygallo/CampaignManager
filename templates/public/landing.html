@@ -1,0 +1,284 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control de Campaña — Plataforma multipartido</title>
+  <meta name="description" content="Coordina campañas políticas, equipos territoriales, agenda y publicidad desde un único panel multipartido.">
+  <link rel="icon" type="image/svg+xml" href="{% static 'assets/media/logos/default-small.svg' %}">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700">
+  <link href="{% static 'assets/plugins/global/plugins.bundle.css' %}" rel="stylesheet" type="text/css">
+  <link href="{% static 'assets/css/style.bundle.css' %}" rel="stylesheet" type="text/css">
+  <style>
+    .public-hero {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(0,158,247,.18), transparent 60%),
+        radial-gradient(900px 500px at 0% 110%, rgba(80,205,137,.15), transparent 60%),
+        var(--bs-body-bg);
+    }
+    .public-hero-card { border: 1px solid var(--bs-border-color); }
+    .feature-icon-wrap { width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; }
+    .portal-suffix { white-space: nowrap; }
+    .party-card { transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+    .party-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,.06); border-color: var(--bs-primary); }
+    .party-avatar { width: 48px; height: 48px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+  </style>
+</head>
+<body id="kt_body" class="app-blank bg-body">
+
+  <header class="container py-5 d-flex align-items-center justify-content-between">
+    <a href="/" class="d-inline-flex align-items-center gap-3 text-decoration-none">
+      <img src="{% static 'assets/media/logos/default-small.svg' %}" class="h-35px" alt="Control de Campaña">
+      <span class="fs-3 fw-bolder text-dark">Control de Campaña</span>
+    </a>
+    <nav class="d-none d-md-flex align-items-center gap-6">
+      <a href="#features" class="text-gray-700 text-hover-primary fw-semibold">Plataforma</a>
+      <a href="#contacto" class="text-gray-700 text-hover-primary fw-semibold">Contacto</a>
+      <a href="#portal" class="btn btn-sm btn-primary">
+        <i class="ki-outline ki-entrance-right fs-3"></i>Ingresar
+      </a>
+    </nav>
+  </header>
+
+  <section class="public-hero py-10 py-lg-20">
+    <div class="container">
+      <div class="row align-items-center g-10">
+        <div class="col-lg-7">
+          <span class="badge badge-light-primary fw-bold fs-7 mb-4">Plataforma multipartido</span>
+          <h1 class="display-4 fw-bolder text-dark lh-sm mb-5">
+            Coordina toda tu campaña<br>
+            desde un solo panel.
+          </h1>
+          <p class="fs-4 text-gray-700 mb-8" style="max-width: 56ch;">
+            Equipos, candidatos, territorio, publicidad física y agenda política
+            en un único lugar — con datos aislados por partido y trazabilidad de cada acción.
+          </p>
+
+          <div id="portal" class="card public-hero-card shadow-sm">
+            <div class="card-body p-6">
+              <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
+                <label class="form-label fw-bold text-dark mb-0">Acceder al portal de tu partido</label>
+                {% if parties %}
+                <div class="position-relative" style="min-width: 220px;">
+                  <i class="ki-outline ki-magnifier fs-5 position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                  <input id="party-search"
+                         type="text"
+                         class="form-control form-control-sm form-control-solid ps-10"
+                         placeholder="Buscar partido..."
+                         autocomplete="off"
+                         spellcheck="false">
+                </div>
+                {% endif %}
+              </div>
+
+              {% if parties %}
+                <div id="party-grid" class="row g-3">
+                  {% for p in parties %}
+                    <div class="col-12 col-sm-6" data-party-name="{{ p.name|lower }}" data-party-slug="{{ p.slug }}">
+                      <a href="{{ p.login_url }}"
+                         class="party-card card border h-100 text-decoration-none p-4 d-flex flex-row align-items-center gap-3"
+                         aria-label="Ingresar a {{ p.name }}">
+                        <span class="party-avatar bg-light-{{ p.color }} text-{{ p.color }} flex-shrink-0">
+                          {{ p.initials }}
+                        </span>
+                        <span class="d-flex flex-column flex-grow-1 min-w-0">
+                          <span class="fw-bold text-dark text-truncate">{{ p.name }}</span>
+                          <span class="fs-8 text-muted text-truncate">{{ p.domain_label }}</span>
+                        </span>
+                        <i class="ki-outline ki-arrow-right fs-2 text-muted flex-shrink-0"></i>
+                      </a>
+                    </div>
+                  {% endfor %}
+                </div>
+                <div id="party-empty" class="text-muted fs-7 text-center py-4 d-none">
+                  Ningún partido coincide con tu búsqueda.
+                </div>
+              {% else %}
+                <div class="text-center py-6">
+                  <i class="ki-outline ki-abstract-26 fs-3hx text-muted mb-3 d-block"></i>
+                  <p class="text-muted mb-0">Aún no hay partidos activos en la plataforma.</p>
+                </div>
+              {% endif %}
+
+              <div class="separator separator-dashed my-5"></div>
+
+              <details>
+                <summary class="text-primary fw-semibold fs-7" style="cursor: pointer;">
+                  ¿No ves tu partido? Ingresa con el subdominio
+                </summary>
+                <form id="portal-form" class="d-flex flex-column flex-sm-row gap-3 mt-3" novalidate>
+                  <div class="input-group input-group-solid flex-grow-1">
+                    <span class="input-group-text portal-suffix text-muted">{{ root_host }}/</span>
+                    <input type="text"
+                           id="portal-slug"
+                           name="slug"
+                           class="form-control form-control-solid"
+                           placeholder="tu-partido"
+                           autocomplete="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           required
+                           pattern="[a-z0-9][a-z0-9-]{1,62}">
+                  </div>
+                  <button type="submit" class="btn btn-primary fw-bold">
+                    Ingresar<i class="ki-outline ki-arrow-right fs-3 ms-1"></i>
+                  </button>
+                </form>
+                <div id="portal-error" class="text-danger fs-7 mt-2 d-none">
+                  Ingresa un identificador válido (letras, números y guiones).
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5 d-none d-lg-block">
+          <img src="{% static 'assets/media/svg/illustrations/easy/2.svg' %}"
+               alt="Ilustración del producto"
+               class="w-100">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="py-10 py-lg-20">
+    <div class="container">
+      <div class="text-center mb-10">
+        <h2 class="fs-1 fw-bolder text-dark mb-3">Todo lo operativo en un solo lugar</h2>
+        <p class="fs-5 text-gray-700">Cada partido opera en su propio espacio aislado, con su marca y su equipo.</p>
+      </div>
+
+      <div class="row g-6">
+        <div class="col-md-6 col-xl-3">
+          <div class="card card-flush h-100 border">
+            <div class="card-body">
+              <span class="feature-icon-wrap bg-light-primary mb-4">
+                <i class="ki-outline ki-flag fs-2x text-primary"></i>
+              </span>
+              <h3 class="fs-4 fw-bolder text-dark mb-2">Campañas</h3>
+              <p class="text-gray-700 mb-0">Candidatos, elecciones, movimientos políticos y cargos en disputa, con flujos de trabajo trazables.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <div class="card card-flush h-100 border">
+            <div class="card-body">
+              <span class="feature-icon-wrap bg-light-success mb-4">
+                <i class="ki-outline ki-geolocation fs-2x text-success"></i>
+              </span>
+              <h3 class="fs-4 fw-bolder text-dark mb-2">Control territorial</h3>
+              <p class="text-gray-700 mb-0">Vallas, lonas y soportes publicitarios georreferenciados, con estados y aprobaciones.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <div class="card card-flush h-100 border">
+            <div class="card-body">
+              <span class="feature-icon-wrap bg-light-warning mb-4">
+                <i class="ki-outline ki-calendar-tick fs-2x text-warning"></i>
+              </span>
+              <h3 class="fs-4 fw-bolder text-dark mb-2">Agenda política</h3>
+              <p class="text-gray-700 mb-0">Eventos, asistencias y compromisos del candidato y su equipo, con visibilidad por rol.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <div class="card card-flush h-100 border">
+            <div class="card-body">
+              <span class="feature-icon-wrap bg-light-info mb-4">
+                <i class="ki-outline ki-chart-simple fs-2x text-info"></i>
+              </span>
+              <h3 class="fs-4 fw-bolder text-dark mb-2">Levantamientos</h3>
+              <p class="text-gray-700 mb-0">Encuestas territoriales y resultados agregados para tomar decisiones con datos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-10 py-lg-15 bg-light-primary">
+    <div class="container">
+      <div class="row align-items-center g-6">
+        <div class="col-lg-8">
+          <h3 class="fs-2 fw-bolder text-dark mb-2">Aislamiento por partido, branding propio</h3>
+          <p class="fs-5 text-gray-700 mb-0">
+            Cada tenant vive en su propio esquema PostgreSQL: datos, archivos y permisos
+            no se cruzan entre partidos. Tu logo, tus colores, tu equipo.
+          </p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+          <a href="#contacto" class="btn btn-primary fw-bold">
+            <i class="ki-outline ki-message-text-2 fs-3"></i>Solicitar acceso
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer id="contacto" class="py-10 border-top">
+    <div class="container">
+      <div class="row g-6 align-items-center">
+        <div class="col-md-6">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <img src="{% static 'assets/media/logos/default-small.svg' %}" class="h-30px" alt="">
+            <span class="fs-5 fw-bolder text-dark">Control de Campaña</span>
+          </div>
+          <p class="text-muted mb-0">© {% now "Y" %} Control de Campaña — Plataforma multipartido.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <a href="#" class="text-gray-700 text-hover-primary fw-semibold mx-3">Términos</a>
+          <a href="#" class="text-gray-700 text-hover-primary fw-semibold mx-3">Privacidad</a>
+          <a href="mailto:soporte@{{ root_host }}" class="text-gray-700 text-hover-primary fw-semibold mx-3">Soporte</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var form = document.getElementById("portal-form");
+      var input = document.getElementById("portal-slug");
+      var errorEl = document.getElementById("portal-error");
+      if (form && input && errorEl) {
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var slug = (input.value || "").trim().toLowerCase();
+          var valid = /^[a-z0-9][a-z0-9-]{1,62}$/.test(slug);
+          if (!valid) {
+            errorEl.classList.remove("d-none");
+            input.focus();
+            return;
+          }
+          errorEl.classList.add("d-none");
+          var host = {{ root_host_json|safe }};
+          var protocol = window.location.protocol;
+          window.location.href = protocol + "//" + host + "/" + slug + "/";
+        });
+      }
+
+      var search = document.getElementById("party-search");
+      var grid = document.getElementById("party-grid");
+      var emptyEl = document.getElementById("party-empty");
+      if (search && grid) {
+        var cards = Array.prototype.slice.call(grid.querySelectorAll("[data-party-name]"));
+        search.addEventListener("input", function () {
+          var q = (search.value || "").trim().toLowerCase();
+          var visible = 0;
+          cards.forEach(function (card) {
+            var name = card.getAttribute("data-party-name") || "";
+            var slug = card.getAttribute("data-party-slug") || "";
+            var match = !q || name.indexOf(q) !== -1 || slug.indexOf(q) !== -1;
+            card.classList.toggle("d-none", !match);
+            if (match) visible++;
+          });
+          if (emptyEl) emptyEl.classList.toggle("d-none", visible !== 0);
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
