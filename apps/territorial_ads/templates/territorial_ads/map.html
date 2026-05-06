@@ -3,21 +3,25 @@
 
 {% block title %}Mapa publicidad física | {{ block.super }}{% endblock %}
 
-{% block toolbar %}
-<div class="d-flex flex-wrap flex-stack mb-6 gap-3">
-  <h1 class="page-heading text-dark fw-bold fs-3 my-0">Mapa de publicidad física</h1>
-</div>
-{% endblock %}
+{% block toolbar %}{% endblock %}
 
 {% block content %}
-<div class="card mb-5">
-  <div class="card-header border-0 py-4">
-    <div class="card-title m-0 d-flex align-items-center gap-2">
-      <i class="ki-outline ki-filter fs-2 text-primary"></i>
-      <span class="fw-bold text-gray-800">Filtros del mapa</span>
-      <span id="physical-ad-filter-count" class="badge badge-light fs-8">Sin filtros</span>
-    </div>
-    <div class="card-toolbar d-flex align-items-center gap-2">
+<div class="physical-ad-map-shell">
+  <div id="physical-ad-map"
+       class="physical-ad-map"
+       data-url="{% url 'territorial_ads:map_data' %}"
+       data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"></div>
+
+  <section class="physical-ad-map-panel" aria-label="Controles del mapa">
+    <div class="d-flex flex-wrap flex-stack gap-3 mb-4">
+      <div class="d-flex align-items-center gap-2">
+        <i class="ki-outline ki-filter fs-2 text-primary"></i>
+        <div class="d-flex flex-column">
+          <span class="fw-bold text-gray-900">Publicidad física</span>
+          <span class="text-muted fs-8">Filtros del mapa</span>
+        </div>
+        <span id="physical-ad-filter-count" class="badge badge-light fs-8">Sin filtros</span>
+      </div>
       <div class="btn-group btn-group-sm" role="group" aria-label="Cambiar vista">
         <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
            class="btn btn-light d-flex align-items-center gap-1">
@@ -31,17 +35,11 @@
           <span class="d-none d-md-inline">Mapa</span>
         </button>
       </div>
-      <button type="button"
-              class="btn btn-sm btn-light"
-              id="physical-ad-map-reset">
-        <i class="ki-outline ki-eraser fs-3"></i>Limpiar
-      </button>
     </div>
-  </div>
-  <div class="card-body pt-0">
-    <form id="physical-ad-map-filters" class="row g-4 align-items-end">
-      <div class="col-12 col-lg-6">
-        <label class="form-label fs-6 fw-semibold text-gray-700">Campaña</label>
+
+    <form id="physical-ad-map-filters" class="row g-3 align-items-end">
+      <div class="col-12 col-lg-5">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
         <select name="campaign" class="form-select form-select-solid">
           <option value="">Todas</option>
           {% for campaign in campaigns %}
@@ -49,8 +47,8 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-lg-6">
-        <label class="form-label fs-6 fw-semibold text-gray-700">Estado</label>
+      <div class="col-12 col-sm-6 col-lg-4">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
         <select name="state" class="form-select form-select-solid">
           <option value="">Todos</option>
           {% for value, label in states %}
@@ -58,30 +56,28 @@
           {% endfor %}
         </select>
       </div>
-    </form>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-header border-0 py-4">
-    <div class="d-flex flex-wrap flex-stack gap-3 w-100">
-      <div class="d-flex align-items-center gap-2">
-        <i class="ki-outline ki-geolocation fs-2 text-primary"></i>
-        <span class="text-muted fw-semibold">Pines visibles</span>
-        <span id="physical-ad-map-count" class="badge badge-light-primary fs-7">0 pines</span>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label class="form-label fs-7 fw-semibold text-gray-700 d-none d-sm-block">&nbsp;</label>
+        <button type="button"
+                class="btn btn-light w-100"
+                id="physical-ad-map-reset">
+          <i class="ki-outline ki-eraser fs-3"></i>Limpiar
+        </button>
       </div>
-      <button type="button"
-              class="btn btn-sm btn-light-primary d-flex align-items-center gap-1"
-              id="physical-ad-my-location">
-        <i class="ki-outline ki-geolocation fs-3"></i>Mi ubicación
-      </button>
+    </form>
+  </section>
+
+  <div class="physical-ad-map-tools">
+    <div class="d-flex align-items-center gap-2 physical-ad-map-counter">
+      <i class="ki-outline ki-geolocation fs-2 text-primary"></i>
+      <span class="text-muted fw-semibold">Pines visibles</span>
+      <span id="physical-ad-map-count" class="badge badge-light-primary fs-7">0 pines</span>
     </div>
-  </div>
-  <div class="card-body p-0">
-    <div id="physical-ad-map"
-         class="physical-ad-map"
-         data-url="{% url 'territorial_ads:map_data' %}"
-         data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"></div>
+    <button type="button"
+            class="btn btn-sm btn-light-primary d-flex align-items-center gap-1"
+            id="physical-ad-my-location">
+      <i class="ki-outline ki-geolocation fs-3"></i>Mi ubicación
+    </button>
   </div>
 </div>
 
@@ -115,9 +111,6 @@
 {{ block.super }}
 <link href="{% static 'assets/css/forms/leaflet_map.css' %}" rel="stylesheet" type="text/css" />
 <link href="{% static 'assets/css/territorial_ads/map.css' %}" rel="stylesheet" type="text/css" />
-<style>
-  .physical-ad-map { width: 100%; height: 70vh; min-height: 480px; }
-</style>
 {% endblock %}
 
 {% block extra_js %}

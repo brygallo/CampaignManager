@@ -25,6 +25,13 @@ def _normalize(path: str) -> str:
     return (path or "").rstrip("/")
 
 
+def _without_first_segment(path: str) -> str:
+    parts = _normalize(path).lstrip("/").split("/", 1)
+    if len(parts) != 2:
+        return path
+    return "/" + parts[1]
+
+
 @register.filter
 def url_active(item_url: str, current_path: str) -> bool:
     """Compare an item URL with the current path, including child pages."""
@@ -34,6 +41,16 @@ def url_active(item_url: str, current_path: str) -> bool:
     url = _normalize(item_url)
     path = _normalize(current_path)
 
+    if _url_matches(url, path):
+        return True
+
+    # Path-routed tenants render hrefs as /<tenant>/..., while middleware
+    # exposes request.path to templates without that first tenant segment.
+    unprefixed_url = _without_first_segment(url)
+    return unprefixed_url != url and _url_matches(unprefixed_url, path)
+
+
+def _url_matches(url: str, path: str) -> bool:
     if path == url:
         return True
 

@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from django.http import HttpResponse
 
 from core.middleware import TenantPathRoutingMiddleware
+from core.templatetags.menu_tags import url_active
 
 
 def _mw():
@@ -44,3 +45,10 @@ def test_no_op_when_no_tenant_prefix():
     _mw()._scope_cookies_to_tenant(request, response)
 
     assert response.cookies["sessionid"]["path"] == "/"
+
+
+def test_url_active_accepts_path_routed_tenant_prefix():
+    assert url_active(
+        "/alpha/publicidad-territorial/mapa/",
+        "/publicidad-territorial/mapa/",
+    )

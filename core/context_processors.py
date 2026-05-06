@@ -87,3 +87,30 @@ def tenant_features(request):
     if tsettings is None:
         return {"tenant_features": GATED_MENU_SECTIONS}
     return {"tenant_features": tsettings.enabled_modules()}
+
+
+def tenant_path_menu(request):
+    """Prefix sidebar menu URLs when tenants are routed by path.
+
+    ``TenantPathRoutingMiddleware`` rewrites ``request.path`` to the tenant
+    internal path, but rendered links still need the visible ``/<tenant>/``
+    prefix or they will fall back to the public URLconf.
+    """
+    prefix = getattr(request, "tenant_path_prefix", "")
+    if not prefix:
+        return {}
+
+    try:
+        from superadmin.context_processors import build_user_menu
+    except Exception:
+        return {}
+
+    def prefix_node(node):
+        copied = dict(node)
+        url = copied.get("url")
+        if url and url.startswith("/") and not url.startswith(f"{prefix}/"):
+            copied["url"] = f"{prefix}{url}"
+        copied["submenus"] = [prefix_node(sub) for sub in copied.get("submenus") or []]
+        return copied
+
+    return {"menu_tree": [prefix_node(item) for item in build_user_menu(request.user)]}

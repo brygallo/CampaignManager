@@ -28,6 +28,12 @@ class PhysicalAdvertisementSite(BaseSite):
     list_template_name = "territorial_ads/superadmin_physicaladvertisement_list.html"
     list_mixins = (WorkflowStateFilterMixin,)
     detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+
+    def get_url_name(self, suffix):
+        if suffix == "list":
+            return "territorial_ads:map"
+        return super().get_url_name(suffix)
+
     always_visible_fieldsets = (
         "Publicidad",
         "Contacto que ofreció el lugar",

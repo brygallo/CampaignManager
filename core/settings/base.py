@@ -131,6 +131,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "superadmin.context_processors.menu",
+                "core.context_processors.tenant_path_menu",
                 "core.context_processors.brand",
                 "core.context_processors.tenant_features",
             ],

@@ -112,9 +112,10 @@
     var defaultLat = parseFloat(el.dataset.defaultLat) || -2.3046;
     var defaultLng = parseFloat(el.dataset.defaultLng) || -78.1175;
     var defaultZoom = parseInt(el.dataset.defaultZoom || "13", 10);
-    var map = window.L.map(el).setView([defaultLat, defaultLng], defaultZoom);
+    var map = window.L.map(el, { zoomControl: false }).setView([defaultLat, defaultLng], defaultZoom);
     var pinsLayer = window.L.layerGroup().addTo(map);
     var locationLayer = window.L.layerGroup().addTo(map);
+    window.L.control.zoom({ position: "bottomleft" }).addTo(map);
 
     if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
       window.LeafletBasemaps.build(map, { "Pines": pinsLayer });

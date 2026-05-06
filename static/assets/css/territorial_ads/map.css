@@ -1,3 +1,91 @@
+/* ---------- Full map layout ---------- */
+.physical-ad-map-shell {
+  position: relative;
+  min-height: calc(100vh - 150px);
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background: var(--bs-gray-200);
+  box-shadow: var(--bs-card-box-shadow);
+}
+
+.physical-ad-map {
+  width: 100%;
+  height: calc(100vh - 150px);
+  min-height: 640px;
+}
+
+.physical-ad-map-panel,
+.physical-ad-map-tools {
+  position: absolute;
+  z-index: 500;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--bs-gray-200);
+  border-radius: 0.625rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(8px);
+}
+
+.physical-ad-map-panel {
+  top: 1rem;
+  left: 1rem;
+  width: min(760px, calc(100% - 2rem));
+  padding: 1rem;
+}
+
+.physical-ad-map-tools {
+  right: 1rem;
+  bottom: 1rem;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.physical-ad-map-counter {
+  min-height: 32px;
+  padding: 0 0.25rem;
+}
+
+@media (max-width: 991.98px) {
+  .physical-ad-map-shell {
+    min-height: calc(100vh - 110px);
+    border-radius: 0;
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+
+  .physical-ad-map {
+    height: calc(100vh - 110px);
+    min-height: 720px;
+  }
+
+  .physical-ad-map-panel {
+    top: 0.75rem;
+    left: 0.75rem;
+    width: calc(100% - 1.5rem);
+    max-height: calc(100% - 7rem);
+    overflow: auto;
+  }
+
+  .physical-ad-map-tools {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .physical-ad-map-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .physical-ad-map-counter {
+    justify-content: center;
+  }
+}
+
 /* Territorial ads map popup — design tokens scoped via .map-popup root.
    Stays inside the Metronic theme: uses --bs-* tokens, symbol classes, badges. */
 
