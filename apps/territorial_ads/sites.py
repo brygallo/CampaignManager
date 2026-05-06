@@ -5,17 +5,32 @@ from core.base import BaseSite
 from core.list_mixins import WorkflowStateFilterMixin
 
 from .forms import PhysicalAdvertisementForm
-from .models import PhysicalAdvertisement
+from .models import AdvertisingCostType, PhysicalAdvertisement
+
+
+@register("territorial_ads.AdvertisingCostType")
+class AdvertisingCostTypeSite(BaseSite):
+    list_fields = ("code", "name", "order", "requires_amount", "is_active:Activo")
+    detail_fields = {
+        "Tipo de costo": (
+            ("code", "name"),
+            ("order", "requires_amount"),
+        ),
+    }
+    search_params = ("code__icontains", "name__icontains")
+    filter_fields = ("requires_amount", "is_active:Activo")
 
 
 @register("territorial_ads.PhysicalAdvertisement")
 class PhysicalAdvertisementSite(BaseSite):
     form_class = PhysicalAdvertisementForm
+    form_template_name = "territorial_ads/physicaladvertisement_form.html"
     list_mixins = (WorkflowStateFilterMixin,)
     list_fields = (
         "code",
         "campaign",
         "owner_name",
+        "cost_type:Costo",
         "get_state_display:Estado",
         "assigned_installer",
         "installer_team",
@@ -27,12 +42,14 @@ class PhysicalAdvertisementSite(BaseSite):
         ),
         "Contacto que ofreció el lugar": (
             ("owner_name", "owner_phone"),
+            ("cost_type", "cost_amount"),
             ("offered_notes",),
         ),
         "Ubicación ofrecida": (
             ("address",),
             ("reference",),
             ("offered_latitude", "offered_longitude"),
+            ("offered_photo",),
         ),
         "Seguimiento": (
             ("code", "get_state_display:Estado"),
@@ -67,6 +84,7 @@ class PhysicalAdvertisementSite(BaseSite):
         "state",
         "campaign",
         "advertisement_type",
+        "cost_type",
         "assigned_installer",
         "is_active",
     )

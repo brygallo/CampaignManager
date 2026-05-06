@@ -9,6 +9,29 @@ from apps.territorial_ads.transitions import PhysicalAdTransitions
 from apps.workflows.mixins import TransitionRequirementsMixin
 
 
+class AdvertisingCostType(BaseModel):
+    """Catálogo de cómo se obtiene el lugar (gratuita, pagada, donada, canje, etc.)."""
+
+    PAID_CODE = "PAGADA"
+
+    code = models.CharField("Código", max_length=40, unique=True)
+    name = models.CharField("Nombre", max_length=120)
+    order = models.PositiveSmallIntegerField("Orden", default=0)
+    requires_amount = models.BooleanField(
+        "Requiere monto",
+        default=False,
+        help_text="Si está activo, se exige capturar el monto acordado.",
+    )
+
+    class Meta:
+        verbose_name = "Tipo de costo de publicidad"
+        verbose_name_plural = "Tipos de costo de publicidad"
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
 class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirementsMixin):
     """Physical campaign advertising placement, initially focused on lonas."""
 
@@ -25,8 +48,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         on_delete=models.PROTECT,
         related_name="physical_advertisements",
         verbose_name="Campaña",
-        null=True,
-        blank=True,
     )
     advertisement_type = models.CharField(
         "Tipo de publicidad",
@@ -43,8 +64,24 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         "Alto (m)", max_digits=6, decimal_places=2, null=True, blank=True
     )
 
-    owner_name = models.CharField("Dueño / contacto", max_length=180)
+    owner_name = models.CharField("Propietario / contacto", max_length=180)
     owner_phone = models.CharField("Teléfono contacto", max_length=32)
+    cost_type = models.ForeignKey(
+        AdvertisingCostType,
+        on_delete=models.PROTECT,
+        related_name="physical_advertisements",
+        verbose_name="Tipo de costo",
+        null=True,
+        blank=True,
+    )
+    cost_amount = models.DecimalField(
+        "Monto acordado",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Sólo si el tipo de costo lo requiere.",
+    )
     offered_notes = models.TextField("Condiciones ofrecidas", blank=True)
 
     address = models.CharField("Dirección", max_length=255)
@@ -64,6 +101,12 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         null=True,
         blank=True,
         validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+    offered_photo = models.ImageField(
+        "Foto del lugar ofrecido",
+        upload_to="territorial_ads/offered/",
+        null=True,
+        blank=True,
     )
 
     state = FSMIntegerField(
@@ -201,7 +244,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
                 "Aprobar",
                 [
                     self.build_transition_requirement_item(
-                        "Dueño / contacto", self.owner_name, bool(self.owner_name)
+                        "Propietario / contacto", self.owner_name, bool(self.owner_name)
                     ),
                     self.build_transition_requirement_item(
                         "Teléfono contacto", self.owner_phone, bool(self.owner_phone)

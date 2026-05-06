@@ -1,0 +1,7 @@
+{% extends "base/base_form.html" %}
+{% load static %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'assets/js/territorial_ads/cost_type_amount_toggle.js' %}"></script>
+{% endblock %}

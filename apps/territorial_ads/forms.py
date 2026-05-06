@@ -7,7 +7,34 @@ from superadmin.forms import ModelForm
 from core.widgets import LeafletMapWidget
 from apps.campaigns.models import Campaign
 
-from .models import PhysicalAdvertisement
+from .models import AdvertisingCostType, PhysicalAdvertisement
+
+
+class CostTypeSelect2Widget(Select2Widget):
+    """Select2 widget that exposes ``requires_amount`` as a data attribute per option."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._requires_amount_map = None
+
+    def _requires_amount_lookup(self):
+        if self._requires_amount_map is None:
+            self._requires_amount_map = dict(
+                AdvertisingCostType.objects.values_list("pk", "requires_amount")
+            )
+        return self._requires_amount_map
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        raw = getattr(value, "value", value)
+        try:
+            pk = int(raw)
+        except (TypeError, ValueError):
+            return option
+        flags = self._requires_amount_lookup()
+        if pk in flags:
+            option["attrs"]["data-requires-amount"] = "1" if flags[pk] else "0"
+        return option
 
 
 class PhysicalAdvertisementForm(ModelForm):
@@ -21,6 +48,15 @@ class PhysicalAdvertisementForm(ModelForm):
         ),
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "campaign" in self.fields:
+            active_campaigns = Campaign.objects.filter(is_active=True).order_by(
+                "-start_date", "name"
+            )
+            self.fields["campaign"].queryset = active_campaigns
+            self.fields["campaign"].widget.queryset = active_campaigns
+
     class Meta:
         model = PhysicalAdvertisement
         fieldsets = {
@@ -30,6 +66,7 @@ class PhysicalAdvertisementForm(ModelForm):
             ),
             "Contacto que ofreció el lugar": (
                 ("owner_name", "owner_phone"),
+                ("cost_type", "cost_amount"),
                 ("offered_notes",),
             ),
             "Ubicación ofrecida": (
@@ -37,6 +74,7 @@ class PhysicalAdvertisementForm(ModelForm):
                 ("reference",),
                 ("offered_location",),
                 ("offered_latitude", "offered_longitude"),
+                ("offered_photo",),
             ),
         }
         widgets = {
@@ -59,9 +97,39 @@ class PhysicalAdvertisementForm(ModelForm):
                     "data-minimum-input-length": 0,
                 },
             ),
+            "cost_type": CostTypeSelect2Widget(
+                attrs={
+                    "data-minimum-input-length": 0,
+                    "data-cost-type-select": "1",
+                },
+            ),
+            "cost_amount": forms.NumberInput(
+                attrs={
+                    "data-cost-amount-input": "1",
+                    "step": "0.01",
+                    "min": "0",
+                },
+            ),
             "offered_latitude": forms.HiddenInput(),
             "offered_longitude": forms.HiddenInput(),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        cost_type = cleaned_data.get("cost_type")
+        cost_amount = cleaned_data.get("cost_amount")
+        requires_amount = bool(cost_type and cost_type.requires_amount)
+        if requires_amount and not cost_amount:
+            self.add_error(
+                "cost_amount",
+                f"Indica el monto acordado para el tipo '{cost_type.name}'.",
+            )
+        if not requires_amount and cost_amount:
+            self.add_error(
+                "cost_amount",
+                "Este tipo de costo no permite registrar monto.",
+            )
+        return cleaned_data
 
 
 class ApprovalForm(forms.Form):

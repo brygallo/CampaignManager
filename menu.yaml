@@ -69,6 +69,9 @@ Catálogos:
   Tipos de publicidad:
     app: field_surveys
     model: advertisingtype
+  Tipos de costo de publicidad:
+    app: territorial_ads
+    model: advertisingcosttype
 
 Sistema:
   icon: setting-3

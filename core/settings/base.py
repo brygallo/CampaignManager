@@ -278,6 +278,7 @@ TEMPLATE_WIDGETS = {
     "select2": "widgets/selectinput.html",
     "modelselect2": "widgets/selectinput.html",
     "modelselect2multiple": "widgets/selectinput.html",
+    "costtypeselect2": "widgets/selectinput.html",
     "email": "widgets/textinput.html",
     "number": "widgets/textinput.html",
     "ckeditor": "widgets/ckeditorinput.html",
