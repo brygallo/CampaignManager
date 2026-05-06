@@ -4,6 +4,7 @@ from tracing.models import BaseModel
 
 from apps.campaigns.transitions import CampaignTransitions
 from apps.workflows.mixins import TransitionRequirementsMixin
+from core.fields import CompressedImageField
 
 
 class Election(BaseModel):
@@ -27,7 +28,7 @@ class PoliticalMovement(BaseModel):
     acronym = models.CharField("Siglas", max_length=16, blank=True)
     list_number = models.CharField("Número de lista", max_length=8, blank=True)
     color = models.CharField("Color", max_length=7, blank=True, help_text="Hex #RRGGBB")
-    logo = models.ImageField("Logo", upload_to="movements/logos/", null=True, blank=True)
+    logo = CompressedImageField("Logo", upload_to="movements/logos/", null=True, blank=True)
 
     class Meta:
         verbose_name = "Movimiento político"
@@ -72,7 +73,7 @@ class Candidate(BaseModel):
     )
     email = models.EmailField("Correo", blank=True)
     phone = models.CharField("Teléfono", max_length=32, blank=True)
-    photo = models.ImageField("Foto", upload_to="candidates/photos/", null=True, blank=True)
+    photo = CompressedImageField("Foto", upload_to="candidates/photos/", null=True, blank=True)
     bio = models.TextField("Biografía", blank=True)
 
     class Meta:

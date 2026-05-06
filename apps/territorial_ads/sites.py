@@ -1,7 +1,7 @@
 """Register territorial advertising models in superadmin."""
 from superadmin.decorators import register
 
-from core.base import BaseSite
+from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin
 from core.list_mixins import WorkflowStateFilterMixin
 
 from .forms import PhysicalAdvertisementForm
@@ -26,6 +26,13 @@ class PhysicalAdvertisementSite(BaseSite):
     form_class = PhysicalAdvertisementForm
     form_template_name = "territorial_ads/physicaladvertisement_form.html"
     list_mixins = (WorkflowStateFilterMixin,)
+    detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+    always_visible_fieldsets = (
+        "Publicidad",
+        "Contacto que ofreció el lugar",
+        "Ubicación ofrecida",
+        "Seguimiento",
+    )
     list_fields = (
         "code",
         "campaign",
@@ -54,10 +61,16 @@ class PhysicalAdvertisementSite(BaseSite):
         "Seguimiento": (
             ("code", "get_state_display:Estado"),
         ),
-        "Aprobación y asignación": (
+        "Rechazo": (
+            ("rejected_at", "rejected_by"),
+            ("rejection_reason",),
+        ),
+        "Aprobación": (
             ("approved_by", "approved_at"),
             ("width_meters", "height_meters"),
             ("installation_instructions",),
+        ),
+        "Asignación de instalación": (
             ("assigned_installer", "installer_team"),
             ("assigned_by", "assigned_at"),
         ),
@@ -67,11 +80,15 @@ class PhysicalAdvertisementSite(BaseSite):
             ("installed_at", "installed_by"),
             ("installation_notes",),
         ),
-        "Control posterior": (
-            ("damage_notes", "damage_photo"),
+        "Daño reportado": (
             ("damage_reported_at", "damage_reported_by"),
-            ("retirement_notes", "retirement_photo"),
+            ("damage_notes",),
+            ("damage_photo",),
+        ),
+        "Retiro": (
             ("retired_at", "retired_by"),
+            ("retirement_notes",),
+            ("retirement_photo",),
         ),
     }
     search_params = (

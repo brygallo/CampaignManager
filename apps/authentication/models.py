@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 
+from core.fields import CompressedImageField
+
 
 class User(AbstractUser):
     """Extended User with unique email and optional alias.
@@ -51,7 +53,7 @@ class Profile(models.Model):
             )
         ],
     )
-    avatar = models.ImageField(
+    avatar = CompressedImageField(
         "Avatar",
         upload_to="avatars/",
         blank=True,

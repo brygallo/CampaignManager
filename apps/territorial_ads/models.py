@@ -6,6 +6,7 @@ from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
 from apps.territorial_ads.transitions import PhysicalAdTransitions
+from core.fields import CompressedImageField
 
 
 class AdvertisingCostType(BaseModel):
@@ -101,7 +102,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         blank=True,
         validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
-    offered_photo = models.ImageField(
+    offered_photo = CompressedImageField(
         "Foto del lugar ofrecido",
         upload_to="territorial_ads/offered/",
         null=True,
@@ -148,7 +149,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     )
     assigned_at = models.DateTimeField("Fecha de asignación", null=True, blank=True)
 
-    installation_photo = models.ImageField(
+    installation_photo = CompressedImageField(
         "Foto de evidencia",
         upload_to="territorial_ads/installations/",
         null=True,
@@ -182,7 +183,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     installation_notes = models.TextField("Notas de instalación", blank=True)
 
     damage_notes = models.TextField("Notas de daño", blank=True)
-    damage_photo = models.ImageField(
+    damage_photo = CompressedImageField(
         "Foto de daño",
         upload_to="territorial_ads/damages/",
         null=True,
@@ -210,7 +211,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     )
 
     retirement_notes = models.TextField("Notas de retiro", blank=True)
-    retirement_photo = models.ImageField(
+    retirement_photo = CompressedImageField(
         "Foto de retiro",
         upload_to="territorial_ads/retirements/",
         null=True,

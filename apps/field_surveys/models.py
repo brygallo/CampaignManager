@@ -6,6 +6,7 @@ from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
 from apps.locations.models import Parish, Sector
+from core.fields import CompressedImageField
 
 
 class SurveyResultOption(BaseModel):
@@ -139,7 +140,7 @@ class OwnAdvertisingPlacement(BaseModel):
         related_name="own_advertising_placements",
         verbose_name="Tipo de publicidad",
     )
-    photo = models.ImageField(
+    photo = CompressedImageField(
         "Foto de evidencia", upload_to="field_surveys/own_advertising/"
     )
     latitude = models.DecimalField(
@@ -270,7 +271,7 @@ class CompetitorAdvertisingDetection(BaseModel):
     )
     address = models.CharField("Dirección", max_length=255, blank=True)
     reference = models.CharField("Referencia", max_length=255, blank=True)
-    photo = models.ImageField(
+    photo = CompressedImageField(
         "Foto", upload_to="field_surveys/competitor_advertising/", null=True, blank=True
     )
     observation = models.TextField("Observación", blank=True)

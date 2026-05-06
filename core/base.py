@@ -17,6 +17,41 @@ class DetailMapsMixin:
         return context
 
 
+class HideEmptyFieldsetsMixin:
+    """Hide detail fieldsets when every field in them is empty.
+
+    Useful for workflow-driven detail pages: downstream sections (approval,
+    installation, damage, retirement, ...) only appear after the matching
+    transition has captured data. Sections listed in ``always_visible_fieldsets``
+    on the site are kept regardless.
+    """
+
+    def get_results(self):
+        flatten_results, fieldsets = super().get_results()
+        always = set(getattr(self.site, "always_visible_fieldsets", ()))
+        kept = [
+            fs for fs in fieldsets
+            if fs.get("title", "") in always or self._fieldset_has_value(fs)
+        ]
+        return flatten_results, kept
+
+    @staticmethod
+    def _fieldset_has_value(fieldset_block):
+        for row in fieldset_block.get("fieldset", []):
+            for field_tuple in row.get("fields", ()):  # (label, value, type, field)
+                if len(field_tuple) < 2:
+                    continue
+                value = field_tuple[1]
+                if value is None:
+                    continue
+                if hasattr(value, "name") and not getattr(value, "name", ""):
+                    continue  # empty FileField/ImageField
+                if isinstance(value, str) and not value.strip():
+                    continue
+                return True
+        return False
+
+
 class BaseSite(ModelSite):
     """Project-wide default ModelSite.
 

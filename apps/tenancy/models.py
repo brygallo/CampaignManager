@@ -7,6 +7,7 @@ is isolated inside its own PostgreSQL schema, but the registry of tenants
 from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
 
+from core.fields import CompressedImageField
 from core.storage import PublicFileSystemStorage
 
 _public_storage = PublicFileSystemStorage()
@@ -78,7 +79,7 @@ class TenantBranding(models.Model):
     )
 
     brand_name = models.CharField("Nombre comercial", max_length=120, blank=True)
-    logo = models.ImageField(
+    logo = CompressedImageField(
         "Logo",
         upload_to=tenant_logo_upload_to,
         storage=_public_storage,
