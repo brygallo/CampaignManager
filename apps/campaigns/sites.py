@@ -18,10 +18,7 @@ class ElectionSite(BaseSite):
     form_class = ElectionForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("name", "election_date", "is_active:Activa")
-    detail_fields = (
-        ("name", "election_date"),
-        ("description",),
-    )
+    detail_fields = ElectionForm.Meta.fieldsets
     search_params = ("name__icontains",)
     filter_fields = ("is_active:Activa", "election_date:Fecha de elección")
 
@@ -31,11 +28,7 @@ class PoliticalMovementSite(BaseSite):
     form_class = PoliticalMovementForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("name", "acronym", "list_number", "is_active:Activo")
-    detail_fields = (
-        ("name", "acronym"),
-        ("list_number", "color"),
-        ("logo",),
-    )
+    detail_fields = PoliticalMovementForm.Meta.fieldsets
     search_params = ("name__icontains", "acronym__icontains")
     filter_fields = ("is_active:Activo",)
 
@@ -45,9 +38,7 @@ class PositionSite(BaseSite):
     form_class = PositionForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("name", "scope", "is_active:Activo")
-    detail_fields = (
-        ("name", "scope"),
-    )
+    detail_fields = PositionForm.Meta.fieldsets
     search_params = ("name__icontains",)
     filter_fields = ("scope:Alcance", "is_active:Activo")
 
@@ -57,12 +48,7 @@ class CandidateSite(BaseSite):
     form_class = CandidateForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("full_name", "identification", "email", "phone", "is_active:Activo")
-    detail_fields = (
-        ("full_name", "identification"),
-        ("email", "phone"),
-        ("photo",),
-        ("bio",),
-    )
+    detail_fields = CandidateForm.Meta.fieldsets
     search_params = (
         "full_name__icontains",
         "identification__icontains",
@@ -83,20 +69,7 @@ class CampaignSite(BaseSite):
         "position",
         "get_state_display:Estado",
     )
-    detail_fields = {
-        "Identificación": (
-            ("name",),
-            ("election", "candidate"),
-            ("movement", "position"),
-        ),
-        "Vigencia": (
-            ("start_date", "end_date"),
-            ("get_state_display:Estado",),
-        ),
-        "Detalle": (
-            ("description",),
-        ),
-    }
+    detail_fields = CampaignForm.Meta.fieldsets
     search_params = (
         "name__icontains",
         "candidate__full_name__icontains",

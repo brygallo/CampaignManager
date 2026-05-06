@@ -27,18 +27,10 @@
       {{ field.label }}
     </label>
 
-    {% if field.field.widget.input_type == "select" %}
-      {% if field.errors %}
-        {{ field|add_class:"form-select is-invalid" }}
-      {% else %}
-        {{ field|add_class:"form-select" }}
-      {% endif %}
+    {% if field.errors %}
+      {% render_field field class="is-invalid" %}
     {% else %}
-      {% if field.errors %}
-        {{ field|add_class:"form-control is-invalid" }}
-      {% else %}
-        {{ field|add_class:"form-control" }}
-      {% endif %}
+      {% render_field field %}
     {% endif %}
 
     {% if field.help_text %}

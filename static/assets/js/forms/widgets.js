@@ -28,6 +28,7 @@
       if (element._flatpickr) {
         return;
       }
+      element.type = "text";
       window.flatpickr(element, {
         allowInput: true,
         dateFormat: "Y-m-d",
@@ -39,6 +40,7 @@
       if (element._flatpickr) {
         return;
       }
+      element.type = "text";
       window.flatpickr(element, {
         allowInput: true,
         dateFormat: "Y-m-d H:i",

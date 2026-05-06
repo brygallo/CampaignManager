@@ -107,6 +107,10 @@ class FieldSurvey(BaseModel):
         selected = set(self.results.values_list("code", flat=True))
         return next((code for code in priority if code in selected), "")
 
+    @property
+    def results_display(self):
+        return ", ".join(self.results.order_by("order", "name").values_list("name", flat=True)) or "-"
+
 
 class AdvertisingType(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)

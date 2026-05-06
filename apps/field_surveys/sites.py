@@ -1,12 +1,14 @@
 from superadmin.decorators import register
 
-from core.base import BaseSite
+from core.base import BaseSite, DetailMapsMixin
 from core.list_mixins import DropdownFilterMixin
 
 from .forms import (
+    AdvertisingTypeForm,
     CompetitorAdvertisingDetectionForm,
     CompetitorForm,
     FieldSurveyForm,
+    OwnAdvertisingPlacementForm,
     SurveyResultOptionForm,
 )
 from .models import (
@@ -49,16 +51,17 @@ class SurveyResultOptionSite(BaseSite):
     form_class = SurveyResultOptionForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("code", "name", "order", "is_active:Activo")
-    detail_fields = (("code", "name"), ("order", "is_active"))
+    detail_fields = SurveyResultOptionForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
     filter_fields = ("is_active:Activo",)
 
 
 @register("field_surveys.AdvertisingType")
 class AdvertisingTypeSite(BaseSite):
+    form_class = AdvertisingTypeForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("code", "name", "order", "is_active:Activo")
-    detail_fields = (("code", "name"), ("order", "is_active"))
+    detail_fields = AdvertisingTypeForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
     filter_fields = ("is_active:Activo",)
 
@@ -68,14 +71,7 @@ class CompetitorSite(BaseSite):
     form_class = CompetitorForm
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("campaign", "list_number", "political_organization", "candidate_name", "is_active:Activo")
-    detail_fields = {
-        "Competidor": (
-            ("campaign", "list_number"),
-            ("political_organization", "candidate_name"),
-            ("color", "is_active"),
-            ("notes",),
-        ),
-    }
+    detail_fields = CompetitorForm.Meta.fieldsets
     search_params = ("list_number__icontains", "political_organization__icontains", "candidate_name__icontains")
     filter_fields = ("campaign:Campaña", "is_active:Activo")
 
@@ -85,7 +81,7 @@ class FieldSurveySite(BaseSite):
     form_class = FieldSurveyForm
     list_template_name = "field_surveys/superadmin_fieldsurvey_list.html"
     list_mixins = (FieldSurveyOwnershipMixin, DropdownFilterMixin)
-    detail_mixins = (FieldSurveyOwnershipMixin,)
+    detail_mixins = (FieldSurveyOwnershipMixin, DetailMapsMixin)
     update_mixins = (FieldSurveyOwnershipMixin,)
     delete_mixins = (FieldSurveyOwnershipMixin,)
     list_fields = ("campaign", "brigadier", "parish", "neighborhood", "voters_count", "created_date:Fecha")
@@ -103,22 +99,20 @@ class FieldSurveySite(BaseSite):
         "Persona o vivienda": (
             ("person_name", "person_phone"),
             ("voters_count",),
-            ("results",),
+            ("results_display:Resultados",),
             ("notes",),
-        ),
-        "Auditoría": (
-            ("created_by", "created_date"),
-            ("modified_date",),
         ),
     }
     search_params = ("person_name__icontains", "person_phone__icontains", "address__icontains", "reference__icontains")
     filter_fields = ("campaign:Campaña", "brigadier:Brigadista", "parish:Parroquia", "neighborhood:Barrio", "results:Resultado", "created_date:Fecha")
+    detail_maps = (("Ubicación GPS", "latitude", "longitude"),)
 
 
 @register("field_surveys.OwnAdvertisingPlacement")
 class OwnAdvertisingPlacementSite(BaseSite):
+    form_class = OwnAdvertisingPlacementForm
     list_mixins = (OwnAdvertisingOwnershipMixin, DropdownFilterMixin)
-    detail_mixins = (OwnAdvertisingOwnershipMixin,)
+    detail_mixins = (OwnAdvertisingOwnershipMixin, DetailMapsMixin)
     update_mixins = (OwnAdvertisingOwnershipMixin,)
     delete_mixins = (OwnAdvertisingOwnershipMixin,)
     list_fields = ("field_survey", "advertising_type", "created_by", "created_date:Fecha")
@@ -128,18 +122,18 @@ class OwnAdvertisingPlacementSite(BaseSite):
             ("photo",),
             ("latitude", "longitude"),
             ("observation",),
-            ("created_by", "created_date"),
         )
     }
     search_params = ("observation__icontains",)
     filter_fields = ("advertising_type:Tipo", "created_date:Fecha")
+    detail_maps = (("Ubicación GPS", "latitude", "longitude"),)
 
 
 @register("field_surveys.CompetitorAdvertisingDetection")
 class CompetitorAdvertisingDetectionSite(BaseSite):
     form_class = CompetitorAdvertisingDetectionForm
     list_mixins = (CompetitorDetectionOwnershipMixin, DropdownFilterMixin)
-    detail_mixins = (CompetitorDetectionOwnershipMixin,)
+    detail_mixins = (CompetitorDetectionOwnershipMixin, DetailMapsMixin)
     update_mixins = (CompetitorDetectionOwnershipMixin,)
     delete_mixins = (CompetitorDetectionOwnershipMixin,)
     list_fields = ("campaign", "competitor", "brigadier", "advertising_type", "created_date:Fecha")
@@ -157,8 +151,8 @@ class CompetitorAdvertisingDetectionSite(BaseSite):
         "Evidencia": (
             ("photo",),
             ("observation",),
-            ("created_by", "created_date"),
         ),
     }
     search_params = ("address__icontains", "reference__icontains", "observation__icontains")
     filter_fields = ("campaign:Campaña", "competitor:Competidor", "brigadier:Brigadista", "advertising_type:Tipo", "created_date:Fecha")
+    detail_maps = (("Ubicación GPS", "latitude", "longitude"),)

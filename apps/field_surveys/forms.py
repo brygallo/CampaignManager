@@ -27,6 +27,17 @@ class SurveyResultOptionForm(ModelForm):
         }
 
 
+class AdvertisingTypeForm(ModelForm):
+    class Meta:
+        model = AdvertisingType
+        fieldsets = {
+            "Tipo de publicidad": (
+                ("code", "name"),
+                ("order", "is_active"),
+            ),
+        }
+
+
 class CompetitorForm(ModelForm):
     class Meta:
         model = Competitor
@@ -261,6 +272,48 @@ class FieldSurveyQuickForm(FieldSurveyForm):
                 observation=self.cleaned_data.get("competitor_observation", ""),
                 created_by=user,
             )
+
+
+class OwnAdvertisingPlacementForm(ModelForm):
+    location = forms.CharField(
+        label="Ubicación GPS",
+        required=False,
+        widget=LeafletMapWidget(
+            lat_field="latitude",
+            lng_field="longitude",
+            attrs={"column": 12},
+        ),
+    )
+
+    class Meta:
+        model = OwnAdvertisingPlacement
+        fieldsets = {
+            "Publicidad": (
+                ("field_survey", "advertising_type"),
+                ("photo",),
+                ("location",),
+                ("latitude", "longitude"),
+                ("observation",),
+            ),
+        }
+        widgets = {
+            "advertising_type": ModelSelect2Widget(
+                model=AdvertisingType,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "AdvertisingType"},
+            ),
+            "latitude": forms.HiddenInput(),
+            "longitude": forms.HiddenInput(),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("latitude") in (None, ""):
+            self.add_error("latitude", "La ubicación GPS es obligatoria.")
+        if cleaned_data.get("longitude") in (None, ""):
+            self.add_error("longitude", "La ubicación GPS es obligatoria.")
+        return cleaned_data
 
 
 class CompetitorAdvertisingDetectionForm(ModelForm):

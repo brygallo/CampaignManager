@@ -3,11 +3,11 @@
 {% load static %}
 
 <button type="button"
-        class="btn btn-light-primary"
+        class="btn btn-light-primary btn-sm d-flex align-items-center gap-1"
         data-kt-menu-trigger="click"
         data-kt-menu-placement="bottom-end"
         aria-haspopup="menu">
-  <i class="ki-outline ki-filter fs-2"></i>Filtros
+  <i class="ki-outline ki-filter fs-3"></i>Filtros
   {% if site.current_filters %}
     <span class="badge badge-circle badge-primary ms-2">{{ site.current_filters|length }}</span>
   {% endif %}
@@ -61,10 +61,10 @@
                    data-default-to="{{ opt.current_value_lte|default:'' }}"
                    placeholder="Seleccione un rango">
             <button type="button"
-                    class="btn btn-icon btn-light"
+                    class="btn btn-icon btn-sm btn-light"
                     data-kt-list-filter-daterange-clear="filter_{{ opt.name }}"
                     title="Limpiar rango">
-              <i class="ki-outline ki-cross fs-2"></i>
+              <i class="ki-outline ki-cross fs-3"></i>
             </button>
           </div>
           <input type="hidden" name="{{ opt.name }}__gte"
@@ -87,12 +87,12 @@
 
     <div class="d-flex justify-content-end">
       <button type="reset"
-              class="btn btn-light btn-active-light-primary fw-semibold me-2 px-6"
+              class="btn btn-light btn-sm btn-active-light-primary fw-semibold me-2"
               data-kt-list-filter="reset">
         Restablecer
       </button>
       <button type="submit"
-              class="btn btn-primary fw-semibold px-6"
+              class="btn btn-primary btn-sm fw-semibold"
               data-kt-menu-dismiss="true"
               data-kt-list-filter="apply">
         Aplicar

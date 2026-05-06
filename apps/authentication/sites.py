@@ -33,11 +33,13 @@ class UserSite(BaseSite):
     detail_fields = {
         "Datos de acceso": (
             ("username", "email"),
-            ("is_active", "is_staff", "is_superuser"),
         ),
         "Información personal": (
             ("first_name", "last_name"),
-            ("alias", "date_joined"),
+            ("alias",),
+        ),
+        "Permisos": (
+            ("is_active", "is_staff", "is_superuser"),
         ),
     }
     search_params = (
@@ -71,7 +73,7 @@ class PermissionSite(BaseSite):
     detail_mixins = (PermissionUsersMixin,)
     detail_template_name = "authentication/permission_detail.html"
     list_fields = ("name", "codename", "content_type:objeto")
-    detail_fields = (("name", "codename"), "content_type:objeto")
+    detail_fields = PermissionForm.Meta.fieldsets
     search_fields = (
         "name__icontains",
         "codename__icontains",

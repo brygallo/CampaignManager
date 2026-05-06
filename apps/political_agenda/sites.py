@@ -20,36 +20,7 @@ class PoliticalAgendaRequestSite(BaseSite):
         "priority",
         "proposed_start_at",
     )
-    detail_fields = {
-        "Solicitud": (
-            ("campaign", "title"),
-            ("event_type", "get_state_display"),
-            ("priority", "blocks_candidate_agenda"),
-        ),
-        "Solicitante": (
-            ("requester_name", "requester_phone"),
-            ("requester_email", "organization"),
-        ),
-        "Fecha tentativa": (
-            ("proposed_start_at", "proposed_end_at"),
-            ("alternative_dates",),
-        ),
-        "Ubicación tentativa": (
-            ("province", "canton"),
-            ("parish", "sector"),
-            ("address",),
-            ("reference",),
-        ),
-        "Detalle": (
-            ("objective",),
-            ("expected_attendees",),
-            ("notes",),
-        ),
-        "Revisión": (
-            ("reviewed_by", "reviewed_at"),
-            ("rejection_reason",),
-        ),
-    }
+    detail_fields = PoliticalAgendaRequestForm.Meta.fieldsets
     search_params = (
         "title__icontains",
         "requester_name__icontains",
@@ -78,29 +49,7 @@ class PoliticalAgendaEventSite(BaseSite):
         "end_at",
         "responsible",
     )
-    detail_fields = {
-        "Evento": (
-            ("campaign", "source_request"),
-            ("title", "event_type"),
-            ("get_state_display", "blocks_candidate_agenda"),
-            ("start_at", "end_at"),
-        ),
-        "Ubicación": (
-            ("province", "canton"),
-            ("parish", "sector"),
-            ("address",),
-            ("reference",),
-        ),
-        "Organización": (
-            ("organizer_name", "organizer_phone"),
-            ("responsible", "expected_attendees"),
-        ),
-        "Detalle": (
-            ("objective",),
-            ("logistics_notes",),
-            ("result_notes",),
-        ),
-    }
+    detail_fields = PoliticalAgendaEventForm.Meta.fieldsets
     search_params = (
         "title__icontains",
         "organizer_name__icontains",

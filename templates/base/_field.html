@@ -1,3 +1,4 @@
+{% load superadmin_forms %}
 {# Generic BoundField render with Metronic / Bootstrap 5 styles. #}
 {% if field.field.widget.input_type == "checkbox" %}
   <div class="form-check form-check-custom form-check-solid mt-7">
@@ -8,7 +9,11 @@
   <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
     {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
   </label>
-  {{ field }}
+  {% if field.widget_type == "date" or field.widget_type == "datetime" %}
+    {% render_field field %}
+  {% else %}
+    {{ field }}
+  {% endif %}
 {% endif %}
 {% if field.help_text %}
   <div class="form-text text-muted small">{{ field.help_text }}</div>

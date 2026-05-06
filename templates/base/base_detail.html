@@ -1,5 +1,6 @@
 {% extends "base/base.html" %}
 {% load static %}
+{% load l10n %}
 {% load model_meta %}
 {% load superadmin_utils %}
 
@@ -36,32 +37,32 @@
       {% if site.nav %}
         <div class="btn-group" role="group" aria-label="Navegación entre registros">
           <a href="{{ site.nav.previous_url|default:'#' }}"
-             class="btn btn-icon btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px{% if not site.nav.previous_url %} disabled{% endif %}"
+             class="btn btn-icon btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body{% if not site.nav.previous_url %} disabled{% endif %}"
              {% if not site.nav.previous_url %}aria-disabled="true" tabindex="-1"{% endif %}
              title="Anterior" aria-label="Registro anterior">
-            <i class="ki-outline ki-arrow-left fs-2"></i>
+            <i class="ki-outline ki-arrow-left fs-3"></i>
           </a>
           <a href="{{ site.nav.next_url|default:'#' }}"
-             class="btn btn-icon btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px{% if not site.nav.next_url %} disabled{% endif %}"
+             class="btn btn-icon btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body{% if not site.nav.next_url %} disabled{% endif %}"
              {% if not site.nav.next_url %}aria-disabled="true" tabindex="-1"{% endif %}
              title="Siguiente" aria-label="Siguiente registro">
-            <i class="ki-outline ki-arrow-right fs-2"></i>
+            <i class="ki-outline ki-arrow-right fs-3"></i>
           </a>
         </div>
       {% endif %}
       {% if site.urls.list %}
-        <a href="{{ site.urls.list }}" class="btn btn-flex btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px fs-7 fw-bold" aria-label="Volver al listado">
-          <i class="ki-outline ki-arrow-left fs-2"></i><span class="d-none d-md-inline">Volver</span>
+        <a href="{{ site.urls.list }}" class="btn btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body d-flex align-items-center gap-1" aria-label="Volver al listado">
+          <i class="ki-outline ki-arrow-left fs-3"></i><span class="d-none d-md-inline">Volver</span>
         </a>
       {% endif %}
       {% if site.urls.update %}
-        <a href="{{ site.urls.update }}" class="btn btn-flex btn-primary h-40px fs-7 fw-bold" aria-label="Editar registro">
-          <i class="ki-outline ki-pencil fs-2"></i><span class="d-none d-md-inline">Editar</span>
+        <a href="{{ site.urls.update }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1" aria-label="Editar registro">
+          <i class="ki-outline ki-pencil fs-3"></i><span class="d-none d-md-inline">Editar</span>
         </a>
       {% endif %}
       {% if site.urls.delete %}
-        <a href="{{ site.urls.delete }}" class="btn btn-icon btn-light-danger h-40px" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
-          <i class="ki-outline ki-trash fs-2"></i>
+        <a href="{{ site.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
+          <i class="ki-outline ki-trash fs-3"></i>
         </a>
       {% endif %}
     </div>
@@ -124,6 +125,34 @@
               {% endfor %}
             </fieldset>
           {% endfor %}
+          {% if site.detail_maps %}
+            <fieldset class="mb-8">
+              <div class="mb-5">
+                <div class="fw-bold fs-4 text-dark mb-1">Mapa</div>
+                <div class="h-3px w-100 bg-primary"></div>
+              </div>
+              <div class="row g-5">
+                {% for map in site.detail_maps %}
+                  <div class="col-12">
+                    <div class="fv-row">
+                      <label class="form-label fw-semibold text-muted mb-2">{{ map.title }}</label>
+                      <div class="leaflet-detail-map"
+                           data-detail-map="true"
+                           data-lat="{{ map.latitude|unlocalize }}"
+                           data-lng="{{ map.longitude|unlocalize }}"
+                           data-zoom="{{ map.zoom }}"
+                           data-title="{{ map.title }}">
+                        <div class="leaflet-detail-map__canvas"></div>
+                        <div class="text-muted small mt-2">
+                          Lat: {{ map.latitude }} / Lng: {{ map.longitude }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </fieldset>
+          {% endif %}
         {% elif site.flatten_results %}
           <div class="row g-5">
             {% for label, value, field_type, field_name in site.flatten_results %}
@@ -150,7 +179,7 @@
 
   {% if object.created_date or object.modified_date %}
     <div class="card-footer py-3 bg-light">
-      <div class="d-flex flex-wrap gap-4 align-items-center text-muted small">
+      <div class="d-flex flex-wrap gap-4 align-items-center justify-content-between text-muted small w-100">
         {% if object.created_date %}
           <span class="d-inline-flex align-items-center gap-2">
             <i class="ki-outline ki-add-files fs-5"></i>
@@ -162,7 +191,7 @@
           </span>
         {% endif %}
         {% if object.modified_date %}
-          <span class="d-inline-flex align-items-center gap-2">
+          <span class="d-inline-flex align-items-center gap-2 ms-auto text-end">
             <i class="ki-outline ki-pencil fs-5"></i>
             <span class="fw-semibold">Modificado:</span>
             {{ object.modified_date|date:"d/m/Y H:i" }}
@@ -202,11 +231,11 @@
                   class="w-100 h-100 border-0 bg-body"></iframe>
         </div>
         <div class="modal-footer">
-          <a id="pdf-preview-open" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-light-primary">
+          <a id="pdf-preview-open" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-light-primary btn-sm">
             <i class="ki-outline ki-exit-up fs-3"></i>Abrir en otra pestaña
           </a>
-          <button type="button" class="btn btn-light-danger" data-bs-dismiss="modal">
-            <i class="ki-outline ki-cross fs-2"></i>Cerrar
+          <button type="button" class="btn btn-light-danger btn-sm" data-bs-dismiss="modal">
+            <i class="ki-outline ki-cross fs-3"></i>Cerrar
           </button>
         </div>
       </div>

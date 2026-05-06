@@ -4,6 +4,19 @@ from superadmin.options import ModelSite
 from core.form_mixins import SaveOptionsMixin
 
 
+class DetailMapsMixin:
+    """Add read-only map definitions to detail pages."""
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        detail_maps = self.site.get_detail_maps(self.object)
+        if "site" in context:
+            context["site"]["detail_maps"] = detail_maps
+        else:
+            context["site"] = {"detail_maps": detail_maps}
+        return context
+
+
 class BaseSite(ModelSite):
     """Project-wide default ModelSite.
 
@@ -20,6 +33,8 @@ class BaseSite(ModelSite):
     form_template_name = "base/base_form.html"
     detail_template_name = "base/base_detail.html"
     delete_template_name = "base/base_confirm_delete.html"
+    detail_mixins = (DetailMapsMixin,)
+    detail_maps = ()
 
     url_list_suffix = "listar"
     url_create_suffix = "crear"
@@ -29,3 +44,32 @@ class BaseSite(ModelSite):
 
     paginate_by = 25
     form_mixins = (SaveOptionsMixin,)
+
+    def get_detail_maps(self, obj):
+        maps = []
+        for config in self.detail_maps:
+            if isinstance(config, dict):
+                title = config.get("title", "Ubicación")
+                lat_field = config.get("lat") or config.get("latitude")
+                lng_field = config.get("lng") or config.get("longitude")
+                zoom = config.get("zoom", 16)
+            else:
+                title, lat_field, lng_field, *rest = config
+                zoom = rest[0] if rest else 16
+
+            latitude = getattr(obj, lat_field, None) if lat_field else None
+            longitude = getattr(obj, lng_field, None) if lng_field else None
+            if latitude in (None, "") or longitude in (None, ""):
+                continue
+
+            maps.append(
+                {
+                    "title": title,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "zoom": zoom,
+                    "lat_field": lat_field,
+                    "lng_field": lng_field,
+                }
+            )
+        return maps

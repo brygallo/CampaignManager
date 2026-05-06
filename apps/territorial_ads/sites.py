@@ -25,7 +25,6 @@ class PhysicalAdvertisementSite(BaseSite):
     )
     detail_fields = {
         "Publicidad": (
-            ("code", "get_state_display:Estado"),
             ("campaign", "advertisement_type"),
             ("title", "quantity"),
             ("width_meters", "height_meters"),
@@ -40,6 +39,9 @@ class PhysicalAdvertisementSite(BaseSite):
             ("address",),
             ("reference",),
             ("offered_latitude", "offered_longitude"),
+        ),
+        "Seguimiento": (
+            ("code", "get_state_display:Estado"),
         ),
         "Aprobación y asignación": (
             ("approved_by", "approved_at"),
@@ -78,4 +80,8 @@ class PhysicalAdvertisementSite(BaseSite):
         "canton",
         "assigned_installer",
         "is_active",
+    )
+    detail_maps = (
+        ("Ubicación ofrecida", "offered_latitude", "offered_longitude"),
+        ("Ubicación GPS de instalación", "installed_latitude", "installed_longitude"),
     )

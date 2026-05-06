@@ -124,6 +124,38 @@
     }, 150);
   }
 
+  function initDetailMap(container) {
+    if (container.dataset.leafletInitialized === "true" || !window.L) {
+      return;
+    }
+
+    var canvas = container.querySelector(".leaflet-detail-map__canvas");
+    var lat = parseNumber(container.dataset.lat, null);
+    var lng = parseNumber(container.dataset.lng, null);
+    if (!canvas || lat === null || lng === null) {
+      return;
+    }
+
+    container.dataset.leafletInitialized = "true";
+    var zoom = parseInt(container.dataset.zoom || "16", 10);
+    var title = container.dataset.title || "Ubicación";
+    var map = window.L.map(canvas, {
+      dragging: true,
+      scrollWheelZoom: false
+    }).setView([lat, lng], zoom);
+
+    window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    window.L.marker([lat, lng]).addTo(map).bindPopup(title);
+
+    setTimeout(function () {
+      map.invalidateSize();
+    }, 150);
+  }
+
   window.initLeafletMaps = function (scope) {
     scope = scope || document;
     if (!window.L) {
@@ -135,6 +167,13 @@
     }
     maps = maps.concat([].slice.call(scope.querySelectorAll("[data-leaflet-map]")));
     maps.forEach(initLeafletMap);
+
+    var detailMaps = [];
+    if (scope.matches && scope.matches("[data-detail-map]")) {
+      detailMaps.push(scope);
+    }
+    detailMaps = detailMaps.concat([].slice.call(scope.querySelectorAll("[data-detail-map]")));
+    detailMaps.forEach(initDetailMap);
   };
 
   if (document.readyState === "loading") {
