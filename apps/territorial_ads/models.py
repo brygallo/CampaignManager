@@ -6,7 +6,6 @@ from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
 from apps.territorial_ads.transitions import PhysicalAdTransitions
-from apps.workflows.mixins import TransitionRequirementsMixin
 
 
 class AdvertisingCostType(BaseModel):
@@ -32,7 +31,7 @@ class AdvertisingCostType(BaseModel):
         return self.name
 
 
-class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirementsMixin):
+class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     """Physical campaign advertising placement, initially focused on lonas."""
 
     workflow = PhysicalAdTransitions.workflow
@@ -199,6 +198,17 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         blank=True,
     )
 
+    rejection_reason = models.TextField("Motivo de rechazo", blank=True)
+    rejected_at = models.DateTimeField("Fecha de rechazo", null=True, blank=True)
+    rejected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="rejected_physical_ads",
+        verbose_name="Rechazado por",
+        null=True,
+        blank=True,
+    )
+
     retirement_notes = models.TextField("Notas de retiro", blank=True)
     retirement_photo = models.ImageField(
         "Foto de retiro",
@@ -222,6 +232,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         ordering = ["-created_date"]
         permissions = (
             ("approve_physicaladvertisement", "Puede aprobar publicidad física"),
+            ("reject_physicaladvertisement", "Puede rechazar publicidad física"),
             ("assign_physicaladvertisement", "Puede asignar instalación de publicidad física"),
             ("install_physicaladvertisement", "Puede registrar instalación de publicidad física"),
             ("report_damage_physicaladvertisement", "Puede reportar daño de publicidad física"),
@@ -236,75 +247,3 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         if not self.code:
             self.code = f"PF-{self.pk:06d}"
             super().save(update_fields=["code"])
-
-    @property
-    def transition_requirements(self):
-        if self.state == self.workflow.OFRECIDA:
-            return self.build_transition_requirements(
-                "Aprobar",
-                [
-                    self.build_transition_requirement_item(
-                        "Propietario / contacto", self.owner_name, bool(self.owner_name)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Teléfono contacto", self.owner_phone, bool(self.owner_phone)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Dirección", self.address, bool(self.address)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Ancho (m)", self.width_meters, False
-                    ),
-                    self.build_transition_requirement_item(
-                        "Alto (m)", self.height_meters, False
-                    ),
-                    self.build_transition_requirement_item(
-                        "Instrucciones para instalación",
-                        self.installation_instructions,
-                        False,
-                    ),
-                ],
-                help_text=(
-                    "Confirma los datos del lugar. Las dimensiones e instrucciones de "
-                    "instalación se capturan al ejecutar la transición de aprobación."
-                ),
-            )
-        if self.state == self.workflow.APROBADA:
-            assigned = bool(self.assigned_installer_id or self.installer_team)
-            return self.build_transition_requirements(
-                "Asignar instalación",
-                [
-                    self.build_transition_requirement_item(
-                        "Responsable de instalación",
-                        self.assigned_installer or self.installer_team,
-                        assigned,
-                    )
-                ],
-                ready_text="Puedes asignar la instalación desde el menú de acciones.",
-            )
-        if self.state == self.workflow.PENDIENTE_INSTALACION:
-            return self.build_transition_requirements(
-                "Marcar instalada",
-                [
-                    self.build_transition_requirement_item("Foto de evidencia", self.installation_photo, False),
-                    self.build_transition_requirement_item("Latitud GPS", self.installed_latitude, False),
-                    self.build_transition_requirement_item("Longitud GPS", self.installed_longitude, False),
-                ],
-                help_text="Estos datos se capturan obligatoriamente al ejecutar la transición de instalación.",
-            )
-        if self.state == self.workflow.INSTALADA:
-            return self.build_transition_requirements(
-                "Reportar daño / Retirar",
-                [
-                    self.build_transition_requirement_item(
-                        "Instalación registrada",
-                        self.installed_at,
-                        bool(self.installed_at),
-                    ),
-                ],
-                ready_text=(
-                    "La publicidad está instalada. Puedes reportar daño o retirarla desde el menú "
-                    "de acciones."
-                ),
-            )
-        return None

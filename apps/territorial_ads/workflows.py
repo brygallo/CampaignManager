@@ -4,6 +4,7 @@ from apps.workflows import Workflow, WorkflowChoices
 
 class PhysicalAdWorkflow(Workflow):
     class Choices(WorkflowChoices):
+        RECHAZADA = 0, "Rechazada", dict(visible=False)
         OFRECIDA = 1, "Ofrecida"
         APROBADA = 2, "Aprobada"
         PENDIENTE_INSTALACION = 3, "Pendiente instalación"

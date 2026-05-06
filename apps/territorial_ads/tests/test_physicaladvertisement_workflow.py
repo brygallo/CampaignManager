@@ -138,19 +138,3 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad()
         with self.assertRaises(TransitionNotAllowed):
             ad.mark_installed(user=self.user)
-
-    def test_transition_requirements_in_aprobada_pending(self):
-        ad = self._build_ad()
-        ad.approve(user=self.user)
-        ad.save()
-        req = ad.transition_requirements
-        self.assertIsNotNone(req)
-        self.assertEqual(req["pending_count"], 1)
-
-    def test_transition_requirements_in_aprobada_ready_after_assignment(self):
-        ad = self._build_ad()
-        ad.approve(user=self.user)
-        ad.save()
-        ad.installer_team = "Brigada B"
-        req = ad.transition_requirements
-        self.assertEqual(req["pending_count"], 0)

@@ -36,6 +36,9 @@ class BaseSite(ModelSite):
     detail_mixins = (DetailMapsMixin,)
     detail_maps = ()
 
+    create_success_url = "detail"
+    update_success_url = "detail"
+
     url_list_suffix = "listar"
     url_create_suffix = "crear"
     url_update_suffix = "editar"

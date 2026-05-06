@@ -232,6 +232,15 @@ class DamageReportForm(forms.Form):
     damage_photo = forms.ImageField(label="Foto del daño", required=False)
 
 
+class RejectPhysicalAdForm(forms.Form):
+    rejection_reason = forms.CharField(
+        label="Motivo de rechazo",
+        help_text="Detalla por qué no se acepta esta oferta.",
+        widget=forms.Textarea(attrs={"rows": 3}),
+        required=True,
+    )
+
+
 class RetirementForm(forms.Form):
     retirement_notes = forms.CharField(
         label="Notas de retiro",

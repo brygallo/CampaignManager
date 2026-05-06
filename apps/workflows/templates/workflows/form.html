@@ -1,19 +1,12 @@
-{# Modal/Inline form rendered when a transition exposes a `custom.form`. #}
-<form id="stateWorkflowForm" method="POST" enctype="multipart/form-data" class="row g-3">
+{% comment %}
+Modal/Inline form rendered when a transition exposes a `custom.form`.
+Delegates field rendering to the shared insoles chain (templates/forms/form.html →
+formgroup.html), which handles fieldsets, required asterisks, wide/narrow columns
+and Metronic-styled widgets uniformly across the project.
+{% endcomment %}
+<form id="stateWorkflowForm" method="POST" enctype="multipart/form-data">
   {% csrf_token %}
   {% block form %}
-    {% if form.non_field_errors %}
-      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-    {% endif %}
-    {% for field in form.visible_fields %}
-      {% if not field.is_hidden %}
-        <div class="col-md-12">
-          {% include "base/_field.html" with field=field %}
-        </div>
-      {% endif %}
-    {% endfor %}
-    {% for field in form.hidden_fields %}
-      {{ field }}
-    {% endfor %}
+    {% include "forms/form.html" with form=form %}
   {% endblock %}
 </form>

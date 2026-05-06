@@ -41,6 +41,25 @@ class PhysicalAdTransitions:
 
     @transition(
         field="state",
+        source=workflow.OFRECIDA,
+        target=workflow.RECHAZADA,
+        permission="territorial_ads.reject_physicaladvertisement",
+        custom=dict(
+            verbose="Rechazar",
+            icon="cross-circle",
+            color="danger",
+            title="Rechazar publicidad",
+            text="Indica el motivo por el cual se rechaza esta oferta.",
+            form="apps.territorial_ads.forms.RejectPhysicalAdForm",
+        ),
+    )
+    def reject(self, user=None, rejection_reason="", **kwargs):
+        self.rejection_reason = rejection_reason or ""
+        self.rejected_by = user
+        self.rejected_at = timezone.now()
+
+    @transition(
+        field="state",
         source=workflow.APROBADA,
         target=workflow.PENDIENTE_INSTALACION,
         permission="territorial_ads.assign_physicaladvertisement",
