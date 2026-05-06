@@ -6,7 +6,7 @@ OFRECIDA → APROBADA → PENDIENTE_INSTALACION → INSTALADA → DANADA / RETIR
 Uso:
     python manage.py tenant_command seed_territorial_ads --schema=<tenant>
 
-Requiere previamente: seed_campaigns, seed_sectors
+Requiere previamente: seed_campaigns
 """
 import io
 import random
@@ -19,7 +19,6 @@ from django.db import transaction
 from PIL import Image
 
 from apps.campaigns.models import Campaign
-from apps.locations.models import Canton, Parish, Province, Sector
 from apps.territorial_ads.models import PhysicalAdvertisement
 
 
@@ -29,35 +28,35 @@ LAT_BASE = Decimal("-2.310")
 LON_BASE = Decimal("-78.120")
 
 
-# (title, type, w, h, address, owner, phone, target_state)
+# (type, w, h, address, owner, phone, target_state)
 ADS = [
-    ("Lona ingreso a Macas vía Puyo",   "lona",  Decimal("4.00"), Decimal("2.00"),
+    ("lona",  Decimal("4.00"), Decimal("2.00"),
      "Vía Macas-Puyo km 1, predio del Sr. Calle",     "Sr. Mario Calle",      "0991111111", "INSTALADA"),
-    ("Lona Av. 13 de Abril",            "lona",  Decimal("3.00"), Decimal("1.50"),
+    ("lona",  Decimal("3.00"), Decimal("1.50"),
      "Av. 13 de Abril junto a panadería La Espiga",  "Doña Rocío Vargas",    "0992222222", "INSTALADA"),
-    ("Valla redondel del avión",        "valla", Decimal("8.00"), Decimal("4.00"),
+    ("valla", Decimal("8.00"), Decimal("4.00"),
      "Redondel del avión, Av. 29 de Mayo",           "Coop. San Cristóbal",  "0993333333", "PENDIENTE_INSTALACION"),
-    ("Lona feria del 9 de Octubre",     "lona",  Decimal("2.00"), Decimal("1.00"),
+    ("lona",  Decimal("2.00"), Decimal("1.00"),
      "Plaza 9 de Octubre frente a iglesia",          "Comité 9 de Octubre",  "0994444444", "APROBADA"),
-    ("Afiche tienda La Loma",           "afiche", None,          None,
+    ("afiche", None,          None,
      "Tienda La Loma, Calle Soasti",                 "Sra. Carmen Sharup",   "0995555555", "INSTALADA"),
-    ("Lona ingreso Sevilla Don Bosco",  "lona",  Decimal("3.50"), Decimal("1.80"),
+    ("lona",  Decimal("3.50"), Decimal("1.80"),
      "Ingreso a Sevilla DB, vía principal",          "Síndico Wisuma",       "0996666666", "DANADA"),
-    ("Lona General Proaño centro",      "lona",  Decimal("2.50"), Decimal("1.20"),
+    ("lona",  Decimal("2.50"), Decimal("1.20"),
      "Frente a parque central General Proaño",      "GAD Parroquial Proaño","0997777777", "INSTALADA"),
-    ("Valla Av. Amazonas",              "valla", Decimal("6.00"), Decimal("3.00"),
+    ("valla", Decimal("6.00"), Decimal("3.00"),
      "Av. Amazonas y Bolívar",                       "Inmobiliaria Sangay",  "0998888888", "OFRECIDA"),
-    ("Afiche restaurante El Upano",     "afiche", None,          None,
+    ("afiche", None,          None,
      "Restaurante El Upano, calle Cuenca",           "Sr. Patricio Tello",   "0999999999", "OFRECIDA"),
-    ("Lona Yantzaza",                   "lona",  Decimal("2.50"), Decimal("1.20"),
+    ("lona",  Decimal("2.50"), Decimal("1.20"),
      "Calle Riobamba, barrio Yantzaza",              "Doña Mariana Sharup",  "0990000001", "RETIRADA"),
-    ("Lona San Isidro",                 "lona",  Decimal("3.00"), Decimal("1.50"),
+    ("lona",  Decimal("3.00"), Decimal("1.50"),
      "San Isidro centro, casa del Sr. Naichap",      "Sr. Edwin Naichap",    "0990000002", "APROBADA"),
-    ("Valla salida a Sucúa",            "valla", Decimal("8.00"), Decimal("4.00"),
+    ("valla", Decimal("8.00"), Decimal("4.00"),
      "Vía Macas-Sucúa km 5",                         "Hostal Río Upano",     "0990000003", "PENDIENTE_INSTALACION"),
-    ("Lona barrio La Florida",          "lona",  Decimal("2.50"), Decimal("1.20"),
+    ("lona",  Decimal("2.50"), Decimal("1.20"),
      "Calle Quito, barrio La Florida",               "Sr. Hugo Wisuma",      "0990000004", "INSTALADA"),
-    ("Afiche peluquería Centro",        "afiche", None,          None,
+    ("afiche", None,          None,
      "Peluquería Centro, calle Sucre",               "Sra. Verónica Pinchupá","0990000005", "INSTALADA"),
 ]
 
@@ -97,20 +96,15 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No hay usuarios."))
             return
 
-        province = Province.objects.filter(code="14").first()
-        canton = Canton.objects.filter(code="1401").first()
-        parishes = list(Parish.objects.filter(canton=canton)) if canton else []
-
         wf = PhysicalAdvertisement.workflow
         created = 0
-        for i, (title, atype, w, h, address, owner, phone, target) in enumerate(ADS):
+        for i, (atype, w, h, address, owner, phone, target) in enumerate(ADS):
             # protección contra error tipográfico en datos
             if atype not in {"lona", "valla", "afiche", "otro"}:
                 atype = "afiche"
 
-            parish = parishes[i % len(parishes)] if parishes else None
             ad, was_created = PhysicalAdvertisement.objects.get_or_create(
-                title=title,
+                address=address,
                 defaults={
                     "campaign": campaign,
                     "advertisement_type": atype,
@@ -120,9 +114,6 @@ class Command(BaseCommand):
                     "owner_name": owner,
                     "owner_phone": phone,
                     "offered_notes": "Acepta colocación durante toda la campaña.",
-                    "province": province,
-                    "canton": canton,
-                    "parish": parish,
                     "address": address,
                     "reference": "Coordenadas referenciales aproximadas",
                     "offered_latitude": _jitter(LAT_BASE),
@@ -157,7 +148,14 @@ class Command(BaseCommand):
             if ad.state >= state:
                 continue
             if method == "approve":
-                ad.approve(user=user)
+                ad.approve(
+                    user=user,
+                    width_meters=ad.width_meters,
+                    height_meters=ad.height_meters,
+                    installation_instructions=(
+                        "Se requiere escalera y dos personas para colocación segura."
+                    ),
+                )
             elif method == "assign_installation":
                 ad.assign_installation(user=user, installer_team="Brigada Macas A")
             elif method == "mark_installed":
@@ -181,5 +179,4 @@ class Command(BaseCommand):
                     retirement_notes="Retirada al cierre del periodo electoral.",
                 )
             ad.save()
-
 

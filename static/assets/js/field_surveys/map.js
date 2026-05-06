@@ -25,22 +25,33 @@
       return;
     }
     var map = window.L.map(el).setView([-2.170998, -79.922359], 13);
-    window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
 
     var visits = window.L.layerGroup().addTo(map);
     var heat = window.L.layerGroup().addTo(map);
     var ownAds = window.L.layerGroup().addTo(map);
     var competitorAds = window.L.layerGroup().addTo(map);
 
-    window.L.control.layers(null, {
+    var overlays = {
       "Visitas": visits,
       "Mapa de calor de apoyo": heat,
       "Publicidad propia": ownAds,
       "Publicidad competencia": competitorAds
-    }).addTo(map);
+    };
+
+    if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
+      window.LeafletBasemaps.build(map, overlays);
+    } else {
+      window.L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        {
+          maxZoom: 20,
+          subdomains: "abcd",
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }
+      ).addTo(map);
+      window.L.control.layers(null, overlays).addTo(map);
+    }
 
     function load() {
       visits.clearLayers();

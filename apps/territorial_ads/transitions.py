@@ -18,10 +18,24 @@ class PhysicalAdTransitions:
             icon="verify",
             color="success",
             title="Aprobar publicidad",
-            text="¿Confirmas que este lugar ofrecido queda aprobado para instalación?",
+            text="Registra las dimensiones e instrucciones para la instalación.",
+            form="apps.territorial_ads.forms.ApprovalForm",
         ),
     )
-    def approve(self, user=None, **kwargs):
+    def approve(
+        self,
+        user=None,
+        width_meters=None,
+        height_meters=None,
+        installation_instructions=None,
+        **kwargs,
+    ):
+        if width_meters is not None:
+            self.width_meters = width_meters
+        if height_meters is not None:
+            self.height_meters = height_meters
+        if installation_instructions is not None:
+            self.installation_instructions = installation_instructions
         self.approved_by = user
         self.approved_at = timezone.now()
 

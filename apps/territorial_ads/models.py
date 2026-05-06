@@ -5,7 +5,6 @@ from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
-from apps.locations.models import Canton, Parish, Province, Sector
 from apps.territorial_ads.transitions import PhysicalAdTransitions
 from apps.workflows.mixins import TransitionRequirementsMixin
 
@@ -36,7 +35,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         default=AdvertisementType.LONA,
     )
     code = models.CharField("Código", max_length=32, unique=True, blank=True)
-    title = models.CharField("Identificación", max_length=180)
     quantity = models.PositiveSmallIntegerField("Cantidad", default=1)
     width_meters = models.DecimalField(
         "Ancho (m)", max_digits=6, decimal_places=2, null=True, blank=True
@@ -49,10 +47,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
     owner_phone = models.CharField("Teléfono contacto", max_length=32)
     offered_notes = models.TextField("Condiciones ofrecidas", blank=True)
 
-    province = models.ForeignKey(Province, on_delete=models.PROTECT, related_name="physical_advertisements", verbose_name="Provincia", null=True, blank=True)
-    canton = models.ForeignKey(Canton, on_delete=models.PROTECT, related_name="physical_advertisements", verbose_name="Cantón", null=True, blank=True)
-    parish = models.ForeignKey(Parish, on_delete=models.PROTECT, related_name="physical_advertisements", verbose_name="Parroquia", null=True, blank=True)
-    sector = models.ForeignKey(Sector, on_delete=models.PROTECT, related_name="physical_advertisements", verbose_name="Sector / barrio", null=True, blank=True)
     address = models.CharField("Dirección", max_length=255)
     reference = models.CharField("Referencia", max_length=255, blank=True)
     offered_latitude = models.DecimalField(
@@ -88,6 +82,11 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         blank=True,
     )
     approved_at = models.DateTimeField("Fecha de aprobación", null=True, blank=True)
+    installation_instructions = models.TextField(
+        "Instrucciones para instalación",
+        blank=True,
+        help_text="Indica qué se requiere para instalar (escalera, andamio, permisos, etc.).",
+    )
     assigned_installer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -187,7 +186,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
         )
 
     def __str__(self):
-        return self.code or self.title
+        return self.code or self.address
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -210,8 +209,22 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirem
                     self.build_transition_requirement_item(
                         "Dirección", self.address, bool(self.address)
                     ),
+                    self.build_transition_requirement_item(
+                        "Ancho (m)", self.width_meters, False
+                    ),
+                    self.build_transition_requirement_item(
+                        "Alto (m)", self.height_meters, False
+                    ),
+                    self.build_transition_requirement_item(
+                        "Instrucciones para instalación",
+                        self.installation_instructions,
+                        False,
+                    ),
                 ],
-                ready_text="Puedes aprobar la publicidad desde el menú de acciones.",
+                help_text=(
+                    "Confirma los datos del lugar. Las dimensiones e instrucciones de "
+                    "instalación se capturan al ejecutar la transición de aprobación."
+                ),
             )
         if self.state == self.workflow.APROBADA:
             assigned = bool(self.assigned_installer_id or self.installer_team)

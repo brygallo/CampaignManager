@@ -6,7 +6,6 @@ from superadmin.forms import ModelForm
 
 from core.widgets import LeafletMapWidget
 from apps.campaigns.models import Campaign
-from apps.locations.models import Canton, Parish, Province, Sector
 
 from .models import PhysicalAdvertisement
 
@@ -27,16 +26,13 @@ class PhysicalAdvertisementForm(ModelForm):
         fieldsets = {
             "Publicidad": (
                 ("campaign", "advertisement_type"),
-                ("title", "quantity"),
-                ("width_meters", "height_meters"),
+                ("quantity",),
             ),
             "Contacto que ofreció el lugar": (
                 ("owner_name", "owner_phone"),
                 ("offered_notes",),
             ),
             "Ubicación ofrecida": (
-                ("province", "canton"),
-                ("parish", "sector"),
                 ("address",),
                 ("reference",),
                 ("offered_location",),
@@ -63,33 +59,32 @@ class PhysicalAdvertisementForm(ModelForm):
                     "data-minimum-input-length": 0,
                 },
             ),
-            "province": ModelSelect2Widget(
-                model=Province,
-                search_fields=["name__icontains", "code__icontains"],
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Province"},
-            ),
-            "canton": ModelSelect2Widget(
-                model=Canton,
-                search_fields=["name__icontains", "province__name__icontains"],
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
-            ),
-            "parish": ModelSelect2Widget(
-                model=Parish,
-                search_fields=["name__icontains", "canton__name__icontains"],
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
-            ),
-            "sector": ModelSelect2Widget(
-                model=Sector,
-                search_fields=["name__icontains", "parish__name__icontains"],
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
-            ),
             "offered_latitude": forms.HiddenInput(),
             "offered_longitude": forms.HiddenInput(),
         }
+
+
+class ApprovalForm(forms.Form):
+    width_meters = forms.DecimalField(
+        label="Ancho (m)",
+        max_digits=6,
+        decimal_places=2,
+        min_value=0,
+        required=True,
+    )
+    height_meters = forms.DecimalField(
+        label="Alto (m)",
+        max_digits=6,
+        decimal_places=2,
+        min_value=0,
+        required=True,
+    )
+    installation_instructions = forms.CharField(
+        label="Instrucciones para instalación",
+        help_text="Indica qué se requiere: escalera, andamio, permisos, etc.",
+        widget=forms.Textarea(attrs={"rows": 3}),
+        required=True,
+    )
 
 
 class AssignInstallationForm(forms.Form):

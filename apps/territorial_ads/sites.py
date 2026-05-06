@@ -14,11 +14,8 @@ class PhysicalAdvertisementSite(BaseSite):
     list_mixins = (WorkflowStateFilterMixin,)
     list_fields = (
         "code",
-        "title",
         "campaign",
         "owner_name",
-        "canton",
-        "sector",
         "get_state_display:Estado",
         "assigned_installer",
         "installer_team",
@@ -26,16 +23,13 @@ class PhysicalAdvertisementSite(BaseSite):
     detail_fields = {
         "Publicidad": (
             ("campaign", "advertisement_type"),
-            ("title", "quantity"),
-            ("width_meters", "height_meters"),
+            ("quantity",),
         ),
         "Contacto que ofreció el lugar": (
             ("owner_name", "owner_phone"),
             ("offered_notes",),
         ),
         "Ubicación ofrecida": (
-            ("province", "canton"),
-            ("parish", "sector"),
             ("address",),
             ("reference",),
             ("offered_latitude", "offered_longitude"),
@@ -45,6 +39,8 @@ class PhysicalAdvertisementSite(BaseSite):
         ),
         "Aprobación y asignación": (
             ("approved_by", "approved_at"),
+            ("width_meters", "height_meters"),
+            ("installation_instructions",),
             ("assigned_installer", "installer_team"),
             ("assigned_by", "assigned_at"),
         ),
@@ -63,21 +59,14 @@ class PhysicalAdvertisementSite(BaseSite):
     }
     search_params = (
         "code__icontains",
-        "title__icontains",
         "owner_name__icontains",
         "owner_phone__icontains",
-        "province__name__icontains",
-        "canton__name__icontains",
-        "parish__name__icontains",
-        "sector__name__icontains",
         "address__icontains",
     )
     filter_fields = (
         "state",
         "campaign",
         "advertisement_type",
-        "province",
-        "canton",
         "assigned_installer",
         "is_active",
     )

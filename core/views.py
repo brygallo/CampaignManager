@@ -4,17 +4,60 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core import signing
+from django.core.signing import BadSignature
 from django.db import connection
 from django.http import Http404
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.views.static import serve as static_serve
+from django_select2.cache import cache
+from django_select2.conf import settings as select2_settings
 from django_select2.views import AutoResponseView as BaseAutoResponseView
 from django_tenants.utils import get_public_schema_name
 
 
+def _select2_url_matches_request(cached_url, request):
+    """Accept Select2 URLs rendered before tenant path middleware stripped the slug."""
+    request_path = request.path
+    if cached_url == request_path:
+        return True
+
+    prefix = getattr(request, "tenant_path_prefix", "")
+    if not prefix:
+        return False
+
+    prefixed_path = f"{prefix}{request_path}"
+    return cached_url == prefixed_path
+
+
 class AutoResponseView(BaseAutoResponseView):
     """Handle Select2 dependent-field requests and multi-value queries."""
+
+    def get_widget_or_404(self):
+        """Get widget from cache, allowing path-routed tenant URL prefixes."""
+        field_id = self.kwargs.get("field_id", self.request.GET.get("field_id", None))
+        if not field_id:
+            raise Http404('No "field_id" provided.')
+        try:
+            key = signing.loads(field_id)
+        except BadSignature:
+            raise Http404('Invalid "field_id".')
+
+        cache_key = f"{select2_settings.SELECT2_CACHE_PREFIX}{key}"
+        widget_dict = cache.get(cache_key)
+        if widget_dict is None:
+            raise Http404("field_id not found")
+
+        cached_url = widget_dict.pop("url")
+        if not _select2_url_matches_request(cached_url, self.request):
+            raise Http404("field_id was issued for the view.")
+
+        qs, qs.query = widget_dict.pop("queryset")
+        self.queryset = qs.all()
+        widget_dict["queryset"] = self.queryset
+        widget_cls = widget_dict.pop("cls")
+        return widget_cls(**widget_dict)
 
     def get_queryset(self):
         for key, value in self.request.GET.items():

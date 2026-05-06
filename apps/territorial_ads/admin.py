@@ -7,12 +7,9 @@ from .models import PhysicalAdvertisement
 class PhysicalAdvertisementAdmin(admin.ModelAdmin):
     list_display = (
         "code",
-        "title",
         "campaign",
         "owner_name",
-        "canton",
-        "sector",
         "state",
     )
-    list_filter = ("state", "advertisement_type", "province", "canton")
-    search_fields = ("code", "title", "owner_name", "owner_phone", "address")
+    list_filter = ("state", "advertisement_type")
+    search_fields = ("code", "owner_name", "owner_phone", "address")

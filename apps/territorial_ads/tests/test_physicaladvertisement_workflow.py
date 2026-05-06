@@ -40,7 +40,6 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
     def _build_ad(self, **overrides):
         data = {
             "campaign": self.campaign,
-            "title": "Lona test",
             "owner_name": "Dueño",
             "owner_phone": "0999999999",
             "address": "Av. Principal",

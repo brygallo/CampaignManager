@@ -1,6 +1,44 @@
 (function (window, document) {
   "use strict";
 
+  function buildBasemaps(map, overlays) {
+    var carto = window.L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      {
+        maxZoom: 20,
+        subdomains: "abcd",
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }
+    );
+    var osm = window.L.tileLayer(
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }
+    );
+    var satellite = window.L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution:
+          'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+      }
+    );
+    carto.addTo(map);
+    var baseLayers = {
+      "Mapa (CARTO)": carto,
+      "OSM": osm,
+      "Satélite": satellite
+    };
+    window.L.control.layers(baseLayers, overlays || null, { collapsed: true }).addTo(map);
+    return baseLayers;
+  }
+
+  window.LeafletBasemaps = { build: buildBasemaps };
+
   function findField(form, name) {
     if (!form || !name) {
       return null;
@@ -63,10 +101,7 @@
     var hasPoint = latField.value !== "" && lngField.value !== "";
 
     var map = window.L.map(canvas).setView([lat, lng], zoom);
-    window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    buildBasemaps(map);
 
     var marker = window.L.marker([lat, lng], { draggable: true });
     if (hasPoint) {
@@ -144,10 +179,7 @@
       scrollWheelZoom: false
     }).setView([lat, lng], zoom);
 
-    window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    buildBasemaps(map);
 
     window.L.marker([lat, lng]).addTo(map).bindPopup(title);
 
