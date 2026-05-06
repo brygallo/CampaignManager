@@ -161,14 +161,10 @@ class PhysicalAdTransitions:
             icon="cross-circle",
             color="danger",
             title="Retirar publicidad",
-            text="Confirma el retiro de la publicidad física.",
-            form="apps.territorial_ads.forms.RetirementForm",
+            text="¿Confirmas el retiro de esta publicidad física?",
         ),
     )
-    def retire(self, user=None, retirement_notes="", retirement_photo=None, **kwargs):
-        self.retirement_notes = retirement_notes or ""
-        if retirement_photo:
-            self.retirement_photo = retirement_photo
+    def retire(self, user=None, **kwargs):
         self.retired_by = user
         self.retired_at = timezone.now()
 

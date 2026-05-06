@@ -129,6 +129,13 @@ class PhysicalAdvertisementForm(ModelForm):
                 "cost_amount",
                 "Este tipo de costo no permite registrar monto.",
             )
+        if cleaned_data.get("offered_latitude") in (None, "") or cleaned_data.get(
+            "offered_longitude"
+        ) in (None, ""):
+            self.add_error(
+                "offered_location",
+                "Marca el lugar ofrecido en el mapa o usa tu ubicación actual.",
+            )
         return cleaned_data
 
 
@@ -204,7 +211,7 @@ class InstallationEvidenceForm(forms.Form):
         decimal_places=6,
         min_value=-90,
         max_value=90,
-        required=True,
+        required=False,
         widget=forms.HiddenInput(),
     )
     installed_longitude = forms.DecimalField(
@@ -213,7 +220,7 @@ class InstallationEvidenceForm(forms.Form):
         decimal_places=6,
         min_value=-180,
         max_value=180,
-        required=True,
+        required=False,
         widget=forms.HiddenInput(),
     )
     installation_notes = forms.CharField(
@@ -221,6 +228,17 @@ class InstallationEvidenceForm(forms.Form):
         widget=forms.Textarea,
         required=False,
     )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("installed_latitude") in (None, "") or cleaned_data.get(
+            "installed_longitude"
+        ) in (None, ""):
+            self.add_error(
+                "installation_location",
+                "Marca la ubicación real de instalación en el mapa o usa tu ubicación actual.",
+            )
+        return cleaned_data
 
 
 class DamageReportForm(forms.Form):
@@ -241,10 +259,3 @@ class RejectPhysicalAdForm(forms.Form):
     )
 
 
-class RetirementForm(forms.Form):
-    retirement_notes = forms.CharField(
-        label="Notas de retiro",
-        widget=forms.Textarea,
-        required=True,
-    )
-    retirement_photo = forms.ImageField(label="Foto del retiro", required=False)

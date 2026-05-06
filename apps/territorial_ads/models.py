@@ -210,13 +210,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         blank=True,
     )
 
-    retirement_notes = models.TextField("Notas de retiro", blank=True)
-    retirement_photo = CompressedImageField(
-        "Foto de retiro",
-        upload_to="territorial_ads/retirements/",
-        null=True,
-        blank=True,
-    )
     retired_at = models.DateTimeField("Fecha retiro", null=True, blank=True)
     retired_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

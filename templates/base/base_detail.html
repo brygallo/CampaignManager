@@ -136,17 +136,36 @@
                   <div class="col-12">
                     <div class="fv-row">
                       <label class="form-label fw-semibold text-muted mb-2">{{ map.title }}</label>
-                      <div class="leaflet-detail-map"
-                           data-detail-map="true"
-                           data-lat="{{ map.latitude|unlocalize }}"
-                           data-lng="{{ map.longitude|unlocalize }}"
-                           data-zoom="{{ map.zoom }}"
-                           data-title="{{ map.title }}">
-                        <div class="leaflet-detail-map__canvas"></div>
-                        <div class="text-muted small mt-2">
-                          Lat: {{ map.latitude }} / Lng: {{ map.longitude }}
+                      {% if map.points %}
+                        <div class="leaflet-detail-map"
+                             data-detail-map="true"
+                             data-points="{{ map.points_json }}"
+                             data-zoom="{{ map.zoom }}">
+                          <div class="leaflet-detail-map__canvas"></div>
+                          <div class="d-flex flex-wrap gap-3 text-muted small mt-2">
+                            {% for p in map.points %}
+                              <span class="d-inline-flex align-items-center gap-2">
+                                <span class="d-inline-block rounded-circle"
+                                      style="width:10px;height:10px;background:{% firstof p.color '#3388ff' %};"></span>
+                                <strong>{{ p.label }}:</strong>
+                                {{ p.latitude }} / {{ p.longitude }}
+                              </span>
+                            {% endfor %}
+                          </div>
                         </div>
-                      </div>
+                      {% else %}
+                        <div class="leaflet-detail-map"
+                             data-detail-map="true"
+                             data-lat="{{ map.latitude|unlocalize }}"
+                             data-lng="{{ map.longitude|unlocalize }}"
+                             data-zoom="{{ map.zoom }}"
+                             data-title="{{ map.title }}">
+                          <div class="leaflet-detail-map__canvas"></div>
+                          <div class="text-muted small mt-2">
+                            Lat: {{ map.latitude }} / Lng: {{ map.longitude }}
+                          </div>
+                        </div>
+                      {% endif %}
                     </div>
                   </div>
                 {% endfor %}

@@ -1,4 +1,6 @@
 """Base classes used to register models in superadmin."""
+import json
+
 from superadmin.options import ModelSite
 
 from core.form_mixins import SaveOptionsMixin
@@ -84,8 +86,48 @@ class BaseSite(ModelSite):
     form_mixins = (SaveOptionsMixin,)
 
     def get_detail_maps(self, obj):
+        """Resolve declarative ``detail_maps`` against ``obj``.
+
+        Supports three shapes per entry:
+          - tuple ``("Title", "lat_field", "lng_field"[, zoom])`` — one marker.
+          - dict ``{"title": ..., "lat": ..., "lng": ..., "zoom": ...}`` — one marker.
+          - dict with ``"points": [{"label", "lat", "lng", "color"}, ...]`` —
+            several markers on the same canvas, distinguished by label/color.
+        Entries (or individual points) without resolved coordinates are dropped.
+        """
         maps = []
         for config in self.detail_maps:
+            if isinstance(config, dict) and "points" in config:
+                title = config.get("title", "Ubicaciones")
+                zoom = config.get("zoom", 16)
+                resolved_points = []
+                for point in config["points"]:
+                    lat_field = point.get("lat") or point.get("latitude")
+                    lng_field = point.get("lng") or point.get("longitude")
+                    latitude = getattr(obj, lat_field, None) if lat_field else None
+                    longitude = getattr(obj, lng_field, None) if lng_field else None
+                    if latitude in (None, "") or longitude in (None, ""):
+                        continue
+                    resolved_points.append(
+                        {
+                            "label": point.get("label", "Ubicación"),
+                            "color": point.get("color"),
+                            "latitude": float(latitude),
+                            "longitude": float(longitude),
+                        }
+                    )
+                if not resolved_points:
+                    continue
+                maps.append(
+                    {
+                        "title": title,
+                        "zoom": zoom,
+                        "points": resolved_points,
+                        "points_json": json.dumps(resolved_points),
+                    }
+                )
+                continue
+
             if isinstance(config, dict):
                 title = config.get("title", "Ubicación")
                 lat_field = config.get("lat") or config.get("latitude")

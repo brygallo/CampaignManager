@@ -165,14 +165,72 @@
     }
 
     var canvas = container.querySelector(".leaflet-detail-map__canvas");
+    if (!canvas) {
+      return;
+    }
+
+    var zoom = parseInt(container.dataset.zoom || "16", 10);
+    var pointsAttr = container.dataset.points;
+    var points = null;
+    if (pointsAttr) {
+      try {
+        points = JSON.parse(pointsAttr);
+      } catch (e) {
+        points = null;
+      }
+    }
+
+    if (points && points.length) {
+      container.dataset.leafletInitialized = "true";
+      var multiMap = window.L.map(canvas, {
+        dragging: true,
+        scrollWheelZoom: false
+      });
+      buildBasemaps(multiMap);
+      var bounds = window.L.latLngBounds([]);
+      points.forEach(function (point) {
+        var color = point.color || "#3388ff";
+        var icon = window.L.divIcon({
+          className: "leaflet-detail-pin",
+          html:
+            '<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg">' +
+              '<path d="M15 0 C6.72 0 0 6.72 0 15 c0 11 15 27 15 27 s15 -16 15 -27 C30 6.72 23.28 0 15 0 z" ' +
+                'fill="' + color + '" stroke="#ffffff" stroke-width="2"/>' +
+              '<circle cx="15" cy="15" r="5.5" fill="#ffffff"/>' +
+            '</svg>',
+          iconSize: [30, 42],
+          iconAnchor: [15, 42],
+          popupAnchor: [0, -38],
+          tooltipAnchor: [0, -34]
+        });
+        var marker = window.L.marker([point.latitude, point.longitude], { icon: icon }).addTo(multiMap);
+        var label = point.label || "Ubicación";
+        marker.bindTooltip(label, {
+          permanent: true,
+          direction: "top",
+          className: "leaflet-detail-pin-label"
+        });
+        marker.bindPopup(label + "<br/>Lat: " + point.latitude + "<br/>Lng: " + point.longitude);
+        bounds.extend([point.latitude, point.longitude]);
+      });
+      if (points.length === 1) {
+        multiMap.setView(bounds.getCenter(), zoom);
+      } else {
+        multiMap.fitBounds(bounds, { padding: [40, 40], maxZoom: zoom });
+      }
+      setTimeout(function () {
+        multiMap.invalidateSize();
+      }, 150);
+      return;
+    }
+
     var lat = parseNumber(container.dataset.lat, null);
     var lng = parseNumber(container.dataset.lng, null);
-    if (!canvas || lat === null || lng === null) {
+    if (lat === null || lng === null) {
       return;
     }
 
     container.dataset.leafletInitialized = "true";
-    var zoom = parseInt(container.dataset.zoom || "16", 10);
     var title = container.dataset.title || "Ubicación";
     var map = window.L.map(canvas, {
       dragging: true,

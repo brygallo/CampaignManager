@@ -87,8 +87,6 @@ class PhysicalAdvertisementSite(BaseSite):
         ),
         "Retiro": (
             ("retired_at", "retired_by"),
-            ("retirement_notes",),
-            ("retirement_photo",),
         ),
     }
     search_params = (
@@ -106,6 +104,21 @@ class PhysicalAdvertisementSite(BaseSite):
         "is_active",
     )
     detail_maps = (
-        ("Ubicación ofrecida", "offered_latitude", "offered_longitude"),
-        ("Ubicación GPS de instalación", "installed_latitude", "installed_longitude"),
+        {
+            "title": "Ubicaciones",
+            "points": [
+                {
+                    "label": "Ofrecida",
+                    "lat": "offered_latitude",
+                    "lng": "offered_longitude",
+                    "color": "#3388ff",
+                },
+                {
+                    "label": "Instalada",
+                    "lat": "installed_latitude",
+                    "lng": "installed_longitude",
+                    "color": "#198754",
+                },
+            ],
+        },
     )
