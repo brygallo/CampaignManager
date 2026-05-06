@@ -111,6 +111,28 @@ class PhysicalAdTransitions:
     @transition(
         field="state",
         source=workflow.INSTALADA,
+        target=workflow.PENDIENTE_INSTALACION,
+        permission="territorial_ads.install_physicaladvertisement",
+        custom=dict(
+            verbose="Volver a pendiente",
+            back_verbose="Volver a pendiente",
+            icon="arrow-left",
+            color="warning",
+            title="Volver a pendiente de instalación",
+            text="La evidencia GPS, la foto y las notas se limpiarán para que se vuelva a registrar la instalación. ¿Continuar?",
+        ),
+    )
+    def revert_to_pending(self, user=None, **kwargs):
+        self.installation_photo = None
+        self.installed_latitude = None
+        self.installed_longitude = None
+        self.installed_at = None
+        self.installed_by = None
+        self.installation_notes = ""
+
+    @transition(
+        field="state",
+        source=workflow.INSTALADA,
         target=workflow.DANADA,
         permission="territorial_ads.report_damage_physicaladvertisement",
         custom=dict(

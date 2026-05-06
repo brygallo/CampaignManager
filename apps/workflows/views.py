@@ -69,8 +69,18 @@ class ChangeStateView(View):
                 if form_class:
                     form = form_class(**self.get_kwargs_form())
                     if not form.is_valid():
-                        for error in form.errors.values():
-                            raise WorkflowException(str(error[0]))
+                        template = render_to_string(
+                            "workflows/form.html",
+                            context={"form": form},
+                        )
+                        return JsonResponse(
+                            {
+                                "template": template,
+                                "form_invalid": True,
+                                "error": "Revisa los campos marcados.",
+                            },
+                            status=400,
+                        )
                 response = transition(**self.get_kwargs())
                 if response:
                     return response

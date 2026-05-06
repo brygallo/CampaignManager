@@ -169,10 +169,24 @@
           return;
         }
         const fd = new FormData(formEl);
+        const result = await onSubmit(fd);
+        if (result === true) {
+          resolved = true;
+          modal.hide();
+          resolve(true);
+          return;
+        }
+        if (result && result.formHtml) {
+          // Re-render form with server-side validation errors and keep modal open.
+          $modal.find(".modal-body").html(result.formHtml);
+          if (window.initFormWidgets) {
+            window.initFormWidgets($modal[0]);
+          }
+          return;
+        }
         resolved = true;
         modal.hide();
-        const ok = await onSubmit(fd);
-        resolve(ok);
+        resolve(false);
       });
       $modal.on("hidden.bs.modal", () => {
         $modal.remove();
@@ -210,7 +224,11 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error || data.message_error) {
-      throw new Error(data.error || data.message_error || data.message || "No se pudo ejecutar la transición.");
+      const err = new Error(data.error || data.message_error || data.message || "No se pudo ejecutar la transición.");
+      if (data.form_invalid && data.template) {
+        err.formHtml = data.template;
+      }
+      throw err;
     }
     return data;
   }
@@ -256,6 +274,9 @@
               setTimeout(() => window.location.reload(), 600);
               return true;
             } catch (err) {
+              if (err.formHtml) {
+                return { formHtml: err.formHtml };
+              }
               notify("error", err.message);
               return false;
             }
