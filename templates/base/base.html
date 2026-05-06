@@ -137,6 +137,8 @@
 
   {% block modals %}{% endblock %}
 
+  {% if user.is_authenticated %}{% include "base/_command_palette.html" %}{% endif %}
+
   {% block js %}{% include "base/js.html" %}{% endblock %}
   {% block extra_js %}{% endblock %}
 </body>

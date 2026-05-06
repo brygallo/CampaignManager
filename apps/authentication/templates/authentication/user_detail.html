@@ -16,7 +16,7 @@
       <div class="d-flex align-items-center">
         <span class="symbol symbol-70px me-5">
           {% if object.profile.avatar %}
-            <img src="{{ object.profile.avatar.url }}" alt="{{ object.username }}" class="symbol-label" style="object-fit:cover;">
+            <img src="{{ object.profile.avatar.url }}" alt="{{ object.username }}" class="symbol-label" style="object-fit:cover;" loading="lazy" decoding="async">
           {% else %}
             <span class="symbol-label bg-light-primary text-primary fs-1 fw-bolder">
               {{ object.get_full_name|default:object.username|first|upper }}

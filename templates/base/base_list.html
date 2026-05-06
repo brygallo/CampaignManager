@@ -52,6 +52,17 @@
       margin: 0;
       padding: .55rem .25rem;
     }
+
+    /* Density variants for #datatable. */
+    table.table-density-compact > tbody > tr > td,
+    table.table-density-compact > thead > tr > th { padding-top: .35rem; padding-bottom: .35rem; font-size: .85rem; }
+    table.table-density-comfortable > tbody > tr > td,
+    table.table-density-comfortable > thead > tr > th { padding-top: 1.15rem; padding-bottom: 1.15rem; }
+
+    /* Sort indicators on clickable headers. */
+    table#datatable thead th.sorting,
+    table#datatable thead th.sorting_asc,
+    table#datatable thead th.sorting_desc { cursor: pointer; user-select: none; }
   </style>
 {% endblock %}
 
@@ -109,6 +120,48 @@
         {% if site.filter_options %}
           {% include "base/_filter_dropdown.html" %}
         {% endif %}
+
+        {# View options: column picker + density. Client-side, persisted in localStorage. #}
+        <div class="dropdown" id="cm-list-view-options"
+             data-cm-storage-key="cm.list.{{ site.app_name }}.{{ site.model_name }}">
+          <button type="button"
+                  class="btn btn-light btn-sm d-flex align-items-center gap-1"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Opciones de vista">
+            <i class="ki-outline ki-setting-4 fs-3"></i>
+            <span class="d-none d-md-inline">Vista</span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end p-4" style="min-width: 260px;">
+            <div class="fw-bold text-gray-800 fs-7 text-uppercase mb-2">Densidad</div>
+            <div class="btn-group btn-group-sm w-100 mb-4" role="group" aria-label="Densidad">
+              <input type="radio" class="btn-check" name="cm-density" id="cm-density-compact" value="compact" autocomplete="off">
+              <label class="btn btn-outline btn-color-gray-700" for="cm-density-compact">Compacta</label>
+              <input type="radio" class="btn-check" name="cm-density" id="cm-density-normal" value="normal" autocomplete="off" checked>
+              <label class="btn btn-outline btn-color-gray-700" for="cm-density-normal">Normal</label>
+              <input type="radio" class="btn-check" name="cm-density" id="cm-density-comfortable" value="comfortable" autocomplete="off">
+              <label class="btn btn-outline btn-color-gray-700" for="cm-density-comfortable">Cómoda</label>
+            </div>
+
+            <div class="fw-bold text-gray-800 fs-7 text-uppercase mb-2">Columnas visibles</div>
+            <div id="cm-column-picker" class="d-flex flex-column gap-2 mb-3" role="group" aria-label="Mostrar u ocultar columnas">
+              {% for field_name, label in site.fields %}
+                <label class="form-check form-check-sm form-check-custom">
+                  <input class="form-check-input cm-col-toggle"
+                         type="checkbox"
+                         data-col-index="{{ forloop.counter0 }}"
+                         data-col-name="{{ field_name }}"
+                         checked>
+                  <span class="form-check-label fs-7">{{ label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            <button type="button" class="btn btn-sm btn-light-primary w-100" id="cm-view-reset">
+              <i class="ki-outline ki-arrows-circle fs-4"></i>Restablecer
+            </button>
+          </div>
+        </div>
+
         {% block list_toolbar_extra %}{% endblock %}
       </div>
     </div>
@@ -261,6 +314,86 @@
 {% block extra_js %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // --- View options (column picker + density), persisted in localStorage. ---
+    (function () {
+      const root = document.getElementById("cm-list-view-options");
+      const table = document.getElementById("datatable");
+      if (!root || !table) return;
+      const storageKey = root.dataset.cmStorageKey || "cm.list.default";
+      const offset = !!document.getElementById("bulk-toolbar") ? 1 : 0; // bulk-select column shifts indexes
+
+      const readState = () => {
+        try { return JSON.parse(localStorage.getItem(storageKey) || "{}") || {}; }
+        catch (e) { return {}; }
+      };
+      const writeState = (s) => localStorage.setItem(storageKey, JSON.stringify(s));
+
+      // ---- Density ----
+      const applyDensity = (d) => {
+        table.classList.remove("table-density-compact", "table-density-comfortable");
+        if (d === "compact") table.classList.add("table-density-compact");
+        else if (d === "comfortable") table.classList.add("table-density-comfortable");
+        const radio = root.querySelector(`input[name="cm-density"][value="${d}"]`);
+        if (radio) radio.checked = true;
+      };
+
+      root.querySelectorAll('input[name="cm-density"]').forEach(r => {
+        r.addEventListener("change", () => {
+          if (!r.checked) return;
+          const s = readState();
+          s.density = r.value;
+          writeState(s);
+          applyDensity(r.value);
+        });
+      });
+
+      // ---- Column picker ----
+      const toggles = Array.from(root.querySelectorAll(".cm-col-toggle"));
+      const applyColumn = (name, visible) => {
+        const idx = toggles.findIndex(t => t.dataset.colName === name);
+        if (idx < 0) return;
+        const colIndex = idx + offset; // skip bulk col when present
+        // headers
+        const ths = table.querySelectorAll("thead tr > th");
+        if (ths[colIndex]) ths[colIndex].style.display = visible ? "" : "none";
+        // body
+        table.querySelectorAll("tbody tr").forEach(tr => {
+          const cell = tr.querySelectorAll(":scope > td")[colIndex];
+          if (cell) cell.style.display = visible ? "" : "none";
+        });
+      };
+
+      toggles.forEach(t => {
+        t.addEventListener("change", () => {
+          const s = readState();
+          s.columns = s.columns || {};
+          s.columns[t.dataset.colName] = t.checked;
+          writeState(s);
+          applyColumn(t.dataset.colName, t.checked);
+        });
+      });
+
+      // ---- Reset ----
+      const resetBtn = document.getElementById("cm-view-reset");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+          localStorage.removeItem(storageKey);
+          toggles.forEach(t => { t.checked = true; applyColumn(t.dataset.colName, true); });
+          applyDensity("normal");
+        });
+      }
+
+      // ---- Hydrate from storage ----
+      const initial = readState();
+      if (initial.density) applyDensity(initial.density);
+      if (initial.columns) {
+        Object.entries(initial.columns).forEach(([name, visible]) => {
+          const t = toggles.find(x => x.dataset.colName === name);
+          if (t) { t.checked = !!visible; applyColumn(name, !!visible); }
+        });
+      }
+    })();
+
     if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
       const $tbl = jQuery("#datatable");
       if ($tbl.length) {
@@ -270,6 +403,7 @@
           responsive: true,
           paging: false,
           info: false,
+          ordering: true,
           language: {
             search: "",
             searchPlaceholder: "Buscar...",

@@ -39,6 +39,7 @@ openpyxl = "~=3.1"
 qrcode = "~=7.4"
 whitenoise = "~=6.7"
 gunicorn = "~=23.0"
+setuptools = "*"
 
 [dev-packages]
 ipdb = "~=0.13"

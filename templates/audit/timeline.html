@@ -29,7 +29,7 @@
                     <div class="col-md-6">
                       <div class="text-gray-500 fs-7 fw-semibold text-uppercase">{{ ch.verbose_name }}</div>
                       {% if ch.is_image and ch.href %}
-                        <a href="{{ ch.href }}" target="_blank" rel="noopener"><img src="{{ ch.href }}" class="rounded mt-1" style="max-height:64px" alt="{{ ch.verbose_name }}"></a>
+                        <a href="{{ ch.href }}" target="_blank" rel="noopener"><img src="{{ ch.href }}" class="rounded mt-1" style="max-height:64px" alt="{{ ch.verbose_name }}" loading="lazy" decoding="async"></a>
                       {% elif ch.href %}
                         <a href="{{ ch.href }}" target="_blank" rel="noopener" class="text-primary fw-bold">{{ ch.value }}</a>
                       {% elif ch.is_bool %}

@@ -21,6 +21,20 @@
     </a>
   </div>
 
+  {# Sidebar quick-search (client-side) — filters menu items live. #}
+  <div class="app-sidebar-search px-3 mb-3 mt-2">
+    <div class="position-relative">
+      <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+      <input id="kt_app_sidebar_search"
+             type="search"
+             class="form-control form-control-sm form-control-solid ps-10"
+             placeholder="Buscar en el menú… (Ctrl+/)"
+             aria-label="Buscar en el menú lateral"
+             autocomplete="off">
+      <kbd class="d-none d-lg-inline-block position-absolute top-50 end-0 translate-middle-y me-3 fs-9 text-muted">Ctrl+/</kbd>
+    </div>
+  </div>
+
   <div class="app-sidebar-menu flex-column-fluid">
     <div id="kt_app_sidebar_menu_wrapper" class="hover-scroll-overlay-y my-5"
          data-kt-scroll="true"
@@ -49,10 +63,211 @@
           </div>
         {% endif %}
 
+        {# Favorites section (client-rendered from localStorage). #}
+        <div id="kt_app_sidebar_favorites" class="d-none">
+          <div class="menu-item">
+            <div class="menu-content pt-4 pb-2">
+              <span class="menu-section text-muted text-uppercase fs-8 ls-1">Favoritos</span>
+            </div>
+          </div>
+          <div id="kt_app_sidebar_favorites_list"></div>
+          <div class="menu-item">
+            <div class="separator my-2"></div>
+          </div>
+        </div>
+
         {% include "base/sidebar_items.html" with menu=menu_tree %}
+
+        {# Empty state when search has no matches. #}
+        <div id="kt_app_sidebar_search_empty" class="d-none text-center py-6 px-3">
+          <i class="ki-outline ki-magnifier fs-2x text-muted mb-2 d-block"></i>
+          <span class="text-muted fs-7">Sin coincidencias</span>
+        </div>
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      const searchInput = document.getElementById("kt_app_sidebar_search");
+      const menuRoot = document.getElementById("kt_app_sidebar_menu");
+      const emptyState = document.getElementById("kt_app_sidebar_search_empty");
+      if (!searchInput || !menuRoot) return;
+
+      // --- Favorites (localStorage) ---
+      const FAV_KEY = "cm.sidebar.favorites";
+      const readFavs = () => {
+        try {
+          const v = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
+          return Array.isArray(v) ? v.filter(x => x && typeof x.href === "string" && typeof x.title === "string") : [];
+        } catch (e) { return []; }
+      };
+      const writeFavs = (arr) => localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+
+      const favBox = document.getElementById("kt_app_sidebar_favorites");
+      const favList = document.getElementById("kt_app_sidebar_favorites_list");
+
+      const buildFavRow = (fav) => {
+        const item = document.createElement("div");
+        item.className = "menu-item";
+        const a = document.createElement("a");
+        a.className = "menu-link";
+        a.setAttribute("href", fav.href);
+
+        const iconWrap = document.createElement("span");
+        iconWrap.className = "menu-icon";
+        const iconI = document.createElement("i");
+        iconI.className = "ki-outline ki-star-2 fs-3 text-warning";
+        iconWrap.appendChild(iconI);
+
+        const title = document.createElement("span");
+        title.className = "menu-title";
+        title.textContent = fav.title;
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "btn btn-icon btn-sm btn-active-light-danger ms-auto p-0 border-0 bg-transparent";
+        remove.setAttribute("aria-label", "Quitar de favoritos");
+        remove.dataset.favRemove = fav.href;
+        const removeIcon = document.createElement("i");
+        removeIcon.className = "ki-outline ki-cross fs-7";
+        remove.appendChild(removeIcon);
+
+        a.appendChild(iconWrap);
+        a.appendChild(title);
+        a.appendChild(remove);
+        item.appendChild(a);
+        return item;
+      };
+
+      const renderFavorites = () => {
+        const favs = readFavs();
+        favList.replaceChildren();
+        if (!favs.length) { favBox.classList.add("d-none"); return; }
+        favBox.classList.remove("d-none");
+        favs.forEach(f => favList.appendChild(buildFavRow(f)));
+      };
+
+      // Inject star toggle on every leaf link.
+      menuRoot.querySelectorAll(".menu-item > a.menu-link").forEach(link => {
+        const href = link.getAttribute("href");
+        if (!href || href === "#") return;
+        const star = document.createElement("button");
+        star.type = "button";
+        star.className = "btn btn-icon btn-sm btn-active-light-warning ms-auto p-0 border-0 bg-transparent menu-fav-toggle";
+        star.setAttribute("aria-label", "Marcar como favorito");
+        const starI = document.createElement("i");
+        starI.className = "ki-outline ki-star fs-6 text-muted";
+        star.appendChild(starI);
+        link.appendChild(star);
+
+        const sync = () => {
+          const isFav = readFavs().some(f => f.href === href);
+          starI.className = `ki-${isFav ? "solid" : "outline"} ki-star fs-6 ${isFav ? "text-warning" : "text-muted"}`;
+        };
+        sync();
+        star.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const titleEl = link.querySelector(".menu-title");
+          const title = (titleEl ? titleEl.textContent : href).trim();
+          let favs = readFavs();
+          favs = favs.some(f => f.href === href)
+            ? favs.filter(f => f.href !== href)
+            : favs.concat([{ href, title }]);
+          writeFavs(favs);
+          sync();
+          renderFavorites();
+        });
+      });
+
+      favList.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-fav-remove]");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const href = btn.getAttribute("data-fav-remove");
+        writeFavs(readFavs().filter(f => f.href !== href));
+        renderFavorites();
+        // Re-sync star icon on original leaf.
+        const orig = menuRoot.querySelector(`a.menu-link[href="${CSS.escape(href)}"] .menu-fav-toggle i`);
+        if (orig) { orig.className = "ki-outline ki-star fs-6 text-muted"; }
+      });
+
+      renderFavorites();
+
+      // --- Live filter ---
+      const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const allItems = Array.from(menuRoot.querySelectorAll(".menu-item"));
+      const sections = allItems.filter(el => el.classList.contains("menu-accordion"));
+
+      const filter = (q) => {
+        const query = norm(q);
+        if (!query) {
+          allItems.forEach(el => { el.style.display = ""; });
+          sections.forEach(s => s.classList.remove("show", "here-from-search"));
+          emptyState.classList.add("d-none");
+          if (favBox) favBox.classList.toggle("d-none", !readFavs().length);
+          return;
+        }
+        if (favBox) favBox.classList.add("d-none");
+        let anyVisible = false;
+        menuRoot.querySelectorAll(".menu-item:not(.menu-accordion)").forEach(leaf => {
+          const link = leaf.querySelector("a.menu-link, span.menu-link");
+          const titleEl = link ? link.querySelector(".menu-title") : null;
+          const title = titleEl ? norm(titleEl.textContent) : "";
+          const match = title.includes(query);
+          leaf.style.display = match ? "" : "none";
+          if (match) anyVisible = true;
+        });
+        sections.forEach(section => {
+          const ownTitleEl = section.querySelector(":scope > .menu-link .menu-title");
+          const ownTitle = ownTitleEl ? norm(ownTitleEl.textContent) : "";
+          const titleMatch = ownTitle.includes(query);
+          if (titleMatch) {
+            section.querySelectorAll(":scope > .menu-sub .menu-item").forEach(c => { c.style.display = ""; });
+          }
+          const visibleChildren = Array.from(section.querySelectorAll(".menu-item:not(.menu-accordion)"))
+            .some(c => c.style.display !== "none");
+          const visible = visibleChildren || titleMatch;
+          section.style.display = visible ? "" : "none";
+          if (visible) {
+            section.classList.add("show", "here-from-search");
+            anyVisible = true;
+          } else {
+            section.classList.remove("show", "here-from-search");
+          }
+        });
+        emptyState.classList.toggle("d-none", anyVisible);
+      };
+
+      let timer;
+      searchInput.addEventListener("input", () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => filter(searchInput.value), 60);
+      });
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          searchInput.value = "";
+          filter("");
+          searchInput.blur();
+        }
+      });
+
+      // Global shortcut Ctrl+/ to focus sidebar search.
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+          const t = e.target;
+          if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) {
+            if (t.id !== "kt_app_sidebar_search") return;
+          }
+          e.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+        }
+      });
+    })();
+  </script>
 
   {# Sidebar footer eliminado: el menú de usuario completo (perfil + cerrar sesión) está en el header. #}
 </div>

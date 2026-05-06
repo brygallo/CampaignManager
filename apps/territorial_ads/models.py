@@ -1,16 +1,16 @@
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.utils import timezone
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
 from apps.locations.models import Canton, Parish, Province, Sector
 from apps.territorial_ads.transitions import PhysicalAdTransitions
+from apps.workflows.mixins import TransitionRequirementsMixin
 
 
-class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
+class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, TransitionRequirementsMixin):
     """Physical campaign advertising placement, initially focused on lonas."""
 
     workflow = PhysicalAdTransitions.workflow
@@ -190,17 +190,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         return self.code or self.title
 
     def save(self, *args, **kwargs):
-        now = timezone.now()
-        if self.approved_by_id and not self.approved_at:
-            self.approved_at = now
-        if (self.assigned_installer_id or self.installer_team) and not self.assigned_at:
-            self.assigned_at = now
-        if self.installed_by_id and not self.installed_at:
-            self.installed_at = now
-        if self.damage_reported_by_id and not self.damage_reported_at:
-            self.damage_reported_at = now
-        if self.retired_by_id and not self.retired_at:
-            self.retired_at = now
         super().save(*args, **kwargs)
         if not self.code:
             self.code = f"PF-{self.pk:06d}"
@@ -208,12 +197,28 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
 
     @property
     def transition_requirements(self):
+        if self.state == self.workflow.OFRECIDA:
+            return self.build_transition_requirements(
+                "Aprobar",
+                [
+                    self.build_transition_requirement_item(
+                        "Dueño / contacto", self.owner_name, bool(self.owner_name)
+                    ),
+                    self.build_transition_requirement_item(
+                        "Teléfono contacto", self.owner_phone, bool(self.owner_phone)
+                    ),
+                    self.build_transition_requirement_item(
+                        "Dirección", self.address, bool(self.address)
+                    ),
+                ],
+                ready_text="Puedes aprobar la publicidad desde el menú de acciones.",
+            )
         if self.state == self.workflow.APROBADA:
             assigned = bool(self.assigned_installer_id or self.installer_team)
-            return self._build_transition_requirements(
+            return self.build_transition_requirements(
                 "Asignar instalación",
                 [
-                    self._build_transition_requirement_item(
+                    self.build_transition_requirement_item(
                         "Responsable de instalación",
                         self.assigned_installer or self.installer_team,
                         assigned,
@@ -222,46 +227,28 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
                 ready_text="Puedes asignar la instalación desde el menú de acciones.",
             )
         if self.state == self.workflow.PENDIENTE_INSTALACION:
-            return self._build_transition_requirements(
+            return self.build_transition_requirements(
                 "Marcar instalada",
                 [
-                    self._build_transition_requirement_item("Foto de evidencia", self.installation_photo, False),
-                    self._build_transition_requirement_item("Latitud GPS", self.installed_latitude, False),
-                    self._build_transition_requirement_item("Longitud GPS", self.installed_longitude, False),
+                    self.build_transition_requirement_item("Foto de evidencia", self.installation_photo, False),
+                    self.build_transition_requirement_item("Latitud GPS", self.installed_latitude, False),
+                    self.build_transition_requirement_item("Longitud GPS", self.installed_longitude, False),
                 ],
                 help_text="Estos datos se capturan obligatoriamente al ejecutar la transición de instalación.",
             )
+        if self.state == self.workflow.INSTALADA:
+            return self.build_transition_requirements(
+                "Reportar daño / Retirar",
+                [
+                    self.build_transition_requirement_item(
+                        "Instalación registrada",
+                        self.installed_at,
+                        bool(self.installed_at),
+                    ),
+                ],
+                ready_text=(
+                    "La publicidad está instalada. Puedes reportar daño o retirarla desde el menú "
+                    "de acciones."
+                ),
+            )
         return None
-
-    @staticmethod
-    def _build_transition_requirement_item(label, value=None, is_met=False, icon=None):
-        return {
-            "label": label,
-            "value": value,
-            "is_met": bool(is_met),
-            "icon": icon or "fas fa-check-circle",
-        }
-
-    @classmethod
-    def _build_transition_requirements(
-        cls,
-        transition_verb,
-        items,
-        target_label=None,
-        help_text=None,
-        ready_text=None,
-    ):
-        pending_count = sum(1 for item in items if not item.get("is_met"))
-        return {
-            "target_label": target_label,
-            "transition_verb": transition_verb,
-            "items": items,
-            "pending_count": pending_count,
-            "help_text": help_text
-            or (
-                "Completa los requisitos marcados en rojo para habilitar la "
-                f"transición {transition_verb} desde el menú de acciones."
-            ),
-            "ready_text": ready_text
-            or f"Puedes ejecutar la transición {transition_verb} desde el menú de acciones.",
-        }

@@ -66,12 +66,9 @@ Catálogos:
   Resultados de levantamiento:
     app: field_surveys
     model: surveyresultoption
-  Tipos de publicidad propia:
+  Tipos de publicidad:
     app: field_surveys
-    model: ownadvertisingtype
-  Tipos de publicidad de competencia:
-    app: field_surveys
-    model: competitoradvertisingtype
+    model: advertisingtype
 
 Sistema:
   icon: setting-3

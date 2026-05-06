@@ -4,6 +4,7 @@ Django templates forbid accessing names that start with an underscore, so
 `model._meta.verbose_name_plural` cannot be expressed inline. These filters
 bridge that gap for read-only display use cases (e.g. inline formset titles).
 """
+from django.apps import apps
 from django import template
 from django.db.models import Model
 
@@ -17,6 +18,15 @@ def _model_from(value):
         return value
     if isinstance(value, Model):
         return value.__class__
+    if isinstance(value, dict):
+        app_name = value.get("app_name") or value.get("app_label")
+        model_name = value.get("model_name")
+        if app_name and model_name:
+            try:
+                return apps.get_model(app_name, model_name)
+            except LookupError:
+                return None
+        return None
     meta_model = getattr(getattr(value, "_meta", None), "model", None)
     if isinstance(meta_model, type) and issubclass(meta_model, Model):
         return meta_model

@@ -1,11 +1,10 @@
 from django.contrib import admin
 
 from .models import (
+    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
-    CompetitorAdvertisingType,
     FieldSurvey,
-    OwnAdvertisingType,
     OwnAdvertisingPlacement,
     SurveyResultOption,
 )
@@ -18,15 +17,8 @@ class SurveyResultOptionAdmin(admin.ModelAdmin):
     search_fields = ("code", "name")
 
 
-@admin.register(OwnAdvertisingType)
-class OwnAdvertisingTypeAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "order", "is_active")
-    list_filter = ("is_active",)
-    search_fields = ("code", "name")
-
-
-@admin.register(CompetitorAdvertisingType)
-class CompetitorAdvertisingTypeAdmin(admin.ModelAdmin):
+@admin.register(AdvertisingType)
+class AdvertisingTypeAdmin(admin.ModelAdmin):
     list_display = ("code", "name", "order", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "name")

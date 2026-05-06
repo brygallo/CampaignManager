@@ -15,6 +15,7 @@ Sim pattern:
 from django_fsm import transition
 
 from apps.campaigns.workflows import CampaignWorkflow
+from apps.workflows.exceptions import WorkflowException
 
 
 class CampaignTransitions:
@@ -51,7 +52,13 @@ class CampaignTransitions:
         ),
     )
     def close(self, **kwargs):
-        """Active -> Closed."""
+        deps = self.get_active_dependencies()
+        if deps["scheduled_events"] or deps["active_ads"]:
+            raise WorkflowException(
+                "No puedes cerrar la campaña: quedan "
+                f"{deps['scheduled_events']} evento(s) AGENDADO(s) y "
+                f"{deps['active_ads']} publicidad(es) activa(s)."
+            )
 
     @transition(
         field="state",
@@ -69,4 +76,10 @@ class CampaignTransitions:
         ),
     )
     def cancel(self, **kwargs):
-        """Draft / Active -> Canceled."""
+        deps = self.get_active_dependencies()
+        if deps["scheduled_events"] or deps["active_ads"]:
+            raise WorkflowException(
+                "No puedes anular la campaña: cancela primero los "
+                f"{deps['scheduled_events']} evento(s) AGENDADO(s) y retira las "
+                f"{deps['active_ads']} publicidad(es) activa(s)."
+            )

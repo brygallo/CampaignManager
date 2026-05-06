@@ -10,11 +10,10 @@ from .forms import (
     SurveyResultOptionForm,
 )
 from .models import (
+    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
-    CompetitorAdvertisingType,
     FieldSurvey,
-    OwnAdvertisingType,
     OwnAdvertisingPlacement,
     SurveyResultOption,
 )
@@ -55,17 +54,8 @@ class SurveyResultOptionSite(BaseSite):
     filter_fields = ("is_active:Activo",)
 
 
-@register("field_surveys.OwnAdvertisingType")
-class OwnAdvertisingTypeSite(BaseSite):
-    list_mixins = (DropdownFilterMixin,)
-    list_fields = ("code", "name", "order", "is_active:Activo")
-    detail_fields = (("code", "name"), ("order", "is_active"))
-    search_params = ("code__icontains", "name__icontains")
-    filter_fields = ("is_active:Activo",)
-
-
-@register("field_surveys.CompetitorAdvertisingType")
-class CompetitorAdvertisingTypeSite(BaseSite):
+@register("field_surveys.AdvertisingType")
+class AdvertisingTypeSite(BaseSite):
     list_mixins = (DropdownFilterMixin,)
     list_fields = ("code", "name", "order", "is_active:Activo")
     detail_fields = (("code", "name"), ("order", "is_active"))

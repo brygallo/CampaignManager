@@ -1,4 +1,5 @@
 """FSM transitions for territorial physical advertisements."""
+from django.utils import timezone
 from django_fsm import transition
 
 from apps.territorial_ads.workflows import PhysicalAdWorkflow
@@ -22,6 +23,7 @@ class PhysicalAdTransitions:
     )
     def approve(self, user=None, **kwargs):
         self.approved_by = user
+        self.approved_at = timezone.now()
 
     @transition(
         field="state",
@@ -41,6 +43,7 @@ class PhysicalAdTransitions:
         self.assigned_installer_id = assigned_installer or None
         self.installer_team = installer_team or ""
         self.assigned_by = user
+        self.assigned_at = timezone.now()
 
     @transition(
         field="state",
@@ -70,6 +73,7 @@ class PhysicalAdTransitions:
         self.installed_longitude = installed_longitude
         self.installation_notes = installation_notes or ""
         self.installed_by = user
+        self.installed_at = timezone.now()
 
     @transition(
         field="state",
@@ -90,6 +94,7 @@ class PhysicalAdTransitions:
         if damage_photo:
             self.damage_photo = damage_photo
         self.damage_reported_by = user
+        self.damage_reported_at = timezone.now()
 
     @transition(
         field="state",
@@ -110,4 +115,5 @@ class PhysicalAdTransitions:
         if retirement_photo:
             self.retirement_photo = retirement_photo
         self.retired_by = user
+        self.retired_at = timezone.now()
 

@@ -108,14 +108,14 @@ class FieldSurvey(BaseModel):
         return next((code for code in priority if code in selected), "")
 
 
-class OwnAdvertisingType(BaseModel):
+class AdvertisingType(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
     order = models.PositiveSmallIntegerField("Orden", default=0)
 
     class Meta:
-        verbose_name = "Tipo de publicidad propia"
-        verbose_name_plural = "Tipos de publicidad propia"
+        verbose_name = "Tipo de publicidad"
+        verbose_name_plural = "Tipos de publicidad"
         ordering = ["order", "name"]
 
     def __str__(self):
@@ -130,7 +130,7 @@ class OwnAdvertisingPlacement(BaseModel):
         verbose_name="Levantamiento",
     )
     advertising_type = models.ForeignKey(
-        OwnAdvertisingType,
+        AdvertisingType,
         on_delete=models.PROTECT,
         related_name="own_advertising_placements",
         verbose_name="Tipo de publicidad",
@@ -213,20 +213,6 @@ class Competitor(BaseModel):
         return f"Lista {self.list_number} {self.political_organization}{candidate}"
 
 
-class CompetitorAdvertisingType(BaseModel):
-    code = models.CharField("Código", max_length=40, unique=True)
-    name = models.CharField("Nombre", max_length=120)
-    order = models.PositiveSmallIntegerField("Orden", default=0)
-
-    class Meta:
-        verbose_name = "Tipo de publicidad de competencia"
-        verbose_name_plural = "Tipos de publicidad de competencia"
-        ordering = ["order", "name"]
-
-    def __str__(self):
-        return self.name
-
-
 class CompetitorAdvertisingDetection(BaseModel):
     campaign = models.ForeignKey(
         Campaign,
@@ -255,7 +241,7 @@ class CompetitorAdvertisingDetection(BaseModel):
         blank=True,
     )
     advertising_type = models.ForeignKey(
-        CompetitorAdvertisingType,
+        AdvertisingType,
         on_delete=models.PROTECT,
         related_name="competitor_advertising_detections",
         verbose_name="Tipo de publicidad",

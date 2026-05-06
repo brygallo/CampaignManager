@@ -49,6 +49,9 @@ class UserForm(ModelForm):
         required=False,
         help_text="Déjalo en blanco para mantener la contraseña actual.",
     )
+    is_active = forms.BooleanField(label="Activo", required=False, initial=True)
+    is_staff = forms.BooleanField(label="Staff", required=False)
+    is_superuser = forms.BooleanField(label="Superusuario", required=False)
 
     class Meta:
         model = User
@@ -67,9 +70,42 @@ class UserForm(ModelForm):
             ),
         }
         widgets = {
-            "groups": forms.SelectMultiple(attrs={"class": "form-select"}),
-            "user_permissions": forms.SelectMultiple(attrs={"class": "form-select"}),
+            "groups": s2forms.ModelSelect2MultipleWidget(
+                model="auth.Group",
+                search_fields=["name__icontains"],
+                max_results=100,
+                attrs={
+                    "data-minimum-input-length": 0,
+                    "data-placeholder": "Seleccione grupos...",
+                },
+            ),
+            "user_permissions": s2forms.ModelSelect2MultipleWidget(
+                model="auth.Permission",
+                search_fields=[
+                    "name__icontains",
+                    "codename__icontains",
+                    "content_type__app_label__icontains",
+                    "content_type__model__icontains",
+                ],
+                max_results=100,
+                attrs={
+                    "data-minimum-input-length": 0,
+                    "data-placeholder": "Seleccione permisos...",
+                },
+            ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["password"].help_text = (
+                "Déjalo en blanco para mantener la contraseña actual."
+            )
+        else:
+            self.fields["password"].required = True
+            self.fields["password"].help_text = (
+                "Define la contraseña inicial del usuario."
+            )
 
     def save(self, commit=True):
         user = super().save(commit=False)

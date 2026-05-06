@@ -7,11 +7,10 @@ from apps.campaigns.models import Campaign
 from apps.locations.models import Parish, Sector
 
 from .models import (
+    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
-    CompetitorAdvertisingType,
     FieldSurvey,
-    OwnAdvertisingType,
     OwnAdvertisingPlacement,
     SurveyResultOption,
 )
@@ -123,13 +122,13 @@ class FieldSurveyForm(ModelForm):
 class FieldSurveyQuickForm(FieldSurveyForm):
     own_advertising_type = forms.ModelChoiceField(
         label="Tipo de publicidad propia",
-        queryset=OwnAdvertisingType.objects.none(),
+        queryset=AdvertisingType.objects.none(),
         required=False,
         widget=ModelSelect2Widget(
-            model=OwnAdvertisingType,
+            model=AdvertisingType,
             search_fields=["name__icontains", "code__icontains"],
             max_results=100,
-            attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "OwnAdvertisingType"},
+            attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "AdvertisingType"},
         ),
     )
     own_photo = forms.ImageField(label="Foto de publicidad propia", required=False)
@@ -148,13 +147,13 @@ class FieldSurveyQuickForm(FieldSurveyForm):
     )
     competitor_advertising_type = forms.ModelChoiceField(
         label="Tipo de publicidad competencia",
-        queryset=CompetitorAdvertisingType.objects.none(),
+        queryset=AdvertisingType.objects.none(),
         required=False,
         widget=ModelSelect2Widget(
-            model=CompetitorAdvertisingType,
+            model=AdvertisingType,
             search_fields=["name__icontains", "code__icontains"],
             max_results=100,
-            attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "CompetitorAdvertisingType"},
+            attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "AdvertisingType"},
         ),
     )
     competitor_photo = forms.ImageField(label="Foto competencia", required=False)
@@ -196,8 +195,8 @@ class FieldSurveyQuickForm(FieldSurveyForm):
         super().__init__(*args, **kwargs)
         self.fields.pop("brigadier", None)
         self.fields["results"].queryset = SurveyResultOption.objects.filter(is_active=True).order_by("order", "name")
-        self.fields["own_advertising_type"].queryset = OwnAdvertisingType.objects.filter(is_active=True).order_by("order", "name")
-        self.fields["competitor_advertising_type"].queryset = CompetitorAdvertisingType.objects.filter(is_active=True).order_by("order", "name")
+        self.fields["own_advertising_type"].queryset = AdvertisingType.objects.filter(is_active=True).order_by("order", "name")
+        self.fields["competitor_advertising_type"].queryset = AdvertisingType.objects.filter(is_active=True).order_by("order", "name")
         self.fields["competitor"].queryset = Competitor.objects.filter(is_active=True).order_by(
             "campaign__name", "list_number", "political_organization"
         )
@@ -308,10 +307,10 @@ class CompetitorAdvertisingDetectionForm(ModelForm):
                 attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "Competitor"},
             ),
             "advertising_type": ModelSelect2Widget(
-                model=CompetitorAdvertisingType,
+                model=AdvertisingType,
                 search_fields=["name__icontains", "code__icontains"],
                 max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "CompetitorAdvertisingType"},
+                attrs={"data-minimum-input-length": 0, "data-app": "field_surveys", "data-model": "AdvertisingType"},
             ),
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),

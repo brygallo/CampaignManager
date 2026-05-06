@@ -5,6 +5,7 @@ Uso:
     python manage.py tenant_command seed_all --schema=<tenant> --reset
 
 Equivale a:
+    seed_audit_rules
     seed_campaigns
     seed_field_survey_results
     seed_sectors
@@ -17,6 +18,7 @@ from django.core.management.base import BaseCommand
 
 
 SEEDS = [
+    ("seed_audit_rules",          True),   # acepta --reset
     ("seed_campaigns",            True),   # acepta --reset
     ("seed_field_survey_results", False),
     ("seed_sectors",              True),

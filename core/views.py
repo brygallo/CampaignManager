@@ -207,29 +207,34 @@ class SuperAdminLandingView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         return context
 
 
-@login_required
 def serve_protected_media(request, path):
     """Serve files from MEDIA_ROOT with a tenant ownership check.
 
-    Files under ``tenants/<schema>/...`` are only readable by users whose
-    active tenant matches ``<schema>``. Files under ``tenant_branding/...``
-    (logos/favicons stored in the public schema) are readable by any
-    authenticated user — branding is intentionally cross-tenant since the
-    super-admin manages it.
+    Files under ``tenant_branding/...`` (logos/favicons) are public — they
+    appear on the login page and outbound emails, so they must be readable by
+    anonymous users. Everything else requires authentication, and tenant data
+    under ``tenants/<schema>/...`` is restricted to users whose active tenant
+    matches ``<schema>``.
 
     Production deployments behind nginx should replace this view with an
     ``X-Accel-Redirect`` response pointing at an internal location, but the
     auth + tenant check belongs here either way.
     """
     parts = path.split("/", 2)
+
+    # Branding is public (logos, favicons). Skip auth.
+    if parts and parts[0] == "tenant_branding":
+        return static_serve(request, path, document_root=settings.MEDIA_ROOT)
+
+    # Everything else requires an authenticated user.
+    if not request.user.is_authenticated:
+        raise Http404
+
     active_schema = getattr(connection, "schema_name", None) or get_public_schema_name()
 
     if parts and parts[0] == "tenants":
         if len(parts) < 2 or parts[1] != active_schema:
             raise Http404
-    elif parts and parts[0] == "tenant_branding":
-        # readable by any authenticated user
-        pass
     else:
         # legacy / non-namespaced files: only super-admin can read.
         if not request.user.is_superuser:

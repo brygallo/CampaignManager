@@ -22,12 +22,11 @@ from PIL import Image
 
 from apps.campaigns.models import Campaign
 from apps.field_surveys.models import (
+    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
-    CompetitorAdvertisingType,
     FieldSurvey,
     OwnAdvertisingPlacement,
-    OwnAdvertisingType,
     SurveyResultOption,
 )
 from apps.locations.models import Parish, Sector
@@ -179,8 +178,9 @@ class Command(BaseCommand):
         for code, weight in result_priority.items():
             priority_pool.extend([code] * int(weight * 100))
 
-        own_types = list(OwnAdvertisingType.objects.filter(is_active=True))
-        comp_types = list(CompetitorAdvertisingType.objects.filter(is_active=True))
+        ad_types = list(AdvertisingType.objects.filter(is_active=True))
+        own_types = ad_types
+        comp_types = ad_types
 
         n = opts["surveys"]
         surveys = []

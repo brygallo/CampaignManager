@@ -3,6 +3,7 @@ from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
 from apps.campaigns.transitions import CampaignTransitions
+from apps.workflows.mixins import TransitionRequirementsMixin
 
 
 class Election(BaseModel):
@@ -83,7 +84,7 @@ class Candidate(BaseModel):
         return self.full_name
 
 
-class Campaign(BaseModel, CampaignTransitions):
+class Campaign(BaseModel, CampaignTransitions, TransitionRequirementsMixin):
     """Election campaign."""
 
     workflow = CampaignTransitions.workflow
@@ -129,3 +130,70 @@ class Campaign(BaseModel, CampaignTransitions):
 
     def __str__(self):
         return f"{self.name} — {self.candidate}"
+
+    def get_active_dependencies(self):
+        """Return counts of dependent records that block close/cancel.
+
+        Eventos en SCHEDULED bloquean la agenda del candidato; publicidades
+        en estados intermedios siguen activas en territorio.
+        """
+        from apps.political_agenda.models import PoliticalAgendaEvent
+        from apps.territorial_ads.models import PhysicalAdvertisement
+
+        scheduled_events = PoliticalAgendaEvent.objects.filter(
+            campaign_id=self.pk,
+            state=PoliticalAgendaEvent.workflow.SCHEDULED,
+        ).count()
+        active_ads = PhysicalAdvertisement.objects.filter(
+            campaign_id=self.pk,
+            state__in=[
+                PhysicalAdvertisement.workflow.OFRECIDA,
+                PhysicalAdvertisement.workflow.APROBADA,
+                PhysicalAdvertisement.workflow.PENDIENTE_INSTALACION,
+                PhysicalAdvertisement.workflow.INSTALADA,
+                PhysicalAdvertisement.workflow.DANADA,
+            ],
+        ).count()
+        return {
+            "scheduled_events": scheduled_events,
+            "active_ads": active_ads,
+        }
+
+    @property
+    def transition_requirements(self):
+        if self.state == self.workflow.DRAFT:
+            return self.build_transition_requirements(
+                "Activar campaña",
+                [
+                    self.build_transition_requirement_item(
+                        "Inicio", self.start_date, bool(self.start_date)
+                    ),
+                    self.build_transition_requirement_item(
+                        "Fin", self.end_date, bool(self.end_date)
+                    ),
+                ],
+                ready_text="Puedes activar la campaña desde el menú de acciones.",
+            )
+        if self.state == self.workflow.ACTIVE:
+            deps = self.get_active_dependencies()
+            return self.build_transition_requirements(
+                "Cerrar campaña",
+                [
+                    self.build_transition_requirement_item(
+                        "Sin eventos AGENDADOS pendientes",
+                        f"{deps['scheduled_events']} agendados",
+                        deps["scheduled_events"] == 0,
+                    ),
+                    self.build_transition_requirement_item(
+                        "Sin publicidad activa",
+                        f"{deps['active_ads']} en territorio",
+                        deps["active_ads"] == 0,
+                    ),
+                ],
+                help_text=(
+                    "Antes de cerrar, marca como realizados o cancela los eventos agendados y "
+                    "retira o cancela las publicidades activas."
+                ),
+                ready_text="Puedes cerrar la campaña desde el menú de acciones.",
+            )
+        return None

@@ -8,11 +8,10 @@ from django.test import TestCase
 from apps.campaigns.models import Campaign, Candidate, Election, PoliticalMovement, Position
 from apps.field_surveys.forms import FieldSurveyQuickForm
 from apps.field_surveys.models import (
+    AdvertisingType,
     Competitor,
     CompetitorAdvertisingDetection,
-    CompetitorAdvertisingType,
     FieldSurvey,
-    OwnAdvertisingType,
     OwnAdvertisingPlacement,
 )
 from apps.field_surveys.views import fieldsurvey_queryset_for_user
@@ -42,8 +41,8 @@ class FieldSurveyRulesTests(TestCase):
             movement=movement,
             position=position,
         )
-        self.own_ad_type = OwnAdvertisingType.objects.get(code="AFICHE")
-        self.competitor_ad_type = CompetitorAdvertisingType.objects.get(code="AFICHE")
+        self.own_ad_type = AdvertisingType.objects.get(code="AFICHE")
+        self.competitor_ad_type = AdvertisingType.objects.get(code="AFICHE")
         self.survey = FieldSurvey.objects.create(
             campaign=self.campaign,
             brigadier=self.user,

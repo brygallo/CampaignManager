@@ -8,7 +8,7 @@
       <div class="me-7 mb-4">
         <div class="symbol symbol-100px symbol-lg-160px symbol-fixed position-relative">
           {% if profile.avatar %}
-            <img src="{{ profile.avatar.url }}" alt="{{ user.username }}" />
+            <img src="{{ profile.avatar.url }}" alt="{{ user.username }}" loading="lazy" decoding="async" />
           {% else %}
             <div class="symbol-label fs-2qx fw-bolder bg-light-primary text-primary">
               {{ user.get_full_name|default:user.username|first|upper }}
