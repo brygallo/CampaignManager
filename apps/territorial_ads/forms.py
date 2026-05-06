@@ -60,6 +60,13 @@ class PhysicalAdvertisementForm(ModelForm):
     class Meta:
         model = PhysicalAdvertisement
         fieldsets = {
+            "Ubicación ofrecida": (
+                ("offered_location",),
+                ("address",),
+                ("reference",),
+                ("offered_latitude", "offered_longitude"),
+                ("offered_photo",),
+            ),
             "Publicidad": (
                 ("campaign", "advertisement_type"),
                 ("quantity",),
@@ -68,13 +75,6 @@ class PhysicalAdvertisementForm(ModelForm):
                 ("owner_name", "owner_phone"),
                 ("cost_type", "cost_amount"),
                 ("offered_notes",),
-            ),
-            "Ubicación ofrecida": (
-                ("address",),
-                ("reference",),
-                ("offered_location",),
-                ("offered_latitude", "offered_longitude"),
-                ("offered_photo",),
             ),
         }
         widgets = {
@@ -257,5 +257,4 @@ class RejectPhysicalAdForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 3}),
         required=True,
     )
-
 

@@ -1,11 +1,74 @@
 """Register territorial advertising models in superadmin."""
+from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.urls import reverse
+
 from superadmin.decorators import register
 
 from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin
+from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import WorkflowStateFilterMixin
 
 from .forms import PhysicalAdvertisementForm
 from .models import AdvertisingCostType, PhysicalAdvertisement
+
+
+class MapInitialLocationMixin:
+    """Prefill offered coordinates when the create form is opened from the map."""
+
+    coordinate_initial_fields = ("offered_latitude", "offered_longitude")
+
+    def get_initial(self):
+        initial = super().get_initial()
+        for field in self.coordinate_initial_fields:
+            value = self.request.GET.get(field)
+            if value:
+                initial[field] = value
+        return initial
+
+
+class MapAjaxCreateMixin:
+    """Render and submit the create form inside the map modal."""
+
+    def _is_map_ajax(self):
+        return self.request.headers.get("X-Map-Create") == "1"
+
+    def _render_map_form(self, form):
+        return render_to_string(
+            "territorial_ads/_map_create_form.html",
+            {"form": form, "action_url": self.request.get_full_path()},
+            request=self.request,
+        )
+
+    def get(self, request, *args, **kwargs):
+        if self._is_map_ajax():
+            form = self.get_form()
+            return JsonResponse({"html": self._render_map_form(form)})
+        return super().get(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        if self._is_map_ajax():
+            return JsonResponse(
+                {"ok": False, "html": self._render_map_form(form)},
+                status=400,
+            )
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if self._is_map_ajax():
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "id": self.object.pk,
+                    "label": self.object.code or str(self.object),
+                    "url": reverse(
+                        "site:territorial_ads_physicaladvertisement_",
+                        kwargs={"pk": self.object.pk},
+                    ),
+                }
+            )
+        return response
 
 
 @register("territorial_ads.AdvertisingCostType")
@@ -27,6 +90,7 @@ class PhysicalAdvertisementSite(BaseSite):
     form_template_name = "territorial_ads/physicaladvertisement_form.html"
     list_template_name = "territorial_ads/superadmin_physicaladvertisement_list.html"
     list_mixins = (WorkflowStateFilterMixin,)
+    create_mixins = (MapInitialLocationMixin, MapAjaxCreateMixin, SaveOptionsMixin)
     detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
 
     def get_url_name(self, suffix):

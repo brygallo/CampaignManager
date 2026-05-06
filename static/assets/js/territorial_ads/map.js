@@ -16,9 +16,11 @@
     });
   }
 
-  function buildPopupUrl(template, id) {
-    // The url tag was reversed against pk=0; swap that segment for the real id.
-    return template.replace(/\/0\/?$/, "/" + id + "/");
+  function buildCreateUrl(base, latlng) {
+    var params = new URLSearchParams();
+    params.set("offered_latitude", latlng.lat.toFixed(6));
+    params.set("offered_longitude", latlng.lng.toFixed(6));
+    return base + (base.indexOf("?") === -1 ? "?" : "&") + params.toString();
   }
 
   function setHtml(node, html) {
@@ -34,8 +36,8 @@
     counterEl.textContent = count === 1 ? "1 pin" : count + " pines";
   }
 
-  function updateFilterCount(counterEl, filters) {
-    if (!counterEl || !filters) {
+  function updateFilterCount(badgeEl, triggerEls, filters) {
+    if (!filters) {
       return;
     }
     var count = 0;
@@ -44,8 +46,19 @@
         count += 1;
       }
     });
-    counterEl.textContent = count ? count + " filtro" + (count === 1 ? "" : "s") : "Sin filtros";
-    counterEl.className = count ? "badge badge-light-primary fs-8" : "badge badge-light fs-8";
+    if (badgeEl) {
+      badgeEl.textContent = count ? String(count) : "";
+      if (count > 0) {
+        badgeEl.removeAttribute("hidden");
+      } else {
+        badgeEl.setAttribute("hidden", "");
+      }
+    }
+    if (triggerEls) {
+      Array.prototype.forEach.call(triggerEls, function (btn) {
+        btn.classList.toggle("has-active-filters", count > 0);
+      });
+    }
   }
 
   function setLocationButton(button, label, disabled) {
@@ -53,10 +66,82 @@
       return;
     }
     button.disabled = !!disabled;
-    button.innerHTML = '<i class="ki-outline ki-geolocation fs-3"></i>' + label;
+    button.setAttribute("aria-label", label);
+    var labelEl = button.querySelector(".physical-ad-map-fab__label");
+    if (labelEl) {
+      labelEl.textContent = label;
+    }
   }
 
-  function openModal(modalEl, ad, popupUrlTemplate) {
+  function setupPanel(shell, panel, triggers, map) {
+    if (!shell || !panel) {
+      return { open: function () {}, close: function () {}, toggle: function () {} };
+    }
+
+    function setState(next) {
+      shell.setAttribute("data-panel-state", next);
+      var expanded = next === "expanded";
+      panel.setAttribute("aria-hidden", expanded ? "false" : "true");
+      Array.prototype.forEach.call(triggers, function (btn) {
+        if (btn.hasAttribute("aria-controls")) {
+          btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+        }
+      });
+      if (map) {
+        // Re-measure once the slide/fade transition has settled.
+        window.setTimeout(function () { map.invalidateSize(); }, 320);
+      }
+    }
+
+    function open() { setState("expanded"); }
+    function close() { setState("collapsed"); }
+    function toggle() {
+      setState(shell.getAttribute("data-panel-state") === "expanded" ? "collapsed" : "expanded");
+    }
+
+    Array.prototype.forEach.call(triggers, function (btn) {
+      btn.addEventListener("click", function (event) {
+        event.preventDefault();
+        toggle();
+      });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && shell.getAttribute("data-panel-state") === "expanded") {
+        close();
+      }
+    });
+
+    return { open: open, close: close, toggle: toggle };
+  }
+
+  function detailHtmlFromPage(html) {
+    var doc = new window.DOMParser().parseFromString(html, "text/html");
+    var container = doc.querySelector("#kt_app_content_container");
+    if (!container) {
+      return "";
+    }
+
+    var clone = container.cloneNode(true);
+    var toolbar = clone.querySelector(".app-toolbar-wrapper");
+    if (toolbar) {
+      toolbar.remove();
+    }
+    return clone.innerHTML;
+  }
+
+  function initDynamicContent(scope) {
+    if (window.initFormWidgets) {
+      window.initFormWidgets(scope);
+    } else if (window.initLeafletMaps) {
+      window.initLeafletMaps(scope);
+    }
+    if (window.KTApp && window.KTApp.init) {
+      window.KTApp.init();
+    }
+  }
+
+  function openModal(modalEl, ad) {
     if (!modalEl || !window.bootstrap) {
       window.location.href = ad.url;
       return;
@@ -77,15 +162,18 @@
     var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
 
-    fetch(buildPopupUrl(popupUrlTemplate, ad.id), {
+    fetch(ad.url, {
       headers: { "X-Requested-With": "XMLHttpRequest" },
       credentials: "same-origin"
     })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        titleEl.textContent = data.title || titleEl.textContent;
-        detailLink.href = data.url || detailLink.href;
-        setHtml(bodyEl, data.html || "");
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var detailHtml = detailHtmlFromPage(html);
+        if (!detailHtml) {
+          throw new Error("Empty detail content");
+        }
+        setHtml(bodyEl, detailHtml);
+        initDynamicContent(bodyEl);
       })
       .catch(function () {
         setHtml(
@@ -95,18 +183,121 @@
       });
   }
 
+  function loadingHtml(text) {
+    return (
+      '<div class="text-center text-muted py-10">' +
+        '<div class="spinner-border" role="status"></div>' +
+        '<div class="mt-3">' + text + '</div>' +
+      '</div>'
+    );
+  }
+
+  function initDynamicForm(scope) {
+    if (window.initFormWidgets) {
+      window.initFormWidgets(scope);
+    } else if (window.initLeafletMaps) {
+      window.initLeafletMaps(scope);
+    }
+    if (window.CostTypeAmountToggle && window.CostTypeAmountToggle.init) {
+      window.CostTypeAmountToggle.init(scope);
+    }
+  }
+
+  function openCreateModal(modalEl, createUrl, latlng, onSaved) {
+    if (!modalEl || !window.bootstrap || !createUrl) {
+      window.location.href = buildCreateUrl(createUrl, latlng);
+      return;
+    }
+
+    var bodyEl = modalEl.querySelector("[data-create-modal-body]");
+    var submitButton = modalEl.querySelector("[data-create-submit]");
+    var url = buildCreateUrl(createUrl, latlng);
+    setHtml(bodyEl, loadingHtml("Cargando formulario..."));
+
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    function bindForm() {
+      var form = modalEl.querySelector("[data-map-create-form]");
+      if (!form) {
+        return;
+      }
+      initDynamicForm(form);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+        fetch(form.action, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Map-Create": "1"
+          },
+          credentials: "same-origin"
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.ok) {
+              modal.hide();
+              if (onSaved) {
+                onSaved(result.data);
+              }
+              return;
+            }
+            setHtml(bodyEl, result.data.html || "");
+            bindForm();
+          })
+          .catch(function () {
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar el aviso.</div>');
+          })
+          .finally(function () {
+            if (submitButton) {
+              submitButton.disabled = false;
+            }
+          });
+      });
+    }
+
+    fetch(url, {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Map-Create": "1"
+      },
+      credentials: "same-origin"
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        setHtml(bodyEl, data.html || "");
+        bindForm();
+      })
+      .catch(function () {
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
+      });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     var el = document.getElementById("physical-ad-map");
     if (!el || !window.L) {
       return;
     }
 
+    var shell = el.closest(".physical-ad-map-shell");
+    var panel = document.getElementById("physical-ad-map-panel");
+    var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
     var modalEl = document.getElementById("physical-ad-modal");
+    var createModalEl = document.getElementById("physical-ad-create-modal");
     var counterEl = document.getElementById("physical-ad-map-count");
     var filterCounterEl = document.getElementById("physical-ad-filter-count");
+    var filterTriggerEls = document.querySelectorAll(".physical-ad-map-filter-trigger");
     var resetButton = document.getElementById("physical-ad-map-reset");
     var myLocationButton = document.getElementById("physical-ad-my-location");
-    var popupUrlTemplate = el.dataset.popupUrl || "";
+    var createUrl = el.dataset.createUrl || "";
 
     // Default view: Macas, Morona Santiago.
     var defaultLat = parseFloat(el.dataset.defaultLat) || -2.3046;
@@ -132,6 +323,7 @@
     }
 
     var filters = document.getElementById("physical-ad-map-filters");
+    var panelApi = setupPanel(shell, panel, panelTriggers, map);
 
     function buildUrl() {
       var base = el.dataset.url || "";
@@ -150,7 +342,7 @@
     function load() {
       pinsLayer.clearLayers();
       updateCount(counterEl, 0);
-      updateFilterCount(filterCounterEl, filters);
+      updateFilterCount(filterCounterEl, filterTriggerEls, filters);
       fetch(buildUrl(), { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -158,11 +350,14 @@
           var ads = data.ads || [];
           updateCount(counterEl, ads.length);
           ads.forEach(function (ad) {
-            var marker = window.L.marker([ad.lat, ad.lng], { icon: pinIcon(ad.color) })
+            var marker = window.L.marker([ad.lat, ad.lng], {
+              icon: pinIcon(ad.color),
+              bubblingMouseEvents: false
+            })
               .bindTooltip(ad.label, { direction: "top", offset: [0, -34] })
               .addTo(pinsLayer);
             marker.on("click", function () {
-              openModal(modalEl, ad, popupUrlTemplate);
+              openModal(modalEl, ad);
             });
             bounds.push([ad.lat, ad.lng]);
           });
@@ -179,7 +374,13 @@
     }
     if (resetButton && filters) {
       resetButton.addEventListener("click", function () {
+        // ``form.reset()`` does not fire change events; emit one so select2 + load react.
         filters.reset();
+        Array.prototype.forEach.call(filters.elements, function (input) {
+          if (input.name) {
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        });
         load();
       });
     }
@@ -202,14 +403,16 @@
               radius: accuracy,
               stroke: false,
               fillColor: "#3e97ff",
-              fillOpacity: 0.12
+              fillOpacity: 0.12,
+              bubblingMouseEvents: false
             }).addTo(locationLayer);
             window.L.circleMarker([lat, lng], {
               radius: 9,
               color: "#ffffff",
               fillColor: "#3e97ff",
               fillOpacity: 1,
-              weight: 3
+              weight: 3,
+              bubblingMouseEvents: false
             }).bindTooltip("Mi ubicación", {
               direction: "top",
               offset: [0, -10],
@@ -221,7 +424,7 @@
           },
           function () {
             setLocationButton(myLocationButton, "Permiso denegado", false);
-            setTimeout(function () {
+            window.setTimeout(function () {
               setLocationButton(myLocationButton, "Mi ubicación", false);
             }, 2500);
           },
@@ -234,7 +437,27 @@
       });
     }
 
+    map.on("click", function (event) {
+      if (!createUrl) {
+        return;
+      }
+      // On phones the bottom-sheet may overlay part of the map — close it
+      // instead of opening the create flow on the first tap-through.
+      if (
+        shell &&
+        shell.getAttribute("data-panel-state") === "expanded" &&
+        window.matchMedia("(max-width: 767.98px)").matches
+      ) {
+        panelApi.close();
+        return;
+      }
+      openCreateModal(createModalEl, createUrl, event.latlng, load);
+    });
+
+    // Keep the Leaflet canvas accurate across viewport / orientation changes.
+    window.addEventListener("resize", function () { map.invalidateSize(); });
+
     load();
-    setTimeout(function () { map.invalidateSize(); }, 150);
+    window.setTimeout(function () { map.invalidateSize(); }, 150);
   });
 })(window, document);

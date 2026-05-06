@@ -6,87 +6,184 @@
 {% block toolbar %}{% endblock %}
 
 {% block content %}
-<div class="physical-ad-map-shell">
+<div class="physical-ad-map-shell" data-panel-state="collapsed">
   <div id="physical-ad-map"
        class="physical-ad-map"
        data-url="{% url 'territorial_ads:map_data' %}"
-       data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"></div>
+       data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"
+       data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"></div>
 
-  <section class="physical-ad-map-panel" aria-label="Controles del mapa">
-    <div class="d-flex flex-wrap flex-stack gap-3 mb-4">
-      <div class="d-flex align-items-center gap-2">
-        <i class="ki-outline ki-filter fs-2 text-primary"></i>
-        <div class="d-flex flex-column">
-          <span class="fw-bold text-gray-900">Publicidad física</span>
-          <span class="text-muted fs-8">Filtros del mapa</span>
-        </div>
-        <span id="physical-ad-filter-count" class="badge badge-light fs-8">Sin filtros</span>
-      </div>
-      <div class="btn-group btn-group-sm" role="group" aria-label="Cambiar vista">
-        <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
-           class="btn btn-light d-flex align-items-center gap-1">
-          <i class="ki-outline ki-row-horizontal fs-3"></i>
-          <span class="d-none d-md-inline">Lista</span>
-        </a>
-        <button type="button"
-                class="btn btn-light-primary active d-flex align-items-center gap-1"
-                aria-current="page">
-          <i class="ki-outline ki-map fs-3"></i>
-          <span class="d-none d-md-inline">Mapa</span>
-        </button>
+  {# ===== Floating top-bar: brand + view switch + filter trigger ===== #}
+  <header class="physical-ad-map-topbar" aria-label="Acciones del mapa">
+    <div class="physical-ad-map-brand">
+      <span class="physical-ad-map-brand__icon" aria-hidden="true">
+        <i class="ki-outline ki-map fs-2"></i>
+      </span>
+      <div class="physical-ad-map-brand__text">
+        <span class="physical-ad-map-brand__title">Publicidad física</span>
+        <span class="physical-ad-map-brand__subtitle">
+          <span id="physical-ad-map-count" class="physical-ad-map-count-pill">0 pines</span>
+        </span>
       </div>
     </div>
 
-    <form id="physical-ad-map-filters" class="row g-3 align-items-end">
-      <div class="col-12 col-lg-5">
+    <div class="physical-ad-map-topbar__actions">
+      <div class="btn-group btn-group-sm physical-ad-map-viewswitch" role="group" aria-label="Cambiar vista">
+        <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
+           class="btn btn-light fw-semibold"
+           aria-label="Ver como lista">
+          <i class="ki-outline ki-row-horizontal fs-3"></i>
+          <span class="d-none d-md-inline ms-1">Lista</span>
+        </a>
+        <button type="button"
+                class="btn btn-light-primary fw-semibold active"
+                aria-current="page"
+                aria-label="Vista de mapa">
+          <i class="ki-outline ki-map fs-3"></i>
+          <span class="d-none d-md-inline ms-1">Mapa</span>
+        </button>
+      </div>
+
+      <button type="button"
+              class="btn btn-sm btn-primary physical-ad-map-filter-trigger"
+              data-panel-toggle
+              aria-controls="physical-ad-map-panel"
+              aria-expanded="false">
+        <i class="ki-outline ki-filter fs-3"></i>
+        <span class="physical-ad-map-filter-trigger__label">Filtros</span>
+        <span id="physical-ad-filter-count"
+              class="badge badge-circle badge-light text-primary fw-bolder physical-ad-map-filter-trigger__count"
+              hidden>0</span>
+      </button>
+    </div>
+  </header>
+
+  {# ===== Filter panel: card on desktop, bottom-sheet on mobile ===== #}
+  <section id="physical-ad-map-panel"
+           class="physical-ad-map-panel card shadow-sm"
+           aria-label="Filtros del mapa"
+           aria-hidden="true">
+    <div class="physical-ad-map-panel__handle" aria-hidden="true"></div>
+    <div class="card-header border-0 px-0 py-2 align-items-center min-h-auto physical-ad-map-panel__head">
+      <div class="d-flex align-items-center gap-3">
+        <span class="symbol symbol-35px symbol-circle">
+          <span class="symbol-label bg-light-primary">
+            <i class="ki-outline ki-filter fs-3 text-primary"></i>
+          </span>
+        </span>
+        <div class="d-flex flex-column">
+          <span class="fw-bold text-gray-900 fs-6">Filtros</span>
+          <span class="text-muted fs-8">Refina los pines del mapa</span>
+        </div>
+      </div>
+      <button type="button"
+              class="btn btn-icon btn-sm btn-active-light-primary physical-ad-map-panel__close"
+              data-panel-toggle
+              aria-label="Cerrar filtros">
+        <i class="ki-outline ki-cross fs-2"></i>
+      </button>
+    </div>
+
+    <form id="physical-ad-map-filters"
+          class="card-body px-0 py-3 physical-ad-map-panel__form">
+      <div class="physical-ad-map-field">
         <label class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
         <select name="campaign" class="form-select form-select-solid">
-          <option value="">Todas</option>
+          <option value="">Todas las campañas</option>
           {% for campaign in campaigns %}
             <option value="{{ campaign.id }}">{{ campaign.name }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-sm-6 col-lg-4">
+      <div class="physical-ad-map-field">
         <label class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
         <select name="state" class="form-select form-select-solid">
-          <option value="">Todos</option>
+          <option value="">Todos los estados</option>
           {% for value, label in states %}
             <option value="{{ value }}">{{ label }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-sm-6 col-lg-3">
-        <label class="form-label fs-7 fw-semibold text-gray-700 d-none d-sm-block">&nbsp;</label>
+
+      <div class="physical-ad-map-panel__actions">
         <button type="button"
-                class="btn btn-light w-100"
+                class="btn btn-light fw-semibold flex-fill"
                 id="physical-ad-map-reset">
-          <i class="ki-outline ki-eraser fs-3"></i>Limpiar
+          <i class="ki-outline ki-eraser fs-3"></i>
+          <span>Limpiar</span>
+        </button>
+        <button type="button"
+                class="btn btn-primary fw-semibold flex-fill d-md-none"
+                data-panel-toggle>
+          <i class="ki-outline ki-check fs-3"></i>
+          <span>Ver mapa</span>
         </button>
       </div>
     </form>
   </section>
 
-  <div class="physical-ad-map-tools">
-    <div class="d-flex align-items-center gap-2 physical-ad-map-counter">
-      <i class="ki-outline ki-geolocation fs-2 text-primary"></i>
-      <span class="text-muted fw-semibold">Pines visibles</span>
-      <span id="physical-ad-map-count" class="badge badge-light-primary fs-7">0 pines</span>
-    </div>
+  {# Backdrop for mobile bottom-sheet #}
+  <div class="physical-ad-map-backdrop" data-panel-toggle aria-hidden="true"></div>
+
+  {# ===== Floating tools (locate + create hint) ===== #}
+  <div class="physical-ad-map-tools" aria-label="Herramientas del mapa">
+    <span class="physical-ad-map-tools__hint d-none d-md-inline-flex" aria-hidden="true">
+      <i class="ki-outline ki-cursor fs-3 text-primary"></i>
+      Toca el mapa para registrar una nueva publicidad
+    </span>
     <button type="button"
-            class="btn btn-sm btn-light-primary d-flex align-items-center gap-1"
-            id="physical-ad-my-location">
-      <i class="ki-outline ki-geolocation fs-3"></i>Mi ubicación
+            class="physical-ad-map-fab"
+            id="physical-ad-my-location"
+            aria-label="Ir a mi ubicación">
+      <i class="ki-outline ki-geolocation fs-2"></i>
+      <span class="physical-ad-map-fab__label">Mi ubicación</span>
     </button>
   </div>
 </div>
 
-{# Modal shown when a pin is clicked. Body is filled via fetch. #}
-<div class="modal fade" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+{# Modal shown when an empty map spot is clicked. Body receives the create form. #}
+<div class="modal fade physical-ad-map-modal" id="physical-ad-create-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-md-down">
     <div class="modal-content">
       <div class="modal-header py-4">
-        <h5 class="modal-title fw-bolder" data-modal-title>Publicidad</h5>
+        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
+            <span class="symbol-label bg-light-primary text-primary">
+              <i class="ki-outline ki-plus-square fs-2"></i>
+            </span>
+          </span>
+          <div class="min-w-0">
+            <h5 class="modal-title fw-bolder mb-0 text-truncate">Nueva publicidad física</h5>
+            <span class="text-muted fs-8">Completa los datos del lugar ofrecido</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" data-create-modal-body>
+        <div class="text-center text-muted py-10">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-3">Cargando formulario…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit"
+                form="physical-ad-map-create-form"
+                class="btn btn-primary d-flex align-items-center gap-2"
+                data-create-submit>
+          <i class="ki-outline ki-check fs-3"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Modal shown when a pin is clicked. Body is filled via fetch. #}
+<div class="modal fade physical-ad-map-modal" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-md-down">
+    <div class="modal-content">
+      <div class="modal-header py-4">
+        <h5 class="modal-title fw-bolder text-truncate" data-modal-title>Publicidad</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body" data-modal-body>
@@ -98,7 +195,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
         <a href="#" class="btn btn-primary d-flex align-items-center gap-2" data-detail-link>
-          Ver detalle completo
+          Abrir página completa
           <i class="ki-outline ki-arrow-right fs-3"></i>
         </a>
       </div>

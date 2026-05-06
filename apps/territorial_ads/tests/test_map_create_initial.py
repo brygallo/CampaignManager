@@ -1,0 +1,28 @@
+from types import SimpleNamespace
+
+from apps.territorial_ads.sites import MapInitialLocationMixin
+
+
+class _StubParent:
+    def get_initial(self):
+        return {"campaign": "1"}
+
+
+class _MixinUnderTest(MapInitialLocationMixin, _StubParent):
+    pass
+
+
+def test_map_initial_location_mixin_prefills_offered_coordinates():
+    view = _MixinUnderTest()
+    view.request = SimpleNamespace(
+        GET={
+            "offered_latitude": "-2.123456",
+            "offered_longitude": "-78.654321",
+        }
+    )
+
+    assert view.get_initial() == {
+        "campaign": "1",
+        "offered_latitude": "-2.123456",
+        "offered_longitude": "-78.654321",
+    }

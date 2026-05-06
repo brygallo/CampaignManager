@@ -1,4 +1,4 @@
-(function () {
+(function (window, document) {
   "use strict";
 
   function applyState(select, amountInput) {
@@ -15,10 +15,13 @@
     }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
-    var select = document.querySelector('select[data-cost-type-select="1"]');
-    var amountInput = document.querySelector('[data-cost-amount-input="1"]');
+  function init(scope) {
+    scope = scope || document;
+    var select = scope.querySelector('select[data-cost-type-select="1"]');
+    var amountInput = scope.querySelector('[data-cost-amount-input="1"]');
     if (!select || !amountInput) return;
+    if (select.dataset.costTypeAmountInitialized === "1") return;
+    select.dataset.costTypeAmountInitialized = "1";
 
     applyState(select, amountInput);
 
@@ -31,5 +34,11 @@
         applyState(select, amountInput);
       });
     }
+  }
+
+  window.CostTypeAmountToggle = { init: init };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    init(document);
   });
-})();
+})(window, document);
