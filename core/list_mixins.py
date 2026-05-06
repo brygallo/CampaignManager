@@ -179,6 +179,13 @@ class WorkflowStateFilterMixin:
         params.pop("page", None)
         return params
 
+    def _request_visible_path(self):
+        path = self.request.path
+        prefix = getattr(self.request, "tenant_path_prefix", "")
+        if prefix and not path.startswith(f"{prefix}/"):
+            return f"{prefix}{path}"
+        return path
+
     def get_state_filter_value(self):
         return self.request.GET.get(self.state_filter_param) or ""
 
@@ -230,7 +237,7 @@ class WorkflowStateFilterMixin:
         current = self.get_state_filter_value()
         base_params = self._request_params_without_state()
         base_qs_string = base_params.urlencode()
-        path = self.request.path
+        path = self._request_visible_path()
 
         def make_url(extra=None):
             params = base_params.copy()

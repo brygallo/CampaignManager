@@ -27,6 +27,24 @@ STATE_COLORS = {
     6: "#7e8299",  # RETIRADA
 }
 
+# Forward-path stepper. RECHAZADA (0) is rendered separately as a terminal state
+# alert so it does not pollute the linear progress display.
+STEPPER_STEPS = (
+    {"value": 1, "label": "Ofrecida", "icon": "send"},
+    {"value": 2, "label": "Aprobada", "icon": "verify"},
+    {"value": 3, "label": "Pendiente", "icon": "time"},
+    {"value": 4, "label": "Instalada", "icon": "check-circle"},
+    {"value": 5, "label": "Dañada", "icon": "information-5"},
+    {"value": 6, "label": "Retirada", "icon": "cross-square"},
+)
+
+AD_TYPE_ICONS = {
+    "lona": "picture",
+    "valla": "flag",
+    "afiche": "document",
+    "otro": "element-12",
+}
+
 
 def physicalad_detail_url(pk):
     return reverse("site:territorial_ads_physicaladvertisement_", kwargs={"pk": pk})
@@ -105,11 +123,33 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
             ),
             pk=pk,
         )
+        steps = [
+            {
+                **step,
+                "is_done": step["value"] < ad.state,
+                "is_current": step["value"] == ad.state,
+            }
+            for step in STEPPER_STEPS
+        ]
+        if ad.installed_latitude is not None and ad.installed_longitude is not None:
+            pin_kind = "instalada"
+            pin_lat, pin_lng = ad.installed_latitude, ad.installed_longitude
+        elif ad.offered_latitude is not None and ad.offered_longitude is not None:
+            pin_kind = "ofrecida"
+            pin_lat, pin_lng = ad.offered_latitude, ad.offered_longitude
+        else:
+            pin_kind, pin_lat, pin_lng = None, None, None
         html = render_to_string(
             "territorial_ads/_map_popup.html",
             {
                 "ad": ad,
                 "state_color": STATE_COLORS.get(ad.state, "#3388ff"),
+                "stepper_steps": steps,
+                "is_rejected": ad.state == 0,
+                "type_icon": AD_TYPE_ICONS.get(ad.advertisement_type, "element-12"),
+                "pin_kind": pin_kind,
+                "pin_lat": pin_lat,
+                "pin_lng": pin_lng,
             },
             request=request,
         )

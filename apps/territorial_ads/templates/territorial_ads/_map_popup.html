@@ -1,149 +1,318 @@
 {% load static %}
-<div class="d-flex flex-column gap-4">
+<div class="map-popup">
 
-  <div class="d-flex align-items-center gap-3 flex-wrap">
-    <span class="badge fs-7 fw-bold px-3 py-2"
-          style="background:{{ state_color }};color:#fff;">
-      {{ ad.get_state_display }}
-    </span>
-    {% if ad.campaign %}
-      <span class="text-muted fs-7">
-        <i class="ki-outline ki-rocket fs-6 me-1"></i>{{ ad.campaign.name }}
+  {# ===== Hero ===== #}
+  <header class="map-popup__hero d-flex flex-wrap gap-4 mb-5">
+    <div class="symbol symbol-60px symbol-circle flex-shrink-0">
+      <span class="symbol-label fw-bolder text-white"
+            style="background:{{ state_color }};"
+            aria-hidden="true">
+        <i class="ki-outline ki-{{ type_icon }} fs-1 text-white"></i>
       </span>
-    {% endif %}
-  </div>
-
-  <div class="row g-4">
-    <div class="col-sm-6">
-      <div class="text-muted fw-semibold small text-uppercase mb-1">Tipo</div>
-      <div class="fw-bold">{{ ad.get_advertisement_type_display }}{% if ad.quantity > 1 %} <span class="text-muted">×{{ ad.quantity }}</span>{% endif %}</div>
     </div>
-    {% if ad.width_meters and ad.height_meters %}
-      <div class="col-sm-6">
-        <div class="text-muted fw-semibold small text-uppercase mb-1">Dimensiones</div>
-        <div class="fw-bold">{{ ad.width_meters }} × {{ ad.height_meters }} m</div>
+    <div class="flex-grow-1 min-w-0">
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <h3 class="m-0 fs-2 fw-bolder text-dark text-truncate" title="{{ ad.code|default:ad.id }}">
+          {{ ad.code|default:ad.id }}
+        </h3>
+        <span class="map-popup__state-badge"
+              style="--state-color:{{ state_color }};"
+              aria-label="Estado: {{ ad.get_state_display }}">
+          <span class="map-popup__state-dot" aria-hidden="true"></span>
+          {{ ad.get_state_display }}
+        </span>
       </div>
-    {% endif %}
-  </div>
+      <p class="m-0 mt-1 text-muted fw-semibold fs-7">
+        {{ ad.get_advertisement_type_display }}
+        {% if ad.quantity > 1 %}<span class="mx-2 text-gray-400">·</span>{{ ad.quantity }} unidades{% endif %}
+        {% if ad.width_meters and ad.height_meters %}<span class="mx-2 text-gray-400">·</span>{{ ad.width_meters }} × {{ ad.height_meters }} m{% endif %}
+      </p>
+      {% if ad.campaign %}
+        <p class="m-0 mt-2 d-flex align-items-center gap-2 flex-wrap">
+          <i class="ki-outline ki-rocket fs-6 text-primary" aria-hidden="true"></i>
+          <span class="text-dark fw-semibold fs-7">{{ ad.campaign.name }}</span>
+          {% if ad.campaign.candidate %}
+            <span class="text-gray-400">·</span>
+            <span class="text-muted fs-7">{{ ad.campaign.candidate }}</span>
+          {% endif %}
+          {% if ad.campaign.election.election_date %}
+            <span class="text-gray-400">·</span>
+            <span class="text-muted fs-8">
+              <i class="ki-outline ki-calendar fs-8 me-1" aria-hidden="true"></i>{{ ad.campaign.election.election_date|date:"d M Y" }}
+            </span>
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </header>
 
-  <div>
-    <div class="text-muted fw-semibold small text-uppercase mb-1">Lugar</div>
-    <div class="fw-bold">{{ ad.address }}</div>
-    {% if ad.reference %}
-      <div class="text-muted small">{{ ad.reference }}</div>
-    {% endif %}
-  </div>
+  {# ===== Progress stepper / rejected alert ===== #}
+  {% if is_rejected %}
+    <div class="alert alert-danger d-flex align-items-center gap-3 py-3 px-4 mb-5" role="status">
+      <i class="ki-outline ki-cross-circle fs-2x text-danger" aria-hidden="true"></i>
+      <div>
+        <div class="fw-bolder text-danger">Aviso rechazado</div>
+        <div class="text-muted fs-7">No avanzó por el flujo de instalación.</div>
+      </div>
+    </div>
+  {% else %}
+    <ol class="map-popup__stepper" aria-label="Avance del aviso en el flujo">
+      {% for step in stepper_steps %}
+        <li class="map-popup__step{% if step.is_done %} is-done{% endif %}{% if step.is_current %} is-current{% endif %}"
+            {% if step.is_current %}aria-current="step"{% endif %}>
+          <span class="map-popup__step-marker" aria-hidden="true">
+            <i class="ki-outline ki-{{ step.icon }}"></i>
+          </span>
+          <span class="map-popup__step-label">{{ step.label }}</span>
+        </li>
+        {% if not forloop.last %}
+          <li class="map-popup__step-connector{% if step.is_done %} is-done{% endif %}" aria-hidden="true"></li>
+        {% endif %}
+      {% endfor %}
+    </ol>
+  {% endif %}
 
-  <div class="row g-4">
-    <div class="col-sm-6">
-      <div class="text-muted fw-semibold small text-uppercase mb-1">Contacto</div>
-      <div class="fw-bold">{{ ad.owner_name }}</div>
-      <div class="text-muted small">
-        <a href="tel:{{ ad.owner_phone }}" class="text-muted">{{ ad.owner_phone }}</a>
+  {# ===== Pin location hint ===== #}
+  {% if pin_kind %}
+    <div class="map-popup__pin-hint" role="note">
+      <i class="ki-outline ki-geolocation fs-3" aria-hidden="true"></i>
+      <div class="flex-grow-1">
+        <div class="fw-bold text-dark fs-7">
+          El pin marca la ubicación
+          <span class="text-primary">{{ pin_kind }}</span>
+        </div>
+        <div class="text-muted fs-8 font-monospace">{{ pin_lat }} / {{ pin_lng }}</div>
+      </div>
+      {% if ad.offered_latitude and ad.installed_latitude %}
+        <span class="badge badge-light-info fs-8" title="Hay coordenadas ofrecidas e instaladas registradas">
+          <i class="ki-outline ki-double-check fs-8 me-1" aria-hidden="true"></i>2 puntos
+        </span>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# ===== Photo strip ===== #}
+  {% if ad.offered_photo or ad.installation_photo or ad.damage_photo %}
+    <div class="map-popup__gallery" role="list" aria-label="Galería de fotos del aviso">
+      {% if ad.offered_photo %}
+        <a class="map-popup__photo" role="listitem"
+           href="{{ ad.offered_photo.url }}" target="_blank" rel="noopener"
+           aria-label="Abrir foto del lugar ofrecido en pestaña nueva">
+          <img src="{{ ad.offered_photo.url }}" alt="Foto del lugar ofrecido" loading="lazy">
+          <span class="map-popup__photo-caption">
+            <i class="ki-outline ki-handcart fs-7" aria-hidden="true"></i>Ofrecida
+          </span>
+        </a>
+      {% endif %}
+      {% if ad.installation_photo %}
+        <a class="map-popup__photo" role="listitem"
+           href="{{ ad.installation_photo.url }}" target="_blank" rel="noopener"
+           aria-label="Abrir foto de instalación en pestaña nueva">
+          <img src="{{ ad.installation_photo.url }}" alt="Foto de la instalación" loading="lazy">
+          <span class="map-popup__photo-caption">
+            <i class="ki-outline ki-check-circle fs-7" aria-hidden="true"></i>Instalada
+          </span>
+        </a>
+      {% endif %}
+      {% if ad.damage_photo %}
+        <a class="map-popup__photo" role="listitem"
+           href="{{ ad.damage_photo.url }}" target="_blank" rel="noopener"
+           aria-label="Abrir foto del daño en pestaña nueva">
+          <img src="{{ ad.damage_photo.url }}" alt="Foto del daño reportado" loading="lazy">
+          <span class="map-popup__photo-caption">
+            <i class="ki-outline ki-information-5 fs-7" aria-hidden="true"></i>Daño
+          </span>
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# ===== Owner conditions (offered_notes) ===== #}
+  {% if ad.offered_notes %}
+    <blockquote class="map-popup__quote" aria-label="Condiciones ofrecidas por el propietario">
+      <i class="ki-outline ki-message-text-2 fs-2 text-muted" aria-hidden="true"></i>
+      <div>
+        <div class="text-muted fw-bold fs-8 text-uppercase mb-1">Condiciones ofrecidas</div>
+        <div class="text-gray-700 fs-7">{{ ad.offered_notes|linebreaksbr }}</div>
+      </div>
+    </blockquote>
+  {% endif %}
+
+  {# ===== Key facts ===== #}
+  <section class="row g-4 mb-2" aria-label="Datos del aviso">
+    <div class="col-12 col-sm-6">
+      <div class="map-popup__fact">
+        <span class="symbol symbol-40px symbol-circle">
+          <span class="symbol-label bg-light-primary"><i class="ki-outline ki-geolocation fs-3 text-primary" aria-hidden="true"></i></span>
+        </span>
+        <div class="map-popup__fact-body">
+          <div class="map-popup__fact-label">Lugar</div>
+          <div class="fw-bold text-dark">{{ ad.address }}</div>
+          {% if ad.reference %}<div class="text-muted fs-8">{{ ad.reference }}</div>{% endif %}
+          {% if ad.offered_latitude and ad.offered_longitude %}
+            <div class="text-muted fs-8 font-monospace mt-1">
+              <i class="ki-outline ki-pin fs-8 me-1" aria-hidden="true"></i>{{ ad.offered_latitude }} / {{ ad.offered_longitude }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6">
+      <div class="map-popup__fact">
+        <span class="symbol symbol-40px symbol-circle">
+          <span class="symbol-label bg-light-info"><i class="ki-outline ki-profile-user fs-3 text-info" aria-hidden="true"></i></span>
+        </span>
+        <div class="map-popup__fact-body">
+          <div class="map-popup__fact-label">Contacto</div>
+          <div class="fw-bold text-dark">{{ ad.owner_name }}</div>
+          {% if ad.owner_phone %}
+            <a href="tel:{{ ad.owner_phone }}" class="text-muted fs-8 d-inline-flex align-items-center gap-1">
+              <i class="ki-outline ki-phone fs-8" aria-hidden="true"></i>{{ ad.owner_phone }}
+            </a>
+          {% endif %}
+        </div>
       </div>
     </div>
     {% if ad.cost_type %}
-      <div class="col-sm-6">
-        <div class="text-muted fw-semibold small text-uppercase mb-1">Costo</div>
-        <div class="fw-bold">
-          {{ ad.cost_type.name }}{% if ad.cost_amount %} <span class="text-muted">· ${{ ad.cost_amount }}</span>{% endif %}
+      <div class="col-12 col-sm-6">
+        <div class="map-popup__fact">
+          <span class="symbol symbol-40px symbol-circle">
+            <span class="symbol-label bg-light-success"><i class="ki-outline ki-dollar fs-3 text-success" aria-hidden="true"></i></span>
+          </span>
+          <div class="map-popup__fact-body">
+            <div class="map-popup__fact-label">Costo</div>
+            <div class="fw-bold text-dark">{{ ad.cost_type.name }}</div>
+            {% if ad.cost_amount %}<div class="text-muted fs-8">USD {{ ad.cost_amount }}</div>{% endif %}
+          </div>
         </div>
       </div>
     {% endif %}
-  </div>
-
-  {% if ad.offered_photo %}
-    <div>
-      <div class="text-muted fw-semibold small text-uppercase mb-2">Foto del lugar ofrecido</div>
-      <a href="{{ ad.offered_photo.url }}" target="_blank" rel="noopener">
-        <img src="{{ ad.offered_photo.url }}" class="img-fluid rounded border" alt="Foto ofrecida" style="max-height:240px;">
-      </a>
-    </div>
-  {% endif %}
-
-  {% if ad.rejected_at %}
-    <div class="bg-light-danger rounded p-4">
-      <div class="d-flex align-items-center gap-2 fw-bold text-danger mb-2">
-        <i class="ki-outline ki-cross-circle fs-3"></i>Rechazada
+    {% if ad.assigned_installer or ad.installer_team %}
+      <div class="col-12 col-sm-6">
+        <div class="map-popup__fact">
+          <span class="symbol symbol-40px symbol-circle">
+            <span class="symbol-label bg-light-warning"><i class="ki-outline ki-user-tick fs-3 text-warning" aria-hidden="true"></i></span>
+          </span>
+          <div class="map-popup__fact-body">
+            <div class="map-popup__fact-label">Instalador</div>
+            <div class="fw-bold text-dark">{% firstof ad.assigned_installer ad.installer_team %}</div>
+            {% if ad.assigned_installer and ad.installer_team %}
+              <div class="text-muted fs-8">{{ ad.installer_team }}</div>
+            {% endif %}
+          </div>
+        </div>
       </div>
-      <div class="text-muted small mb-1">{{ ad.rejected_at|date:"d/m/Y H:i" }}{% if ad.rejected_by %} · {{ ad.rejected_by }}{% endif %}</div>
-      {% if ad.rejection_reason %}
-        <div>{{ ad.rejection_reason|linebreaksbr }}</div>
+    {% endif %}
+  </section>
+
+  {# ===== Activity log ===== #}
+  {% if ad.rejected_at or ad.approved_at or ad.assigned_at or ad.installed_at or ad.damage_reported_at or ad.retired_at %}
+    <div class="separator separator-dashed my-5"></div>
+    <h6 class="text-gray-600 fw-bold text-uppercase fs-8 mb-4">
+      <i class="ki-outline ki-time fs-7 me-1" aria-hidden="true"></i>Bitácora
+    </h6>
+    <ol class="map-popup__activity">
+
+      {% if ad.rejected_at %}
+        <li class="map-popup__activity-item is-danger">
+          <span class="map-popup__activity-icon"><i class="ki-outline ki-cross-circle" aria-hidden="true"></i></span>
+          <div class="map-popup__activity-body">
+            <div class="map-popup__activity-head">
+              <span class="fw-bolder text-dark">Rechazada</span>
+              <span class="text-muted fs-8">{{ ad.rejected_at|date:"d M Y · H:i" }}{% if ad.rejected_by %} · {{ ad.rejected_by }}{% endif %}</span>
+            </div>
+            {% if ad.rejection_reason %}<div class="text-gray-700 fs-7 mt-1">{{ ad.rejection_reason|linebreaksbr }}</div>{% endif %}
+          </div>
+        </li>
       {% endif %}
-    </div>
-  {% endif %}
 
-  {% if ad.approved_at %}
-    <div class="bg-light-success rounded p-4">
-      <div class="d-flex align-items-center gap-2 fw-bold text-success mb-2">
-        <i class="ki-outline ki-verify fs-3"></i>Aprobada
-      </div>
-      <div class="text-muted small mb-1">{{ ad.approved_at|date:"d/m/Y H:i" }}{% if ad.approved_by %} · {{ ad.approved_by }}{% endif %}</div>
-      {% if ad.installation_instructions %}
-        <div class="small">{{ ad.installation_instructions|linebreaksbr }}</div>
+      {% if ad.approved_at %}
+        <li class="map-popup__activity-item is-success">
+          <span class="map-popup__activity-icon"><i class="ki-outline ki-verify" aria-hidden="true"></i></span>
+          <div class="map-popup__activity-body">
+            <div class="map-popup__activity-head">
+              <span class="fw-bolder text-dark">Aprobada</span>
+              <span class="text-muted fs-8">{{ ad.approved_at|date:"d M Y · H:i" }}{% if ad.approved_by %} · {{ ad.approved_by }}{% endif %}</span>
+            </div>
+            {% if ad.installation_instructions %}<div class="text-gray-700 fs-7 mt-1">{{ ad.installation_instructions|linebreaksbr }}</div>{% endif %}
+          </div>
+        </li>
       {% endif %}
-    </div>
-  {% endif %}
 
-  {% if ad.assigned_installer or ad.installer_team %}
-    <div class="bg-light-info rounded p-4">
-      <div class="d-flex align-items-center gap-2 fw-bold text-info mb-2">
-        <i class="ki-outline ki-user fs-3"></i>Asignación de instalación
-      </div>
-      <div class="fw-bold">
-        {% if ad.assigned_installer %}{{ ad.assigned_installer }}{% endif %}
-        {% if ad.installer_team %}{% if ad.assigned_installer %} · {% endif %}{{ ad.installer_team }}{% endif %}
-      </div>
       {% if ad.assigned_at %}
-        <div class="text-muted small">{{ ad.assigned_at|date:"d/m/Y H:i" }}{% if ad.assigned_by %} · {{ ad.assigned_by }}{% endif %}</div>
+        <li class="map-popup__activity-item is-info">
+          <span class="map-popup__activity-icon"><i class="ki-outline ki-user-tick" aria-hidden="true"></i></span>
+          <div class="map-popup__activity-body">
+            <div class="map-popup__activity-head">
+              <span class="fw-bolder text-dark">Instalación asignada</span>
+              <span class="text-muted fs-8">{{ ad.assigned_at|date:"d M Y · H:i" }}{% if ad.assigned_by %} · {{ ad.assigned_by }}{% endif %}</span>
+            </div>
+          </div>
+        </li>
       {% endif %}
-    </div>
+
+      {% if ad.installed_at %}
+        <li class="map-popup__activity-item is-primary">
+          <span class="map-popup__activity-icon"><i class="ki-outline ki-check-circle" aria-hidden="true"></i></span>
+          <div class="map-popup__activity-body">
+            <div class="map-popup__activity-head">
+              <span class="fw-bolder text-dark">Instalada</span>
+              <span class="text-muted fs-8">{{ ad.installed_at|date:"d M Y · H:i" }}{% if ad.installed_by %} · {{ ad.installed_by }}{% endif %}</span>
+            </div>
+            {% if ad.installed_latitude and ad.installed_longitude %}
+              <div class="text-muted fs-8 mt-1">
+                <i class="ki-outline ki-geolocation fs-8 me-1" aria-hidden="true"></i>{{ ad.installed_latitude }} / {{ ad.installed_longitude }}
+              </div>
+            {% endif %}
+            {% if ad.installation_notes %}<div class="text-gray-700 fs-7 mt-1">{{ ad.installation_notes|linebreaksbr }}</div>{% endif %}
+          </div>
+        </li>
+      {% endif %}
+
+      {% if ad.damage_reported_at %}
+        <li class="map-popup__activity-item is-warning">
+          <span class="map-popup__activity-icon"><i class="ki-outline ki-information-5" aria-hidden="true"></i></span>
+          <div class="map-popup__activity-body">
+            <div class="map-popup__activity-head">
+              <span class="fw-bolder text-dark">Daño reportado</span>
+              <span class="text-muted fs-8">{{ ad.damage_reported_at|date:"d M Y · H:i" }}{% if ad.damage_reported_by %} · {{ ad.damage_reported_by }}{% endif %}</span>
+            </div>
+            {% if ad.damage_notes %}<div class="text-gray-700 fs-7 mt-1">{{ ad.damage_notes|linebreaksbr }}</div>{% endif %}
+          </div>
+        </li>
+      {% endif %}
+
+      {% if ad.retired_at %}
+        <li class="map-popup__activity-item is-gray">
+          <span class="map-popup__activity-icon"><i class="ki-outline ki-cross-square" aria-hidden="true"></i></span>
+          <div class="map-popup__activity-body">
+            <div class="map-popup__activity-head">
+              <span class="fw-bolder text-dark">Retirada</span>
+              <span class="text-muted fs-8">{{ ad.retired_at|date:"d M Y · H:i" }}{% if ad.retired_by %} · {{ ad.retired_by }}{% endif %}</span>
+            </div>
+          </div>
+        </li>
+      {% endif %}
+
+    </ol>
   {% endif %}
 
-  {% if ad.installed_at %}
-    <div class="bg-light-primary rounded p-4">
-      <div class="d-flex align-items-center gap-2 fw-bold text-primary mb-2">
-        <i class="ki-outline ki-check-circle fs-3"></i>Instalada
-      </div>
-      <div class="text-muted small mb-2">{{ ad.installed_at|date:"d/m/Y H:i" }}{% if ad.installed_by %} · {{ ad.installed_by }}{% endif %}</div>
-      {% if ad.installed_latitude and ad.installed_longitude %}
-        <div class="text-muted small mb-2">GPS: {{ ad.installed_latitude }} / {{ ad.installed_longitude }}</div>
-      {% endif %}
-      {% if ad.installation_notes %}
-        <div class="small mb-2">{{ ad.installation_notes|linebreaksbr }}</div>
-      {% endif %}
-      {% if ad.installation_photo %}
-        <a href="{{ ad.installation_photo.url }}" target="_blank" rel="noopener">
-          <img src="{{ ad.installation_photo.url }}" class="img-fluid rounded border" alt="Foto instalación" style="max-height:240px;">
-        </a>
-      {% endif %}
-    </div>
-  {% endif %}
-
-  {% if ad.damage_reported_at %}
-    <div class="bg-light-warning rounded p-4">
-      <div class="d-flex align-items-center gap-2 fw-bold text-warning mb-2">
-        <i class="ki-outline ki-information-5 fs-3"></i>Daño reportado
-      </div>
-      <div class="text-muted small mb-2">{{ ad.damage_reported_at|date:"d/m/Y H:i" }}{% if ad.damage_reported_by %} · {{ ad.damage_reported_by }}{% endif %}</div>
-      {% if ad.damage_notes %}
-        <div class="small mb-2">{{ ad.damage_notes|linebreaksbr }}</div>
-      {% endif %}
-      {% if ad.damage_photo %}
-        <a href="{{ ad.damage_photo.url }}" target="_blank" rel="noopener">
-          <img src="{{ ad.damage_photo.url }}" class="img-fluid rounded border" alt="Foto daño" style="max-height:240px;">
-        </a>
-      {% endif %}
-    </div>
-  {% endif %}
-
-  {% if ad.retired_at %}
-    <div class="bg-light rounded p-4">
-      <div class="d-flex align-items-center gap-2 fw-bold text-muted mb-2">
-        <i class="ki-outline ki-cross-circle fs-3"></i>Retirada
-      </div>
-      <div class="text-muted small">{{ ad.retired_at|date:"d/m/Y H:i" }}{% if ad.retired_by %} · {{ ad.retired_by }}{% endif %}</div>
-    </div>
-  {% endif %}
+  {# ===== Footer / metadata ===== #}
+  <footer class="map-popup__meta d-flex flex-wrap gap-3 text-muted fs-8 mt-5 pt-3">
+    {% if ad.created_date %}
+      <span class="d-inline-flex align-items-center gap-1">
+        <i class="ki-outline ki-add-files fs-8" aria-hidden="true"></i>
+        Creado {{ ad.created_date|date:"d M Y · H:i" }}
+        {% if ad.creation_user %}<span class="text-gray-400">·</span><span>{{ ad.creation_user }}</span>{% endif %}
+      </span>
+    {% endif %}
+    {% if ad.modified_date and ad.modified_date != ad.created_date %}
+      <span class="d-inline-flex align-items-center gap-1">
+        <i class="ki-outline ki-pencil fs-8" aria-hidden="true"></i>
+        Última edición {{ ad.modified_date|date:"d M Y · H:i" }}
+        {% if ad.modification_user %}<span class="text-gray-400">·</span><span>{{ ad.modification_user }}</span>{% endif %}
+      </span>
+    {% endif %}
+  </footer>
 
 </div>

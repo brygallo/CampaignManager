@@ -27,6 +27,35 @@
     node.innerHTML = html;
   }
 
+  function updateCount(counterEl, count) {
+    if (!counterEl) {
+      return;
+    }
+    counterEl.textContent = count === 1 ? "1 pin" : count + " pines";
+  }
+
+  function updateFilterCount(counterEl, filters) {
+    if (!counterEl || !filters) {
+      return;
+    }
+    var count = 0;
+    Array.prototype.forEach.call(filters.elements, function (input) {
+      if (input.name && input.value) {
+        count += 1;
+      }
+    });
+    counterEl.textContent = count ? count + " filtro" + (count === 1 ? "" : "s") : "Sin filtros";
+    counterEl.className = count ? "badge badge-light-primary fs-8" : "badge badge-light fs-8";
+  }
+
+  function setLocationButton(button, label, disabled) {
+    if (!button) {
+      return;
+    }
+    button.disabled = !!disabled;
+    button.innerHTML = '<i class="ki-outline ki-geolocation fs-3"></i>' + label;
+  }
+
   function openModal(modalEl, ad, popupUrlTemplate) {
     if (!modalEl || !window.bootstrap) {
       window.location.href = ad.url;
@@ -73,6 +102,10 @@
     }
 
     var modalEl = document.getElementById("physical-ad-modal");
+    var counterEl = document.getElementById("physical-ad-map-count");
+    var filterCounterEl = document.getElementById("physical-ad-filter-count");
+    var resetButton = document.getElementById("physical-ad-map-reset");
+    var myLocationButton = document.getElementById("physical-ad-my-location");
     var popupUrlTemplate = el.dataset.popupUrl || "";
 
     // Default view: Macas, Morona Santiago.
@@ -81,6 +114,7 @@
     var defaultZoom = parseInt(el.dataset.defaultZoom || "13", 10);
     var map = window.L.map(el).setView([defaultLat, defaultLng], defaultZoom);
     var pinsLayer = window.L.layerGroup().addTo(map);
+    var locationLayer = window.L.layerGroup().addTo(map);
 
     if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
       window.LeafletBasemaps.build(map, { "Pines": pinsLayer });
@@ -114,11 +148,15 @@
 
     function load() {
       pinsLayer.clearLayers();
+      updateCount(counterEl, 0);
+      updateFilterCount(filterCounterEl, filters);
       fetch(buildUrl(), { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var bounds = [];
-          (data.ads || []).forEach(function (ad) {
+          var ads = data.ads || [];
+          updateCount(counterEl, ads.length);
+          ads.forEach(function (ad) {
             var marker = window.L.marker([ad.lat, ad.lng], { icon: pinIcon(ad.color) })
               .bindTooltip(ad.label, { direction: "top", offset: [0, -34] })
               .addTo(pinsLayer);
@@ -136,6 +174,62 @@
     if (filters) {
       Array.prototype.forEach.call(filters.elements, function (input) {
         input.addEventListener("change", load);
+      });
+    }
+    if (resetButton && filters) {
+      resetButton.addEventListener("click", function () {
+        filters.reset();
+        load();
+      });
+    }
+    if (myLocationButton) {
+      myLocationButton.addEventListener("click", function () {
+        if (!navigator.geolocation) {
+          setLocationButton(myLocationButton, "No disponible", false);
+          return;
+        }
+
+        setLocationButton(myLocationButton, "Ubicando...", true);
+        navigator.geolocation.getCurrentPosition(
+          function (position) {
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            var accuracy = position.coords.accuracy || 0;
+
+            locationLayer.clearLayers();
+            window.L.circle([lat, lng], {
+              radius: accuracy,
+              stroke: false,
+              fillColor: "#3e97ff",
+              fillOpacity: 0.12
+            }).addTo(locationLayer);
+            window.L.circleMarker([lat, lng], {
+              radius: 9,
+              color: "#ffffff",
+              fillColor: "#3e97ff",
+              fillOpacity: 1,
+              weight: 3
+            }).bindTooltip("Mi ubicación", {
+              direction: "top",
+              offset: [0, -10],
+              permanent: false
+            }).addTo(locationLayer);
+
+            map.setView([lat, lng], Math.max(map.getZoom(), 16));
+            setLocationButton(myLocationButton, "Mi ubicación", false);
+          },
+          function () {
+            setLocationButton(myLocationButton, "Permiso denegado", false);
+            setTimeout(function () {
+              setLocationButton(myLocationButton, "Mi ubicación", false);
+            }, 2500);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000
+          }
+        );
       });
     }
 

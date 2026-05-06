@@ -6,30 +6,52 @@
 {% block toolbar %}
 <div class="d-flex flex-wrap flex-stack mb-6 gap-3">
   <h1 class="page-heading text-dark fw-bold fs-3 my-0">Mapa de publicidad física</h1>
-  <div class="d-flex gap-2">
-    <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}" class="btn btn-light">
-      <i class="ki-outline ki-row-horizontal fs-2"></i>Listado
-    </a>
-  </div>
 </div>
 {% endblock %}
 
 {% block content %}
 <div class="card mb-5">
-  <div class="card-body">
-    <form id="physical-ad-map-filters" class="row g-3">
-      <div class="col-12 col-md-4">
-        <label class="form-label">Campaña</label>
-        <select name="campaign" class="form-select">
+  <div class="card-header border-0 py-4">
+    <div class="card-title m-0 d-flex align-items-center gap-2">
+      <i class="ki-outline ki-filter fs-2 text-primary"></i>
+      <span class="fw-bold text-gray-800">Filtros del mapa</span>
+      <span id="physical-ad-filter-count" class="badge badge-light fs-8">Sin filtros</span>
+    </div>
+    <div class="card-toolbar d-flex align-items-center gap-2">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Cambiar vista">
+        <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
+           class="btn btn-light d-flex align-items-center gap-1">
+          <i class="ki-outline ki-row-horizontal fs-3"></i>
+          <span class="d-none d-md-inline">Lista</span>
+        </a>
+        <button type="button"
+                class="btn btn-light-primary active d-flex align-items-center gap-1"
+                aria-current="page">
+          <i class="ki-outline ki-map fs-3"></i>
+          <span class="d-none d-md-inline">Mapa</span>
+        </button>
+      </div>
+      <button type="button"
+              class="btn btn-sm btn-light"
+              id="physical-ad-map-reset">
+        <i class="ki-outline ki-eraser fs-3"></i>Limpiar
+      </button>
+    </div>
+  </div>
+  <div class="card-body pt-0">
+    <form id="physical-ad-map-filters" class="row g-4 align-items-end">
+      <div class="col-12 col-lg-6">
+        <label class="form-label fs-6 fw-semibold text-gray-700">Campaña</label>
+        <select name="campaign" class="form-select form-select-solid">
           <option value="">Todas</option>
           {% for campaign in campaigns %}
             <option value="{{ campaign.id }}">{{ campaign.name }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-md-4">
-        <label class="form-label">Estado</label>
-        <select name="state" class="form-select">
+      <div class="col-12 col-lg-6">
+        <label class="form-label fs-6 fw-semibold text-gray-700">Estado</label>
+        <select name="state" class="form-select form-select-solid">
           <option value="">Todos</option>
           {% for value, label in states %}
             <option value="{{ value }}">{{ label }}</option>
@@ -41,6 +63,20 @@
 </div>
 
 <div class="card">
+  <div class="card-header border-0 py-4">
+    <div class="d-flex flex-wrap flex-stack gap-3 w-100">
+      <div class="d-flex align-items-center gap-2">
+        <i class="ki-outline ki-geolocation fs-2 text-primary"></i>
+        <span class="text-muted fw-semibold">Pines visibles</span>
+        <span id="physical-ad-map-count" class="badge badge-light-primary fs-7">0 pines</span>
+      </div>
+      <button type="button"
+              class="btn btn-sm btn-light-primary d-flex align-items-center gap-1"
+              id="physical-ad-my-location">
+        <i class="ki-outline ki-geolocation fs-3"></i>Mi ubicación
+      </button>
+    </div>
+  </div>
   <div class="card-body p-0">
     <div id="physical-ad-map"
          class="physical-ad-map"
@@ -78,6 +114,7 @@
 {% block extra_css %}
 {{ block.super }}
 <link href="{% static 'assets/css/forms/leaflet_map.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'assets/css/territorial_ads/map.css' %}" rel="stylesheet" type="text/css" />
 <style>
   .physical-ad-map { width: 100%; height: 70vh; min-height: 480px; }
 </style>
