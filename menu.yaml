@@ -27,18 +27,18 @@ Agenda política:
 
 Levantamientos de campo:
   icon: geolocation
-  Levantamientos:
+  Mapa:
+    url_name: field_surveys:map
+    icon: map
+  Visitas:
     app: field_surveys
     model: fieldsurvey
-  Publicidad propia colocada:
-    app: field_surveys
-    model: ownadvertisingplacement
-  Detecciones de competencia:
+  Competencia:
     app: field_surveys
     model: competitoradvertisingdetection
-  Competidores:
-    app: field_surveys
-    model: competitor
+  Dashboard:
+    url_name: field_surveys:dashboard
+    icon: chart-simple
 
 Publicidad territorial:
   icon: picture
@@ -72,6 +72,9 @@ Catálogos:
   Tipos de costo de publicidad:
     app: territorial_ads
     model: advertisingcosttype
+  Competidores:
+    app: field_surveys
+    model: competitor
 
 Sistema:
   icon: setting-3

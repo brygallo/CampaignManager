@@ -4,6 +4,9 @@ These models live in the SHARED_APPS (public schema). Every other app's data
 is isolated inside its own PostgreSQL schema, but the registry of tenants
 (who exists and what branding it uses) is global.
 """
+from decimal import Decimal
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
 
@@ -133,6 +136,28 @@ class TenantSettings(models.Model):
     enable_field_surveys = models.BooleanField("Levantamientos de campo", default=True)
     enable_territorial_ads = models.BooleanField("Publicidad territorial", default=True)
     enable_locations = models.BooleanField("Geografía", default=True)
+
+    # Default map view used by every Leaflet map when no GPS context is
+    # available. Macas (Morona Santiago) is a sensible local default.
+    map_center_latitude = models.DecimalField(
+        "Latitud centro del mapa",
+        max_digits=9,
+        decimal_places=6,
+        default=Decimal("-2.304600"),
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    map_center_longitude = models.DecimalField(
+        "Longitud centro del mapa",
+        max_digits=9,
+        decimal_places=6,
+        default=Decimal("-78.117500"),
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+    map_default_zoom = models.PositiveSmallIntegerField(
+        "Zoom inicial",
+        default=13,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+    )
 
     updated_at = models.DateTimeField("Actualizado", auto_now=True)
 

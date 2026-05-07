@@ -55,16 +55,30 @@ def brand(request):
     return context
 
 
+DEFAULT_MAP_CENTER = {
+    "lat": -2.3046,
+    "lng": -78.1175,
+    "zoom": 13,
+}
+
+
+def _default_map_payload():
+    return {
+        "tenant_features": GATED_MENU_SECTIONS,
+        "tenant_map_center": DEFAULT_MAP_CENTER,
+    }
+
+
 def tenant_features(request):
-    """Expose ``tenant_features`` (set of enabled module names) to templates.
+    """Expose ``tenant_features`` (enabled modules) and ``tenant_map_center``.
 
     Reads ``TenantSettings`` from the public schema based on the active
     tenant. When no row exists yet (legacy tenants), defaults to "everything
-    enabled" so the migration is non-breaking.
+    enabled" + a sensible default map center so the migration is non-breaking.
     """
     tenant = getattr(request, "tenant", None)
     if not tenant or getattr(tenant, "schema_name", None) == get_public_schema_name():
-        return {"tenant_features": GATED_MENU_SECTIONS}
+        return _default_map_payload()
 
     try:
         from apps.tenancy.models import TenantSettings
@@ -78,15 +92,25 @@ def tenant_features(request):
                     "enable_field_surveys",
                     "enable_territorial_ads",
                     "enable_locations",
+                    "map_center_latitude",
+                    "map_center_longitude",
+                    "map_default_zoom",
                 )
                 .first()
             )
     except DatabaseError:
-        return {"tenant_features": GATED_MENU_SECTIONS}
+        return _default_map_payload()
 
     if tsettings is None:
-        return {"tenant_features": GATED_MENU_SECTIONS}
-    return {"tenant_features": tsettings.enabled_modules()}
+        return _default_map_payload()
+    return {
+        "tenant_features": tsettings.enabled_modules(),
+        "tenant_map_center": {
+            "lat": float(tsettings.map_center_latitude),
+            "lng": float(tsettings.map_center_longitude),
+            "zoom": int(tsettings.map_default_zoom),
+        },
+    }
 
 
 def tenant_path_menu(request):

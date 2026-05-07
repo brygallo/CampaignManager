@@ -30,6 +30,7 @@ class FieldSurvey(BaseModel):
         related_name="field_surveys",
         verbose_name="Campaña",
     )
+    code = models.CharField("Código", max_length=32, unique=True, blank=True)
     brigadier = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -100,7 +101,13 @@ class FieldSurvey(BaseModel):
         )
 
     def __str__(self):
-        return f"{self.campaign} - {self.brigadier} - {self.created_date:%d/%m/%Y %H:%M}"
+        return self.code or f"{self.campaign} - {self.brigadier} - {self.created_date:%d/%m/%Y %H:%M}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.code:
+            self.code = f"LC-{self.pk:06d}"
+            super().save(update_fields=["code"])
 
     @property
     def primary_result_code(self):
@@ -131,68 +138,6 @@ class AdvertisingType(BaseModel):
 
     def __str__(self):
         return self.name
-
-
-class OwnAdvertisingPlacement(BaseModel):
-    field_survey = models.ForeignKey(
-        FieldSurvey,
-        on_delete=models.CASCADE,
-        related_name="own_advertising_placements",
-        verbose_name="Levantamiento",
-    )
-    advertising_type = models.ForeignKey(
-        AdvertisingType,
-        on_delete=models.PROTECT,
-        related_name="own_advertising_placements",
-        verbose_name="Tipo de publicidad",
-    )
-    photo = CompressedImageField(
-        "Foto de evidencia", upload_to="field_surveys/own_advertising/"
-    )
-    latitude = models.DecimalField(
-        "Latitud GPS",
-        max_digits=9,
-        decimal_places=6,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
-    )
-    longitude = models.DecimalField(
-        "Longitud GPS",
-        max_digits=9,
-        decimal_places=6,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
-    )
-    observation = models.TextField("Observación", blank=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="created_own_advertising_placements",
-        verbose_name="Creado por",
-        null=True,
-        blank=True,
-    )
-
-    class Meta:
-        verbose_name = "Publicidad propia colocada"
-        verbose_name_plural = "Publicidad propia colocada"
-        ordering = ["-created_date"]
-
-    def __str__(self):
-        return f"{self.advertising_type} - {self.field_survey}"
-
-    def clean(self):
-        errors = {}
-        if not self.photo:
-            errors["photo"] = "La foto es obligatoria para publicidad propia colocada."
-        if self.latitude in (None, ""):
-            errors["latitude"] = "La latitud GPS es obligatoria."
-        if self.longitude in (None, ""):
-            errors["longitude"] = "La longitud GPS es obligatoria."
-        if errors:
-            raise ValidationError(errors)
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
 
 
 class Competitor(BaseModel):

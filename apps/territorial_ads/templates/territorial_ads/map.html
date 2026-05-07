@@ -11,7 +11,10 @@
        class="physical-ad-map"
        data-url="{% url 'territorial_ads:map_data' %}"
        data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"
-       data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"></div>
+       data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"
+       data-default-lat="{{ tenant_map_center.lat }}"
+       data-default-lng="{{ tenant_map_center.lng }}"
+       data-default-zoom="{{ tenant_map_center.zoom }}"></div>
 
 
   {# ===== Pin counter (top-left, minimal pill) ===== #}

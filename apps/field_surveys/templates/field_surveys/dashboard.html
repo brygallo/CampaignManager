@@ -1,14 +1,12 @@
 {% extends "base/base.html" %}
+{% load static %}
 
 {% block title %}Dashboard levantamiento | {{ block.super }}{% endblock %}
 
 {% block toolbar %}
 <div class="d-flex flex-wrap flex-stack mb-6 gap-3">
   <h1 class="page-heading text-dark fw-bold fs-3 my-0">Dashboard de levantamiento</h1>
-  <div class="d-flex gap-2">
-    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-sm btn-light">Listado</a>
-    <a href="{% url 'field_surveys:map' %}" class="btn btn-sm btn-light-primary"><i class="ki-outline ki-map fs-3"></i>Mapa</a>
-  </div>
+  {% include "field_surveys/_section_nav.html" with active="dashboard" %}
 </div>
 {% endblock %}
 
@@ -20,8 +18,29 @@
   <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Apoyan</div><div class="fs-2hx fw-bold text-success">{{ metrics.support }}</div></div></div></div>
   <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Indecisos</div><div class="fs-2hx fw-bold text-warning">{{ metrics.undecided }}</div></div></div></div>
   <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">No apoyan</div><div class="fs-2hx fw-bold text-danger">{{ metrics.not_support }}</div></div></div></div>
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Publicidad propia</div><div class="fs-2hx fw-bold">{{ metrics.own_ads }}</div></div></div></div>
   <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Publicidad competencia</div><div class="fs-2hx fw-bold">{{ metrics.competitor_ads }}</div></div></div></div>
+</div>
+
+<div class="card mb-5">
+  <div class="card-header align-items-center">
+    <h3 class="card-title d-flex flex-column">
+      <span class="fw-bold">Mapa de calor — Apoyo</span>
+      <span class="text-muted fs-7 fw-normal">Concentración de votantes que apoyan, según los filtros activos.</span>
+    </h3>
+    <div class="card-toolbar">
+      <span class="badge badge-light-success" id="dashboard-heatmap-count">0 puntos</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div id="dashboard-support-heatmap"
+         data-url="{% url 'field_surveys:dashboard_heatmap_data' %}"
+         data-querystring="{{ request.GET.urlencode }}"
+         style="height: 460px; border-radius: 12px; overflow: hidden;"></div>
+    <div id="dashboard-heatmap-empty"
+         class="text-center text-muted py-5 d-none">
+      Sin levantamientos con apoyo registrados para los filtros seleccionados.
+    </div>
+  </div>
 </div>
 
 <div class="card">
@@ -43,4 +62,10 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="{% static 'assets/js/field_surveys/dashboard_heatmap.js' %}"></script>
 {% endblock %}

@@ -78,6 +78,21 @@
 
         {% include "base/sidebar_items.html" with menu=menu_tree %}
 
+        {% if user.is_staff %}
+          <div class="menu-item">
+            <div class="menu-content pt-4 pb-2">
+              <span class="menu-section text-muted text-uppercase fs-8 ls-1">Configuración</span>
+            </div>
+          </div>
+          <div class="menu-item">
+            <a class="menu-link{% if request.resolver_match.url_name == 'map_settings' %} active{% endif %}"
+               href="{% url 'tenancy:map_settings' %}">
+              <span class="menu-icon"><i class="ki-outline ki-map fs-2"></i></span>
+              <span class="menu-title">Configuración del mapa</span>
+            </a>
+          </div>
+        {% endif %}
+
         {# Empty state when search has no matches. #}
         <div id="kt_app_sidebar_search_empty" class="d-none text-center py-6 px-3">
           <i class="ki-outline ki-magnifier fs-2x text-muted mb-2 d-block"></i>

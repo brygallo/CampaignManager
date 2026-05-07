@@ -1,5 +1,5 @@
-"""Siembra levantamientos de campo, competidores, colocaciones de
-publicidad propia y detecciones de competencia para campañas activas.
+"""Siembra levantamientos de campo, competidores y detecciones de
+publicidad de competencia para campañas activas.
 
 Coordenadas centradas en Macas (Morona Santiago):
     lat ~ -2.31, lon ~ -78.12
@@ -26,7 +26,6 @@ from apps.field_surveys.models import (
     Competitor,
     CompetitorAdvertisingDetection,
     FieldSurvey,
-    OwnAdvertisingPlacement,
     SurveyResultOption,
 )
 from apps.locations.models import Parish, Sector
@@ -34,7 +33,6 @@ from apps.locations.models import Parish, Sector
 
 User = get_user_model()
 
-# Centro aproximado de Macas
 LAT_BASE = Decimal("-2.310")
 LON_BASE = Decimal("-78.120")
 
@@ -86,7 +84,6 @@ NOTES = [
     "",
 ]
 
-# competidores plausibles para el contexto local
 COMPETITORS = [
     ("RC", "5", "Revolución Ciudadana", "Fausto Tankamash R.", "#1AAE52"),
     ("ADN", "7", "Acción Democrática Nacional", "Bryan Calle Ortiz", "#1E4DB7"),
@@ -109,13 +106,13 @@ def _jitter(base: Decimal, spread: float = 0.02) -> Decimal:
 
 
 class Command(BaseCommand):
-    help = "Siembra levantamientos de campo, competidores, colocaciones y detecciones."
+    help = "Siembra levantamientos de campo, competidores y detecciones."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--reset",
             action="store_true",
-            help="Borra colocaciones, detecciones, levantamientos y competidores antes de sembrar.",
+            help="Borra detecciones, levantamientos y competidores antes de sembrar.",
         )
         parser.add_argument(
             "--surveys",
@@ -130,12 +127,10 @@ class Command(BaseCommand):
 
         if opts.get("reset"):
             CompetitorAdvertisingDetection.objects.all().delete()
-            OwnAdvertisingPlacement.objects.all().delete()
             FieldSurvey.objects.all().delete()
             Competitor.objects.all().delete()
             self.stdout.write(self.style.WARNING("Datos previos borrados."))
 
-        # campaña activa preferida
         campaign = (
             Campaign.objects.filter(name="Macas para Todos").first()
             or Campaign.objects.filter(state__gt=0).order_by("-start_date").first()
@@ -146,13 +141,11 @@ class Command(BaseCommand):
             ))
             return
 
-        # brigadista (usuario admin del tenant)
         brigadier = User.objects.filter(is_superuser=True).first() or User.objects.first()
         if brigadier is None:
             self.stderr.write(self.style.ERROR("No hay usuarios. Crea uno antes de sembrar."))
             return
 
-        # competidores
         competitors = []
         for _, list_no, org, candidate, color in COMPETITORS:
             obj, _created = Competitor.objects.get_or_create(
@@ -164,7 +157,6 @@ class Command(BaseCommand):
             competitors.append(obj)
         self.stdout.write(self.style.SUCCESS(f"Competidores: {len(competitors)}"))
 
-        # parroquias y sectores disponibles (foco Morona)
         parishes = list(Parish.objects.filter(canton__code="1401"))
         sectors_by_parish = {p.id: list(Sector.objects.filter(parish=p)) for p in parishes}
 
@@ -173,14 +165,11 @@ class Command(BaseCommand):
             "APOYA": 0.45, "INDECISO": 0.20, "NO_APOYA": 0.10,
             "ATENDIO": 0.15, "NO_ATENDIO": 0.10,
         }
-        # ponderación para muestreo
         priority_pool = []
         for code, weight in result_priority.items():
             priority_pool.extend([code] * int(weight * 100))
 
         ad_types = list(AdvertisingType.objects.filter(is_active=True))
-        own_types = ad_types
-        comp_types = ad_types
 
         n = opts["surveys"]
         surveys = []
@@ -206,7 +195,6 @@ class Command(BaseCommand):
                 notes=random.choice(NOTES),
                 created_by=brigadier,
             )
-            # asignar 1-2 resultados
             picked_codes = {random.choice(priority_pool)}
             if random.random() < 0.35:
                 picked_codes.add(random.choice(["ACEPTA_PUBLICIDAD", "RECHAZA_PUBLICIDAD", "REQUIERE_SEGUIMIENTO"]))
@@ -214,44 +202,15 @@ class Command(BaseCommand):
             surveys.append(survey)
         self.stdout.write(self.style.SUCCESS(f"Levantamientos: {len(surveys)}"))
 
-        # publicidad propia colocada
-        placements_created = 0
-        if own_types:
-            for survey in random.sample(surveys, k=min(15, len(surveys))):
-                ad_type = random.choice(own_types)
-                placement = OwnAdvertisingPlacement(
-                    field_survey=survey,
-                    advertising_type=ad_type,
-                    latitude=_jitter(survey.latitude, spread=0.0008),
-                    longitude=_jitter(survey.longitude, spread=0.0008),
-                    observation=random.choice([
-                        "Pegado en pared exterior con permiso del dueño.",
-                        "Sticker en vidrio de la tienda.",
-                        "Lona de 2x1m colgada en el frente.",
-                        "Afiche en cartelera comunitaria.",
-                        "",
-                    ]),
-                    created_by=brigadier,
-                )
-                placement.photo.save(
-                    f"placement_{survey.pk}.jpg",
-                    ContentFile(_make_image_bytes(ad_type.code)),
-                    save=False,
-                )
-                placement.save()
-                placements_created += 1
-        self.stdout.write(self.style.SUCCESS(f"Publicidad propia colocada: {placements_created}"))
-
-        # detecciones de competencia
         detections_created = 0
-        if comp_types and competitors:
+        if ad_types and competitors:
             for survey in random.sample(surveys, k=min(12, len(surveys))):
                 detection = CompetitorAdvertisingDetection(
                     campaign=campaign,
                     competitor=random.choice(competitors),
                     brigadier=brigadier,
                     field_survey=survey if random.random() < 0.7 else None,
-                    advertising_type=random.choice(comp_types),
+                    advertising_type=random.choice(ad_types),
                     latitude=_jitter(survey.latitude, spread=0.001),
                     longitude=_jitter(survey.longitude, spread=0.001),
                     gps_accuracy=Decimal(str(round(random.uniform(4, 15), 2))),
@@ -267,7 +226,6 @@ class Command(BaseCommand):
                     ]),
                     created_by=brigadier,
                 )
-                # foto opcional
                 if random.random() < 0.6:
                     detection.photo.save(
                         f"detection_{survey.pk}.jpg",

@@ -3,45 +3,293 @@
 
 {% block title %}Mapa levantamiento | {{ block.super }}{% endblock %}
 
-{% block toolbar %}
-<div class="d-flex flex-wrap flex-stack mb-6 gap-3">
-  <h1 class="page-heading text-dark fw-bold fs-3 my-0">Mapa territorial</h1>
-  <div class="d-flex gap-2">
-    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-sm btn-light">Listado</a>
-    <a href="{% url 'field_surveys:survey_create' %}" class="btn btn-sm btn-primary"><i class="ki-outline ki-plus fs-3"></i>Nuevo</a>
-  </div>
-</div>
-{% endblock %}
+{% block toolbar %}{% endblock %}
 
 {% block content %}
-<div class="card mb-5">
-  <div class="card-body">
-    {% include "field_surveys/_filters.html" %}
-    <form id="map-extra-filters" class="row g-3 mt-1">
-      <div class="col-12 col-md-4">
-        <label class="form-label">Competidor</label>
-        <select name="competitor" class="form-select form-select-sm">
+<div class="field-survey-map-shell" data-panel-state="collapsed">
+  <div id="field-survey-map"
+       class="field-survey-map"
+       data-url="{% url 'field_surveys:map_data' %}"
+       data-popup-url="{% url 'field_surveys:map_popup' 0 %}"
+       data-popup-competitor-url="{% url 'field_surveys:map_popup_competitor' 0 %}"
+       data-create-url="{% url 'site:field_surveys_fieldsurvey_crear' %}"
+       data-create-competitor-url="{% url 'site:field_surveys_competitoradvertisingdetection_crear' %}"
+       data-default-lat="{{ tenant_map_center.lat }}"
+       data-default-lng="{{ tenant_map_center.lng }}"
+       data-default-zoom="{{ tenant_map_center.zoom }}"></div>
+
+  <div id="field-survey-map-count" class="map-pin-count" aria-live="polite">
+    <span class="map-pin-count__number" data-pin-count-number>0</span>
+    <span class="map-pin-count__label" data-pin-count-label>visitas</span>
+  </div>
+
+  <button type="button"
+          class="map-filter-btn field-survey-map-filter-trigger"
+          data-panel-toggle
+          aria-controls="field-survey-map-panel"
+          aria-expanded="false"
+          aria-label="Abrir filtros">
+    <i class="ki-outline ki-setting-3 fs-2"></i>
+    <span id="field-survey-filter-count"
+          class="map-filter-btn__count"
+          hidden>0</span>
+  </button>
+
+  <div class="field-survey-map-nav">
+    {% include "field_surveys/_section_nav.html" with active="map" %}
+  </div>
+
+  <section id="field-survey-map-panel"
+           class="field-survey-map-panel card card-flush shadow-sm"
+           aria-label="Filtros del mapa"
+           aria-hidden="true">
+    <div class="field-survey-map-panel__handle" aria-hidden="true"></div>
+    <div class="card-header border-0 px-0 py-2 align-items-center min-h-auto field-survey-map-panel__head">
+      <div class="d-flex align-items-center gap-3">
+        <span class="symbol symbol-35px symbol-circle">
+          <span class="symbol-label bg-light-primary">
+            <i class="ki-outline ki-filter fs-3 text-primary"></i>
+          </span>
+        </span>
+        <div class="d-flex flex-column">
+          <span class="fw-bold text-gray-900 fs-6">Filtros</span>
+          <span class="text-muted fs-8">Refina los pines del mapa</span>
+        </div>
+      </div>
+      <button type="button"
+              class="btn btn-icon btn-sm btn-active-light-primary field-survey-map-panel__close"
+              data-panel-toggle
+              aria-label="Cerrar filtros">
+        <i class="ki-outline ki-cross fs-2"></i>
+      </button>
+    </div>
+
+    <form id="field-survey-map-filters"
+          class="card-body px-0 py-3 field-survey-map-panel__form">
+      <div class="field-survey-map-field">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
+        <select name="campaign" class="form-select form-select-sm form-select-solid">
+          <option value="">Todas las campañas</option>
+          {% for campaign in filter_campaigns %}
+            <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if can_view_all %}
+      <div class="field-survey-map-field">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Brigadista</label>
+        <select name="brigadier" class="form-select form-select-sm form-select-solid">
+          <option value="">Todos</option>
+          {% for brigadier in filter_brigadiers %}
+            <option value="{{ brigadier.brigadier_id }}">
+              {% firstof brigadier.brigadier__first_name brigadier.brigadier__username %} {{ brigadier.brigadier__last_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="field-survey-map-field">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Resultado</label>
+        <select name="result" class="form-select form-select-sm form-select-solid">
+          <option value="">Todos</option>
+          {% for result in filter_results %}
+            <option value="{{ result.id }}">{{ result.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-survey-map-field">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Competidor</label>
+        <select name="competitor" class="form-select form-select-sm form-select-solid">
           <option value="">Todos</option>
           {% for competitor in competitors %}
             <option value="{{ competitor.id }}">{{ competitor }}</option>
           {% endfor %}
         </select>
       </div>
+      <div class="field-survey-map-field">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Desde</label>
+        <input type="date" name="date_from" class="form-control form-control-sm form-control-solid">
+      </div>
+      <div class="field-survey-map-field">
+        <label class="form-label fs-7 fw-semibold text-gray-700">Hasta</label>
+        <input type="date" name="date_to" class="form-control form-control-sm form-control-solid">
+      </div>
+
+      <div class="field-survey-map-panel__actions">
+        <button type="button"
+                class="btn btn-sm btn-light fw-semibold flex-fill"
+                id="field-survey-map-reset">
+          <i class="ki-outline ki-eraser fs-3"></i>
+          <span>Limpiar</span>
+        </button>
+        <button type="button"
+                class="btn btn-sm btn-primary fw-semibold flex-fill d-md-none"
+                data-panel-toggle>
+          <i class="ki-outline ki-check fs-3"></i>
+          <span>Ver mapa</span>
+        </button>
+      </div>
     </form>
+  </section>
+
+  <div class="field-survey-map-backdrop" data-panel-toggle aria-hidden="true"></div>
+
+  <div class="map-layer-switch" aria-label="Cambiar capa del mapa">
+    <button type="button"
+            class="map-layer-switch__btn"
+            data-layer-toggle
+            aria-pressed="false"
+            aria-label="Alternar entre mapa y satélite">
+      <span class="map-layer-switch__thumb is-satellite" data-layer-thumb></span>
+      <span class="map-layer-switch__label" data-layer-label>Satélite</span>
+    </button>
+  </div>
+
+  <div class="map-controls-stack" aria-label="Controles del mapa">
+    <div class="map-controls-group" role="group" aria-label="Zoom">
+      <button type="button" class="map-controls-btn" data-zoom-in aria-label="Acercar">
+        <i class="ki-outline ki-plus fs-2"></i>
+      </button>
+      <span class="map-controls-divider" aria-hidden="true"></span>
+      <button type="button" class="map-controls-btn" data-zoom-out aria-label="Alejar">
+        <i class="ki-outline ki-minus fs-2"></i>
+      </button>
+    </div>
+    <button type="button"
+            class="map-controls-btn map-controls-btn--solo"
+            id="field-survey-my-location"
+            aria-label="Ir a mi ubicación">
+      <i class="ki-outline ki-geolocation fs-2"></i>
+    </button>
+  </div>
+  <div class="map-location-status"
+       data-location-status
+       aria-live="polite"
+       hidden></div>
+
+</div>
+
+{# Modal: choose what to create when an empty map spot is clicked. #}
+<div class="modal fade field-survey-map-modal" id="field-survey-choose-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-4 border-0">
+        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
+            <span class="symbol-label bg-light-primary text-primary">
+              <i class="ki-outline ki-geolocation fs-2"></i>
+            </span>
+          </span>
+          <div class="min-w-0">
+            <h5 class="modal-title fw-bolder mb-0 text-truncate">¿Qué deseas registrar aquí?</h5>
+            <span class="text-muted fs-8" data-choose-coords>Selecciona una opción.</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <div class="d-grid gap-3">
+          <button type="button"
+                  class="btn btn-light-primary text-start d-flex align-items-center gap-3 py-4"
+                  data-choose-action="visit">
+            <i class="ki-duotone ki-home-2 fs-2x">
+              <span class="path1"></span>
+              <span class="path2"></span>
+            </i>
+            <span class="d-flex flex-column flex-grow-1">
+              <span class="fw-bolder fs-6">Visita / levantamiento</span>
+              <span class="fs-8 opacity-75">Registra una visita en este punto y opcionalmente ofrece publicidad.</span>
+            </span>
+            <i class="ki-outline ki-arrow-right fs-2 ms-auto"></i>
+          </button>
+          <button type="button"
+                  class="btn btn-light-danger text-start d-flex align-items-center gap-3 py-4"
+                  data-choose-action="competitor">
+            <i class="ki-duotone ki-flag fs-2x">
+              <span class="path1"></span>
+              <span class="path2"></span>
+            </i>
+            <span class="d-flex flex-column flex-grow-1">
+              <span class="fw-bolder fs-6">Detección de competencia</span>
+              <span class="fs-8 opacity-75">Reporta publicidad de la oposición vista en este lugar.</span>
+            </span>
+            <i class="ki-outline ki-arrow-right fs-2 ms-auto"></i>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-<div class="card">
-  <div class="card-body p-0">
-    <div id="field-survey-map"
-         class="field-survey-map field-survey-map--main"
-         data-url="{% url 'field_surveys:map_data' %}?{{ request.GET.urlencode }}"></div>
+
+{# Modal: pin click → detail popup #}
+<div class="modal fade field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable field-survey-map-sheet-dialog">
+    <div class="modal-content">
+      <div class="field-survey-map-modal__handle d-md-none" aria-hidden="true"></div>
+      <div class="modal-header py-4">
+        <h5 class="modal-title fw-bolder text-truncate" data-modal-title>Levantamiento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" data-modal-body>
+        <div class="text-center text-muted py-10">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-3">Cargando…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cerrar</button>
+        <a href="#" class="btn btn-sm btn-primary d-flex align-items-center gap-2" data-detail-link>
+          Abrir página completa
+          <i class="ki-outline ki-arrow-right fs-3"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Modal: empty map click → quick create form #}
+<div class="modal fade field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-create-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable field-survey-map-sheet-dialog">
+    <div class="modal-content">
+      <div class="field-survey-map-modal__handle d-md-none" aria-hidden="true"></div>
+      <div class="modal-header py-4">
+        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+          <span class="symbol symbol-40px symbol-circle flex-shrink-0" data-create-icon-wrap>
+            <span class="symbol-label bg-light-primary text-primary" data-create-icon-bg>
+              <i class="ki-outline ki-plus-square fs-2" data-create-icon></i>
+            </span>
+          </span>
+          <div class="min-w-0">
+            <h5 class="modal-title fw-bolder mb-0 text-truncate" data-create-title>Nueva visita</h5>
+            <span class="text-muted fs-8" data-create-subtitle>Completa los datos de la visita</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" data-create-modal-body>
+        <div class="text-center text-muted py-10">
+          <div class="spinner-border" role="status"></div>
+          <div class="mt-3">Cargando formulario…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit"
+                form="field-survey-map-create-form"
+                class="btn btn-sm btn-primary d-flex align-items-center gap-2"
+                data-create-submit>
+          <i class="ki-outline ki-check fs-3"></i>Guardar
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
 
 {% block extra_css %}
 {{ block.super }}
-<link href="{% static 'assets/css/field_surveys/field_surveys.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'assets/css/forms/leaflet_map.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'assets/css/field_surveys/map.css' %}" rel="stylesheet" type="text/css" />
 {% endblock %}
 
 {% block extra_js %}

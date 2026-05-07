@@ -33,6 +33,14 @@
       }
       document.documentElement.setAttribute("data-bs-theme", themeMode);
     }
+
+    // Tenant-configured default for every Leaflet map in the system. Used as
+    // fallback when neither the widget nor the page sets explicit coordinates.
+    window.TENANT_MAP_CENTER = {
+      lat: {{ tenant_map_center.lat|default:-2.3046 }},
+      lng: {{ tenant_map_center.lng|default:-78.1175 }},
+      zoom: {{ tenant_map_center.zoom|default:13 }}
+    };
   </script>
 
   <a href="#kt_app_content_container" class="visually-hidden-focusable position-absolute top-0 start-50 translate-middle-x mt-2 btn btn-sm btn-primary" style="z-index: 1100;">

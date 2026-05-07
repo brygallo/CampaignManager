@@ -1,8 +1,9 @@
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views import View
 from django.views.generic import FormView, TemplateView
@@ -14,9 +15,19 @@ from .models import (
     Competitor,
     CompetitorAdvertisingDetection,
     FieldSurvey,
-    OwnAdvertisingPlacement,
     SurveyResultOption,
 )
+
+
+# Color por código de resultado primario para los pines del mapa.
+RESULT_COLORS = {
+    "APOYA": "#50cd89",
+    "INDECISO": "#ffc700",
+    "NO_APOYA": "#f1416c",
+    "ATENDIO": "#3e97ff",
+    "NO_ATENDIO": "#7e8299",
+}
+DEFAULT_VISIT_COLOR = "#3e97ff"
 
 
 def can_view_all_field_surveys(user):
@@ -30,7 +41,7 @@ def can_view_all_field_surveys(user):
 def fieldsurvey_queryset_for_user(user):
     queryset = (
         FieldSurvey.objects.select_related("campaign", "brigadier", "created_by")
-        .prefetch_related("results", "own_advertising_placements", "competitor_advertising_detections")
+        .prefetch_related("results", "competitor_advertising_detections")
         .all()
     )
     if not can_view_all_field_surveys(user):
@@ -44,6 +55,10 @@ def fieldsurvey_list_url():
 
 def fieldsurvey_detail_url(pk):
     return reverse("site:field_surveys_fieldsurvey_", kwargs={"pk": pk})
+
+
+def competitor_detection_detail_url(pk):
+    return reverse("site:field_surveys_competitoradvertisingdetection_", kwargs={"pk": pk})
 
 
 class FieldSurveySpecialViewMixin(LoginRequiredMixin):
@@ -99,15 +114,12 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         surveys = self.filtered_queryset()
-        own_ads = OwnAdvertisingPlacement.objects.filter(field_survey__in=surveys)
         competitor_ads = CompetitorAdvertisingDetection.objects.filter(field_survey__in=surveys)
         if not can_view_all_field_surveys(self.request.user):
             competitor_ads = competitor_ads.filter(brigadier=self.request.user)
 
         context.update(get_filter_context(self.request))
         context["can_view_all"] = can_view_all_field_surveys(self.request.user)
-        # Single aggregate query for all per-result counts; previously each
-        # filter+count round-tripped to the DB independently.
         result_counts = surveys.aggregate(
             total_visits=Count("id", distinct=True),
             total_voters=Sum("voters_count"),
@@ -121,7 +133,6 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
             "support": result_counts["support"] or 0,
             "undecided": result_counts["undecided"] or 0,
             "not_support": result_counts["not_support"] or 0,
-            "own_ads": own_ads.count(),
             "competitor_ads": competitor_ads.count(),
         }
         context["brigadier_ranking"] = (
@@ -132,8 +143,32 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
         return context
 
 
-class FieldSurveyMapView(LoginRequiredMixin, TemplateView):
+class FieldSurveyDashboardHeatmapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
+    """Return support-density points ([lat, lng, weight]) for the dashboard heatmap.
+
+    Honors the dashboard filters via FieldSurveyFilterMixin. Restricts to surveys
+    flagged as APOYA so the map reflects candidate/campaign support density.
+    """
+
+    def get(self, request, *args, **kwargs):
+        surveys = (
+            self.filtered_queryset()
+            .filter(results__code="APOYA")
+            .values_list("latitude", "longitude", "voters_count")
+            .distinct()
+        )
+        points = []
+        for lat, lng, voters in surveys:
+            if lat is None or lng is None:
+                continue
+            weight = float(voters) if voters else 1.0
+            points.append([float(lat), float(lng), weight])
+        return JsonResponse({"points": points, "count": len(points)})
+
+
+class FieldSurveyMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     template_name = "field_surveys/map.html"
+    permission_required = "field_surveys.view_fieldsurvey"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -147,7 +182,7 @@ class FieldSurveyMapView(LoginRequiredMixin, TemplateView):
 
 class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
     def get(self, request, *args, **kwargs):
-        surveys = self.filtered_queryset()
+        surveys = self.filtered_queryset().select_related("campaign", "brigadier")
         competitor_ads = CompetitorAdvertisingDetection.objects.select_related(
             "competitor", "campaign", "brigadier", "advertising_type"
         )
@@ -158,42 +193,95 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
         if request.GET.get("competitor"):
             competitor_ads = competitor_ads.filter(competitor_id=request.GET["competitor"])
 
-        data = {
-            "visits": [
+        visits = []
+        for survey in surveys:
+            result_code = survey.primary_result_code
+            visits.append(
                 {
                     "id": survey.id,
                     "lat": float(survey.latitude),
                     "lng": float(survey.longitude),
-                    "result": survey.primary_result_code,
+                    "label": survey.code or str(survey),
+                    "result": result_code,
+                    "result_label": result_code.replace("_", " ").title() if result_code else "",
                     "voters": survey.voters_count,
-                    "label": str(survey),
+                    "color": RESULT_COLORS.get(result_code, DEFAULT_VISIT_COLOR),
+                    "type_icon": "geolocation",
                     "url": fieldsurvey_detail_url(survey.pk),
                 }
-                for survey in surveys
-            ],
-            "own_ads": [
+            )
+
+        competitor_data = []
+        for ad in competitor_ads:
+            competitor_data.append(
                 {
                     "id": ad.id,
                     "lat": float(ad.latitude),
                     "lng": float(ad.longitude),
-                    "type": str(ad.advertising_type),
-                    "survey_id": ad.field_survey_id,
-                }
-                for ad in OwnAdvertisingPlacement.objects.select_related("advertising_type").filter(field_survey__in=surveys)
-            ],
-            "competitor_ads": [
-                {
-                    "id": ad.id,
-                    "lat": float(ad.latitude),
-                    "lng": float(ad.longitude),
-                    "type": str(ad.advertising_type),
-                    "competitor": str(ad.competitor),
+                    "label": str(ad.competitor),
+                    "type_label": ad.advertising_type.name if ad.advertising_type_id else "",
+                    "type_icon": ad.advertising_type.icon if ad.advertising_type_id else "element-12",
                     "color": ad.competitor.color or "#d9214e",
+                    "url": competitor_detection_detail_url(ad.id),
                 }
-                for ad in competitor_ads
-            ],
-        }
-        return JsonResponse(data)
+            )
+
+        return JsonResponse({"visits": visits, "competitor_ads": competitor_data})
+
+
+class FieldSurveyMapPopupView(FieldSurveyAccessMixin, View):
+    """Render a rich HTML card for a single field survey, used inside the map's modal."""
+
+    def get(self, request, pk, *args, **kwargs):
+        survey = get_object_or_404(
+            self.get_queryset().prefetch_related("results", "competitor_advertising_detections"),
+            pk=pk,
+        )
+        result_code = survey.primary_result_code
+        html = render_to_string(
+            "field_surveys/_map_popup.html",
+            {
+                "survey": survey,
+                "result_code": result_code,
+                "result_color": RESULT_COLORS.get(result_code, DEFAULT_VISIT_COLOR),
+                "results": list(survey.results.order_by("order", "name")),
+                "competitor_detections": list(
+                    survey.competitor_advertising_detections.select_related("competitor", "advertising_type")
+                ),
+            },
+            request=request,
+        )
+        return JsonResponse(
+            {
+                "html": html,
+                "title": survey.code or str(survey),
+                "url": fieldsurvey_detail_url(survey.pk),
+            }
+        )
+
+
+class CompetitorDetectionMapPopupView(LoginRequiredMixin, View):
+    """Pop-up para detección de publicidad de la competencia."""
+
+    def get(self, request, pk, *args, **kwargs):
+        queryset = CompetitorAdvertisingDetection.objects.select_related(
+            "competitor", "campaign", "brigadier", "advertising_type", "field_survey"
+        )
+        if not can_view_all_field_surveys(request.user):
+            queryset = queryset.filter(brigadier=request.user)
+        detection = get_object_or_404(queryset, pk=pk)
+        html = render_to_string(
+            "field_surveys/_map_popup_competitor.html",
+            {"detection": detection},
+            request=request,
+        )
+        return JsonResponse(
+            {
+                "html": html,
+                "title": str(detection.competitor),
+                "url": competitor_detection_detail_url(detection.pk),
+            }
+        )
 
 
 def get_filter_context(request):

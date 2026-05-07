@@ -24,16 +24,22 @@ class TextSearchWidget(forms.TextInput):
 
 
 class LeafletMapWidget(forms.Widget):
-    """Map picker that writes latitude and longitude into sibling form fields."""
+    """Map picker that writes latitude and longitude into sibling form fields.
+
+    Default lat/lng/zoom are *intentionally* not emitted unless explicitly
+    overridden — the JS reads ``window.TENANT_MAP_CENTER`` (set per-tenant
+    via ``TenantSettings``) as the fallback so every form respects the
+    tenant's preferred starting view without each form having to plumb it.
+    """
 
     def __init__(
         self,
         *,
         lat_field,
         lng_field,
-        default_lat=-2.170998,
-        default_lng=-79.922359,
-        default_zoom=13,
+        default_lat=None,
+        default_lng=None,
+        default_zoom=None,
         attrs=None,
     ):
         self.lat_field = lat_field
@@ -45,10 +51,13 @@ class LeafletMapWidget(forms.Widget):
             "data-leaflet-map": "true",
             "data-lat-field": lat_field,
             "data-lng-field": lng_field,
-            "data-default-lat": default_lat,
-            "data-default-lng": default_lng,
-            "data-default-zoom": default_zoom,
         }
+        if default_lat is not None:
+            defaults["data-default-lat"] = default_lat
+        if default_lng is not None:
+            defaults["data-default-lng"] = default_lng
+        if default_zoom is not None:
+            defaults["data-default-zoom"] = default_zoom
         if attrs:
             defaults.update(attrs)
         super().__init__(attrs=defaults)
@@ -91,8 +100,8 @@ class LeafletMapWidget(forms.Widget):
             self.lng_field,
             attrs.get("data-manual-field", ""),
             attrs.get("data-accuracy-field", ""),
-            attrs.get("data-default-lat", self.default_lat),
-            attrs.get("data-default-lng", self.default_lng),
-            attrs.get("data-default-zoom", self.default_zoom),
+            attrs.get("data-default-lat", ""),
+            attrs.get("data-default-lng", ""),
+            attrs.get("data-default-zoom", ""),
             attrs.get("data-default-basemap", "carto"),
         )

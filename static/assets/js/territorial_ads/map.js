@@ -384,10 +384,11 @@
     var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
 
-    // Default view: Macas, Morona Santiago.
-    var defaultLat = parseFloat(el.dataset.defaultLat) || -2.3046;
-    var defaultLng = parseFloat(el.dataset.defaultLng) || -78.1175;
-    var defaultZoom = parseInt(el.dataset.defaultZoom || "13", 10);
+    // Default view: tenant settings, then Macas (Morona Santiago) as fallback.
+    var tenantCenter = window.TENANT_MAP_CENTER || {};
+    var defaultLat = parseFloat(el.dataset.defaultLat) || tenantCenter.lat || -2.3046;
+    var defaultLng = parseFloat(el.dataset.defaultLng) || tenantCenter.lng || -78.1175;
+    var defaultZoom = parseInt(el.dataset.defaultZoom || tenantCenter.zoom || "13", 10);
     var map = window.L.map(el, {
       zoomControl: false,
       attributionControl: false

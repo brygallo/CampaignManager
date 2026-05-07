@@ -13,18 +13,23 @@ Equivale a:
     seed_political_agenda
     seed_territorial_ads
 """
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
+from tracing.middleware import TracingMiddleware
+
 
 SEEDS = [
-    ("seed_audit_rules",          True),   # acepta --reset
-    ("seed_campaigns",            True),   # acepta --reset
-    ("seed_field_survey_results", False),
-    ("seed_sectors",              True),
-    ("seed_field_surveys",        True),
-    ("seed_political_agenda",     True),
-    ("seed_territorial_ads",      True),
+    ("seed_audit_rules",             True),   # acepta --reset
+    ("seed_ecuador",                 False),  # provincias / cantones / parroquias
+    ("seed_campaigns",               True),   # acepta --reset
+    ("seed_field_survey_results",    False),
+    ("seed_territorial_ads_catalog", False),
+    ("seed_sectors",                 True),
+    ("seed_field_surveys",           True),
+    ("seed_political_agenda",        True),
+    ("seed_territorial_ads",         True),
 ]
 
 
@@ -37,10 +42,24 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         reset = opts.get("reset", False)
-        for cmd, supports_reset in SEEDS:
-            self.stdout.write(self.style.MIGRATE_HEADING(f"\n→ {cmd}"))
-            kwargs = {}
-            if reset and supports_reset:
-                kwargs["reset"] = True
-            call_command(cmd, **kwargs)
+
+        # tracing.signals demands a user on every audited save; outside an HTTP
+        # request, the thread-local is empty. Stamp it with the first
+        # superuser so seed runs after audit rules are active don't choke.
+        user_model = get_user_model()
+        seed_user = user_model.objects.filter(is_superuser=True).order_by("id").first()
+        if seed_user is not None:
+            TracingMiddleware.thread_local.user = seed_user
+
+        try:
+            for cmd, supports_reset in SEEDS:
+                self.stdout.write(self.style.MIGRATE_HEADING(f"\n→ {cmd}"))
+                kwargs = {}
+                if reset and supports_reset:
+                    kwargs["reset"] = True
+                call_command(cmd, **kwargs)
+        finally:
+            if hasattr(TracingMiddleware.thread_local, "user"):
+                del TracingMiddleware.thread_local.user
+
         self.stdout.write(self.style.SUCCESS("\n✔ Todos los seeds aplicados."))

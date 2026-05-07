@@ -1,0 +1,9 @@
+<form method="post"
+      action="{{ action_url }}"
+      enctype="multipart/form-data"
+      class="form"
+      id="field-survey-map-create-form"
+      data-map-create-form="true">
+  {% csrf_token %}
+  {% include "forms/form.html" with form=form %}
+</form>

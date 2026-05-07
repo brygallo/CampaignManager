@@ -103,9 +103,10 @@
 
     container.dataset.leafletInitialized = "true";
 
-    var defaultLat = parseNumber(container.dataset.defaultLat, -2.170998);
-    var defaultLng = parseNumber(container.dataset.defaultLng, -79.922359);
-    var zoom = parseInt(container.dataset.defaultZoom || "13", 10);
+    var tenantCenter = window.TENANT_MAP_CENTER || {};
+    var defaultLat = parseNumber(container.dataset.defaultLat, tenantCenter.lat || -2.170998);
+    var defaultLng = parseNumber(container.dataset.defaultLng, tenantCenter.lng || -79.922359);
+    var zoom = parseInt(container.dataset.defaultZoom || tenantCenter.zoom || "13", 10);
     var lat = parseNumber(latField.value, defaultLat);
     var lng = parseNumber(lngField.value, defaultLng);
     var hasPoint = latField.value !== "" && lngField.value !== "";
