@@ -33,6 +33,11 @@
   </div>
 {% endblock %}
 
+{% block extra_css %}
+  {{ block.super }}
+  <link href="{% static 'assets/plugins/custom/datatables/datatables.bundle.css' %}" rel="stylesheet" type="text/css" />
+{% endblock %}
+
 {% block css %}
   {{ block.super }}
   <style>
@@ -63,6 +68,63 @@
     table#datatable thead th.sorting,
     table#datatable thead th.sorting_asc,
     table#datatable thead th.sorting_desc { cursor: pointer; user-select: none; }
+
+    /* Avoid FOUC: hide the raw table until DataTables Responsive has set up. */
+    table#datatable { opacity: 0; transition: opacity 120ms ease; }
+    table#datatable.dt-ready { opacity: 1; }
+
+    /* Discrete +/- expand control: plain icon, no button chrome. Override DataTables Responsive defaults. */
+    table#datatable td.dtr-control,
+    table#datatable th.dtr-control {
+      vertical-align: middle;
+      padding-left: .75rem !important; /* reset Responsive's 30px reservation */
+      cursor: pointer;
+    }
+    table#datatable td.dtr-control > * { vertical-align: middle; }
+
+    table#datatable td.dtr-control::before,
+    table#datatable th.dtr-control::before {
+      content: "+" !important;
+      position: static !important;       /* override default position:absolute */
+      display: inline-block !important;
+      width: auto !important;
+      height: auto !important;
+      margin: 0 .4rem 0 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      color: var(--bs-primary) !important;
+      font-family: inherit !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+      text-align: center !important;
+      text-indent: 0 !important;
+      vertical-align: middle !important;
+      box-shadow: none !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      top: auto !important;
+      left: auto !important;
+      transition: color .15s ease;
+    }
+    table#datatable td.dtr-control:hover::before { color: var(--bs-primary-active) !important; }
+    table#datatable tr.parent > td.dtr-control::before {
+      content: "−" !important;
+      color: var(--bs-primary) !important;
+    }
+
+    /* Hide the expand control entirely when responsive has no hidden columns (desktop). */
+    table#datatable.cm-no-hidden-cols td.dtr-control::before,
+    table#datatable.cm-no-hidden-cols th.dtr-control::before { display: none !important; }
+
+    /* Child row container: subtle gray panel separated from parent row. */
+    table#datatable > tbody > tr.child > td.child {
+      background: var(--bs-gray-100);
+      padding: .5rem .75rem;
+      border-top: 1px solid var(--bs-gray-200);
+    }
+    table#datatable > tbody > tr.child > td.child > div > div:last-child { border-bottom: 0 !important; }
   </style>
 {% endblock %}
 
@@ -203,58 +265,27 @@
   {% endif %}
 
   <div class="card-body py-4">
-    {% if site.urls.mass_delete %}
-      <div id="bulk-toolbar"
-           class="d-none align-items-center justify-content-between bg-light-primary rounded p-3 mb-4"
-           data-mass-delete-url="{{ site.urls.mass_delete }}">
-        <div class="d-flex align-items-center gap-2">
-          <i class="ki-outline ki-check-circle fs-2 text-primary"></i>
-          <span class="fw-bold text-gray-800">
-            <span id="bulk-selected-count">0</span> seleccionado<span id="bulk-selected-plural">s</span>
-          </span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <button type="button" id="bulk-clear-btn" class="btn btn-sm btn-light">
-            <i class="ki-outline ki-cross fs-3"></i>Cancelar
-          </button>
-          <button type="button" id="bulk-delete-btn" class="btn btn-sm btn-danger">
-            <i class="ki-outline ki-trash fs-3"></i>Eliminar seleccionados
-          </button>
-        </div>
-      </div>
-    {% endif %}
-
     <table id="datatable" class="table table-sm align-middle table-row-dashed fs-7 gy-3" style="width:100%">
       <thead>
         <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-          {% if site.urls.mass_delete %}
-            <th class="w-40px pe-0">
-              <div class="form-check form-check-sm form-check-custom form-check-solid">
-                <input class="form-check-input" type="checkbox" id="bulk-select-all" aria-label="Seleccionar todos">
-              </div>
-            </th>
-          {% endif %}
           {% for field_name, label in site.fields %}
-            <th>{{ label }}</th>
+            {% if forloop.first %}
+              <th data-priority="1">{{ label }}</th>
+            {% elif 'state' in field_name %}
+              <th data-priority="3">{{ label }}</th>
+            {% else %}
+              <th data-priority="{{ forloop.counter|add:5 }}">{{ label }}</th>
+            {% endif %}
           {% endfor %}
-          <th class="text-end min-w-125px">Acciones</th>
+          <th class="text-end min-w-125px all" data-priority="1">Acciones</th>
         </tr>
       </thead>
       <tbody class="text-gray-700 fw-semibold">
         {% for row in site.rows %}
           <tr>
-            {% if site.urls.mass_delete %}
-              <td class="pe-0">
-                <div class="form-check form-check-sm form-check-custom form-check-solid">
-                  <input class="form-check-input bulk-row-check" type="checkbox" value="{{ row.instance.pk }}" aria-label="Seleccionar fila">
-                </div>
-              </td>
-            {% endif %}
             {% for value in row.values %}
-              {% if forloop.first and row.urls.detail %}
-                <td>
-                  <a href="{{ row.urls.detail }}" class="text-gray-800 text-hover-primary fw-bold">{{ value|default_if_none:"" }}</a>
-                </td>
+              {% if forloop.first %}
+                <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:"" }}</span></td>
               {% else %}
                 <td>{{ value|default_if_none:"" }}</td>
               {% endif %}
@@ -262,28 +293,24 @@
             <td class="text-end text-nowrap">
               {% if row.urls.detail %}
                 <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver" aria-label="Ver detalle">
-                  <i class="ki-outline ki-eye fs-2"></i>
+                  <i class="ki-outline ki-eye fs-4"></i>
                 </a>
               {% endif %}
               {% if row.urls.update %}
                 <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar" aria-label="Editar registro">
-                  <i class="ki-outline ki-pencil fs-2"></i>
+                  <i class="ki-outline ki-pencil fs-4"></i>
                 </a>
               {% endif %}
               {% if row.urls.delete %}
                 <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
-                  <i class="ki-outline ki-trash fs-2"></i>
+                  <i class="ki-outline ki-trash fs-4"></i>
                 </a>
               {% endif %}
             </td>
           </tr>
         {% empty %}
           <tr>
-            {% if site.urls.mass_delete %}
-              <td colspan="{{ site.fields|length|add:2 }}" class="text-center py-10">
-            {% else %}
-              <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
-            {% endif %}
+            <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
               <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
               {% if site.current_filters or request.GET.search %}
                 <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
@@ -315,6 +342,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'assets/plugins/custom/datatables/datatables.bundle.js' %}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     // --- View options (column picker + density), persisted in localStorage. ---
@@ -323,7 +351,6 @@
       const table = document.getElementById("datatable");
       if (!root || !table) return;
       const storageKey = root.dataset.cmStorageKey || "cm.list.default";
-      const offset = !!document.getElementById("bulk-toolbar") ? 1 : 0; // bulk-select column shifts indexes
 
       const readState = () => {
         try { return JSON.parse(localStorage.getItem(storageKey) || "{}") || {}; }
@@ -353,13 +380,10 @@
       // ---- Column picker ----
       const toggles = Array.from(root.querySelectorAll(".cm-col-toggle"));
       const applyColumn = (name, visible) => {
-        const idx = toggles.findIndex(t => t.dataset.colName === name);
-        if (idx < 0) return;
-        const colIndex = idx + offset; // skip bulk col when present
-        // headers
+        const colIndex = toggles.findIndex(t => t.dataset.colName === name);
+        if (colIndex < 0) return;
         const ths = table.querySelectorAll("thead tr > th");
         if (ths[colIndex]) ths[colIndex].style.display = visible ? "" : "none";
-        // body
         table.querySelectorAll("tbody tr").forEach(tr => {
           const cell = tr.querySelectorAll(":scope > td")[colIndex];
           if (cell) cell.style.display = visible ? "" : "none";
@@ -400,10 +424,35 @@
     if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
       const $tbl = jQuery("#datatable");
       if ($tbl.length) {
-        const hasBulk = !!document.getElementById("bulk-toolbar");
-        const noSort = hasBulk ? [0, -1] : [-1];
+        const metronicDetailRenderer = function (api, rowIdx, columns) {
+          const items = columns
+            .filter(c => c.hidden)
+            .map(c => {
+              const value = (c.data == null || c.data === "") ? '<span class="text-gray-500">—</span>' : c.data;
+              return (
+                '<div class="d-flex align-items-baseline justify-content-between gap-3 py-2 border-bottom border-gray-200">' +
+                  '<span class="text-gray-500 fs-8 fw-semibold text-uppercase flex-shrink-0">' + c.title + '</span>' +
+                  '<span class="text-gray-900 fs-7 fw-bold text-end">' + value + '</span>' +
+                '</div>'
+              );
+            })
+            .join('');
+          return items
+            ? jQuery('<div class="bg-white rounded px-3"/>').html(items)
+            : false;
+        };
+        // Toggle a class on the table whenever responsive recalculates: the +/-
+        // expand control is only meaningful when at least one column is hidden.
+        $tbl.on('responsive-resize.dt', function (e, datatable, columns) {
+          const anyHidden = Array.isArray(columns) && columns.some(visible => !visible);
+          $tbl[0].classList.toggle('cm-no-hidden-cols', !anyHidden);
+        });
         $tbl.DataTable({
-          responsive: true,
+          responsive: {
+            details: {
+              renderer: metronicDetailRenderer,
+            },
+          },
           paging: false,
           info: false,
           ordering: true,
@@ -414,105 +463,9 @@
           },
           dom: 't',
           order: [],
-          columnDefs: [{ orderable: false, targets: noSort }]
+          columnDefs: [{ orderable: false, targets: [-1] }],
         });
-      }
-    }
-
-    // Bulk delete (mass_delete)
-    const bulkToolbar = document.getElementById("bulk-toolbar");
-    if (bulkToolbar) {
-      const selectAll = document.getElementById("bulk-select-all");
-      const countEl = document.getElementById("bulk-selected-count");
-      const pluralEl = document.getElementById("bulk-selected-plural");
-      const deleteBtn = document.getElementById("bulk-delete-btn");
-      const clearBtn = document.getElementById("bulk-clear-btn");
-      const massDeleteUrl = bulkToolbar.dataset.massDeleteUrl;
-
-      const getRowChecks = () => Array.from(document.querySelectorAll(".bulk-row-check"));
-      const getSelected = () => getRowChecks().filter(c => c.checked);
-
-      const refresh = () => {
-        const sel = getSelected();
-        const n = sel.length;
-        countEl.textContent = n;
-        pluralEl.textContent = n === 1 ? "" : "s";
-        bulkToolbar.classList.toggle("d-none", n === 0);
-        bulkToolbar.classList.toggle("d-flex", n > 0);
-        if (selectAll) {
-          const all = getRowChecks();
-          selectAll.checked = all.length > 0 && n === all.length;
-          selectAll.indeterminate = n > 0 && n < all.length;
-        }
-      };
-
-      if (selectAll) {
-        selectAll.addEventListener("change", () => {
-          getRowChecks().forEach(c => { c.checked = selectAll.checked; });
-          refresh();
-        });
-      }
-
-      document.addEventListener("change", (e) => {
-        if (e.target && e.target.classList.contains("bulk-row-check")) refresh();
-      });
-
-      if (clearBtn) {
-        clearBtn.addEventListener("click", () => {
-          getRowChecks().forEach(c => { c.checked = false; });
-          if (selectAll) selectAll.checked = false;
-          refresh();
-        });
-      }
-
-      if (deleteBtn) {
-        deleteBtn.addEventListener("click", async () => {
-          const ids = getSelected().map(c => c.value).filter(Boolean);
-          if (ids.length === 0) return;
-
-          const result = await Swal.fire({
-            title: `¿Eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"}?`,
-            text: "Esta acción no se puede deshacer.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Sí, eliminar",
-            cancelButtonText: "Cancelar",
-            buttonsStyling: false,
-            customClass: {
-              confirmButton: "btn btn-sm btn-danger",
-              cancelButton: "btn btn-sm btn-light ms-2",
-            },
-          });
-          if (!result.isConfirmed) return;
-
-          const csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1];
-          const fd = new FormData();
-          ids.forEach(id => fd.append("ids", id));
-          deleteBtn.disabled = true;
-          try {
-            const resp = await fetch(massDeleteUrl, {
-              method: "POST",
-              headers: {
-                "X-CSRFToken": csrf ? decodeURIComponent(csrf) : "",
-                "X-Requested-With": "XMLHttpRequest",
-              },
-              body: fd,
-              credentials: "same-origin",
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            window.location.reload();
-          } catch (err) {
-            console.error("bulk delete", err);
-            Swal.fire({
-              title: "No se pudo eliminar",
-              text: "Intenta de nuevo en unos segundos.",
-              icon: "error",
-              buttonsStyling: false,
-              customClass: { confirmButton: "btn btn-sm btn-primary" },
-            });
-            deleteBtn.disabled = false;
-          }
-        });
+        document.getElementById("datatable").classList.add("dt-ready");
       }
     }
   });
