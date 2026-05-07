@@ -87,11 +87,20 @@
       </div>
       {% endif %}
       <div class="field-survey-map-field">
-        <label for="fs-map-filter-result" class="form-label fs-7 fw-semibold text-gray-700">Resultado</label>
-        <select id="fs-map-filter-result" name="result" class="form-select form-select-sm form-select-solid">
+        <label for="fs-map-filter-support" class="form-label fs-7 fw-semibold text-gray-700">Apoyo</label>
+        <select id="fs-map-filter-support" name="support_level" class="form-select form-select-sm form-select-solid">
           <option value="">Todos</option>
-          {% for result in filter_results %}
-            <option value="{{ result.id }}">{{ result.name }}</option>
+          {% for level in filter_support_levels %}
+            <option value="{{ level.id }}">{{ level.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-survey-map-field">
+        <label for="fs-map-filter-advertising" class="form-label fs-7 fw-semibold text-gray-700">Publicidad</label>
+        <select id="fs-map-filter-advertising" name="advertising_response" class="form-select form-select-sm form-select-solid">
+          <option value="">Todas</option>
+          {% for response in filter_advertising_responses %}
+            <option value="{{ response.id }}">{{ response.name }}</option>
           {% endfor %}
         </select>
       </div>

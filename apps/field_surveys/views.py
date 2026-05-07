@@ -15,17 +15,21 @@ from .models import (
     Competitor,
     CompetitorAdvertisingDetection,
     FieldSurvey,
-    SurveyResultOption,
+    SurveyAdvertisingResponse,
+    SurveySupportLevel,
 )
 
 
-# Primary result code → map pin color mapping.
-RESULT_COLORS = {
+# Fallback colors used when a catalog row has no color configured.
+SUPPORT_FALLBACK_COLORS = {
     "APOYA": "#50cd89",
     "INDECISO": "#ffc700",
     "NO_APOYA": "#f1416c",
-    "ATENDIO": "#3e97ff",
     "NO_ATENDIO": "#7e8299",
+}
+ADVERTISING_FALLBACK_COLORS = {
+    "ACEPTA": "#3e97ff",
+    "RECHAZA": "#7e8299",
 }
 DEFAULT_VISIT_COLOR = "#3e97ff"
 
@@ -36,8 +40,14 @@ def can_view_all_field_surveys(user):
 
 def fieldsurvey_queryset_for_user(user):
     queryset = (
-        FieldSurvey.objects.select_related("campaign", "brigadier", "created_by")
-        .prefetch_related("results", "competitor_advertising_detections")
+        FieldSurvey.objects.select_related(
+            "campaign",
+            "brigadier",
+            "created_by",
+            "support_level",
+            "advertising_response",
+        )
+        .prefetch_related("competitor_advertising_detections")
         .all()
     )
     if not can_view_all_field_surveys(user):
@@ -57,6 +67,18 @@ def competitor_detection_detail_url(pk):
     return reverse("site:field_surveys_competitoradvertisingdetection_", kwargs={"pk": pk})
 
 
+def support_color(level):
+    if not level:
+        return DEFAULT_VISIT_COLOR
+    return level.color or SUPPORT_FALLBACK_COLORS.get(level.code, DEFAULT_VISIT_COLOR)
+
+
+def advertising_color(response):
+    if not response:
+        return DEFAULT_VISIT_COLOR
+    return response.color or ADVERTISING_FALLBACK_COLORS.get(response.code, DEFAULT_VISIT_COLOR)
+
+
 class FieldSurveySpecialViewMixin(LoginRequiredMixin):
     def get_queryset(self):
         return fieldsurvey_queryset_for_user(self.request.user)
@@ -69,13 +91,15 @@ class FieldSurveyFilterMixin:
             queryset = queryset.filter(campaign_id=params["campaign"])
         if params.get("brigadier") and can_view_all_field_surveys(self.request.user):
             queryset = queryset.filter(brigadier_id=params["brigadier"])
-        if params.get("result"):
-            queryset = queryset.filter(results__id=params["result"])
+        if params.get("support_level"):
+            queryset = queryset.filter(support_level_id=params["support_level"])
+        if params.get("advertising_response"):
+            queryset = queryset.filter(advertising_response_id=params["advertising_response"])
         if params.get("date_from"):
             queryset = queryset.filter(created_date__date__gte=params["date_from"])
         if params.get("date_to"):
             queryset = queryset.filter(created_date__date__lte=params["date_to"])
-        return queryset.distinct()
+        return queryset
 
     def filtered_queryset(self):
         return self.apply_filters(self.get_queryset())
@@ -100,11 +124,16 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
         result_counts = surveys.aggregate(
             total_visits=Count("id", distinct=True),
             total_voters=Sum("voters_count"),
-            support=Count("id", filter=Q(results__code="APOYA"), distinct=True),
-            undecided=Count("id", filter=Q(results__code="INDECISO"), distinct=True),
-            not_support=Count("id", filter=Q(results__code="NO_APOYA"), distinct=True),
-            attended=Count("id", filter=Q(results__code="ATENDIO"), distinct=True),
-            not_attended=Count("id", filter=Q(results__code="NO_ATENDIO"), distinct=True),
+            support=Count("id", filter=Q(support_level__code="APOYA"), distinct=True),
+            undecided=Count("id", filter=Q(support_level__code="INDECISO"), distinct=True),
+            not_support=Count("id", filter=Q(support_level__code="NO_APOYA"), distinct=True),
+            not_attended=Count("id", filter=Q(support_level__code="NO_ATENDIO"), distinct=True),
+            ads_accepted=Count(
+                "id", filter=Q(advertising_response__code="ACEPTA"), distinct=True
+            ),
+            ads_rejected=Count(
+                "id", filter=Q(advertising_response__code="RECHAZA"), distinct=True
+            ),
         )
         context["metrics"] = {
             "total_visits": result_counts["total_visits"] or 0,
@@ -112,6 +141,9 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
             "support": result_counts["support"] or 0,
             "undecided": result_counts["undecided"] or 0,
             "not_support": result_counts["not_support"] or 0,
+            "not_attended": result_counts["not_attended"] or 0,
+            "ads_accepted": result_counts["ads_accepted"] or 0,
+            "ads_rejected": result_counts["ads_rejected"] or 0,
             "competitor_ads": competitor_ads.count(),
         }
         ranking = list(
@@ -132,8 +164,10 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
             row["voters"] = row["voters"] or 0
         context["brigadier_ranking"] = ranking
 
-        result_distribution = build_result_distribution(result_counts)
+        result_distribution = build_support_distribution(result_counts)
+        advertising_distribution = build_advertising_distribution(result_counts)
         context["result_distribution"] = result_distribution
+        context["advertising_distribution"] = advertising_distribution
 
         visits_trend = build_visits_trend(self.request, surveys)
         competitor_ads_breakdown = build_competitor_breakdown(competitor_ads)
@@ -144,6 +178,10 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
                 {"label": item["label"], "value": item["value"], "color": item["color"]}
                 for item in result_distribution
             ],
+            "advertising": [
+                {"label": item["label"], "value": item["value"], "color": item["color"]}
+                for item in advertising_distribution
+            ],
             "trend": visits_trend,
         }
         return context
@@ -152,14 +190,14 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
 class FieldSurveyDashboardHeatmapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
     """Return density points for the dashboard heatmap, grouped by layer.
 
-    Honors the dashboard filters via FieldSurveyFilterMixin and returns three
-    layers: APOYA (support), INDECISO (undecided) and competitor advertising
-    detections. Each layer is a list of [lat, lng, weight] tuples plus a count.
+    Honors the dashboard filters via FieldSurveyFilterMixin and returns layers
+    for support levels (APOYA, INDECISO) plus competitor advertising detections.
+    Each layer is a list of [lat, lng, weight] tuples plus a count.
     """
 
-    def _survey_points(self, base_qs, result_code):
+    def _survey_points(self, base_qs, support_code):
         rows = (
-            base_qs.filter(results__code=result_code)
+            base_qs.filter(support_level__code=support_code)
             .values_list("latitude", "longitude", "voters_count")
             .distinct()
         )
@@ -186,15 +224,19 @@ class FieldSurveyDashboardHeatmapDataView(FieldSurveyAccessMixin, FieldSurveyFil
                 continue
             competitor_points.append([float(lat), float(lng), 1.0])
 
+        support_levels_by_code = {
+            level.code: level
+            for level in SurveySupportLevel.objects.filter(is_active=True)
+        }
         layers = {
             "apoyo": {
                 "label": "Apoyo",
-                "color": RESULT_COLORS["APOYA"],
+                "color": support_color(support_levels_by_code.get("APOYA")),
                 "points": self._survey_points(surveys, "APOYA"),
             },
             "indecisos": {
                 "label": "Indecisos",
-                "color": RESULT_COLORS["INDECISO"],
+                "color": support_color(support_levels_by_code.get("INDECISO")),
                 "points": self._survey_points(surveys, "INDECISO"),
             },
             "competencia": {
@@ -240,7 +282,9 @@ class FieldSurveyMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVi
 
 class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
     def get(self, request, *args, **kwargs):
-        surveys = self.filtered_queryset().select_related("campaign", "brigadier")
+        surveys = self.filtered_queryset().select_related(
+            "campaign", "brigadier", "support_level", "advertising_response"
+        )
         competitor_ads = CompetitorAdvertisingDetection.objects.select_related(
             "competitor", "campaign", "brigadier", "advertising_type"
         )
@@ -259,17 +303,20 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
 
         visits = []
         for survey in surveys:
-            result_code = survey.primary_result_code
+            level = survey.support_level
+            response = survey.advertising_response
             visits.append(
                 {
                     "id": survey.id,
                     "lat": float(survey.latitude),
                     "lng": float(survey.longitude),
                     "label": str(survey),
-                    "result": result_code,
-                    "result_label": result_code.replace("_", " ").title() if result_code else "",
+                    "result": level.code if level else "",
+                    "result_label": level.name if level else "",
+                    "advertising": response.code if response else "",
+                    "advertising_label": response.name if response else "",
                     "voters": survey.voters_count,
-                    "color": RESULT_COLORS.get(result_code, DEFAULT_VISIT_COLOR),
+                    "color": support_color(level),
                     "type_icon": "geolocation",
                     "url": fieldsurvey_detail_url(survey.pk),
                 }
@@ -295,17 +342,44 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
         return JsonResponse({"visits": visits, "competitor_ads": competitor_data})
 
 
-def build_result_distribution(result_counts):
-    """Build the donut input: ordered list of {code, label, value, color}."""
+def build_support_distribution(result_counts):
+    """Build the donut input for support levels: ordered list of {code, label, value, color}."""
     rows = [
         ("APOYA", "Apoyan", result_counts.get("support") or 0),
         ("INDECISO", "Indecisos", result_counts.get("undecided") or 0),
         ("NO_APOYA", "No apoyan", result_counts.get("not_support") or 0),
-        ("ATENDIO", "Atendieron", result_counts.get("attended") or 0),
         ("NO_ATENDIO", "No atendieron", result_counts.get("not_attended") or 0),
     ]
+    levels_by_code = {
+        level.code: level for level in SurveySupportLevel.objects.filter(is_active=True)
+    }
     return [
-        {"code": code, "label": label, "value": value, "color": RESULT_COLORS[code]}
+        {
+            "code": code,
+            "label": label,
+            "value": value,
+            "color": support_color(levels_by_code.get(code)),
+        }
+        for code, label, value in rows
+    ]
+
+
+def build_advertising_distribution(result_counts):
+    """Build the donut input for advertising acceptance."""
+    rows = [
+        ("ACEPTA", "Acepta publicidad", result_counts.get("ads_accepted") or 0),
+        ("RECHAZA", "Rechaza publicidad", result_counts.get("ads_rejected") or 0),
+    ]
+    responses_by_code = {
+        r.code: r for r in SurveyAdvertisingResponse.objects.filter(is_active=True)
+    }
+    return [
+        {
+            "code": code,
+            "label": label,
+            "value": value,
+            "color": advertising_color(responses_by_code.get(code)),
+        }
         for code, label, value in rows
     ]
 
@@ -366,9 +440,12 @@ def get_filter_context(request):
         campaigns = campaigns.filter(field_surveys__brigadier=request.user).distinct()
     return {
         "filter_campaigns": campaigns,
-        "filter_results": SurveyResultOption.objects.filter(is_active=True).order_by(
+        "filter_support_levels": SurveySupportLevel.objects.filter(is_active=True).order_by(
             "order", "name"
         ),
+        "filter_advertising_responses": SurveyAdvertisingResponse.objects.filter(
+            is_active=True
+        ).order_by("order", "name"),
         "filter_brigadiers": FieldSurvey.objects.values(
             "brigadier_id", "brigadier__username", "brigadier__first_name", "brigadier__last_name"
         )

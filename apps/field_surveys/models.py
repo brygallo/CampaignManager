@@ -8,14 +8,40 @@ from apps.campaigns.models import Campaign
 from core.fields import CompressedImageField
 
 
-class SurveyResultOption(BaseModel):
+class SurveySupportLevel(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
+    color = models.CharField(
+        "Color",
+        max_length=7,
+        blank=True,
+        help_text="Hex #RRGGBB usado en mapas, dashboard y badges.",
+    )
     order = models.PositiveSmallIntegerField("Orden", default=0)
 
     class Meta:
-        verbose_name = "Resultado de levantamiento"
-        verbose_name_plural = "Resultados de levantamiento"
+        verbose_name = "Nivel de apoyo"
+        verbose_name_plural = "Niveles de apoyo"
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class SurveyAdvertisingResponse(BaseModel):
+    code = models.CharField("Código", max_length=40, unique=True)
+    name = models.CharField("Nombre", max_length=120)
+    color = models.CharField(
+        "Color",
+        max_length=7,
+        blank=True,
+        help_text="Hex #RRGGBB usado en mapas, dashboard y badges.",
+    )
+    order = models.PositiveSmallIntegerField("Orden", default=0)
+
+    class Meta:
+        verbose_name = "Respuesta a publicidad"
+        verbose_name_plural = "Respuestas a publicidad"
         ordering = ["order", "name"]
 
     def __str__(self):
@@ -65,10 +91,20 @@ class FieldSurvey(BaseModel):
         blank=True,
         help_text="Opcional. Foto referencial del lugar visitado.",
     )
-    results = models.ManyToManyField(
-        SurveyResultOption,
+    support_level = models.ForeignKey(
+        SurveySupportLevel,
+        on_delete=models.PROTECT,
         related_name="field_surveys",
-        verbose_name="Resultados",
+        verbose_name="Nivel de apoyo",
+        null=True,
+        blank=True,
+    )
+    advertising_response = models.ForeignKey(
+        SurveyAdvertisingResponse,
+        on_delete=models.PROTECT,
+        related_name="field_surveys",
+        verbose_name="Respuesta a publicidad",
+        null=True,
         blank=True,
     )
     created_by = models.ForeignKey(
@@ -96,16 +132,6 @@ class FieldSurvey(BaseModel):
         if not self.code:
             self.code = f"LC-{self.pk:06d}"
             super().save(update_fields=["code"])
-
-    @property
-    def primary_result_code(self):
-        priority = ["APOYA", "INDECISO", "NO_APOYA", "ATENDIO", "NO_ATENDIO"]
-        selected = set(self.results.values_list("code", flat=True))
-        return next((code for code in priority if code in selected), "")
-
-    @property
-    def results_display(self):
-        return ", ".join(self.results.order_by("order", "name").values_list("name", flat=True)) or "-"
 
 
 class AdvertisingType(BaseModel):

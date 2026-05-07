@@ -26,7 +26,8 @@ from apps.field_surveys.models import (
     Competitor,
     CompetitorAdvertisingDetection,
     FieldSurvey,
-    SurveyResultOption,
+    SurveyAdvertisingResponse,
+    SurveySupportLevel,
 )
 
 
@@ -134,14 +135,25 @@ class Command(BaseCommand):
             competitors.append(obj)
         self.stdout.write(self.style.SUCCESS(f"Competidores: {len(competitors)}"))
 
-        result_options = list(SurveyResultOption.objects.filter(is_active=True))
-        result_priority = {
-            "APOYA": 0.45, "INDECISO": 0.20, "NO_APOYA": 0.10,
-            "ATENDIO": 0.15, "NO_ATENDIO": 0.10,
+        support_levels_by_code = {
+            level.code: level
+            for level in SurveySupportLevel.objects.filter(is_active=True)
         }
-        priority_pool = []
-        for code, weight in result_priority.items():
-            priority_pool.extend([code] * int(weight * 100))
+        support_priority = {
+            "APOYA": 0.45,
+            "INDECISO": 0.25,
+            "NO_APOYA": 0.15,
+            "NO_ATENDIO": 0.15,
+        }
+        support_pool = []
+        for code, weight in support_priority.items():
+            support_pool.extend([code] * int(weight * 100))
+
+        advertising_responses_by_code = {
+            r.code: r
+            for r in SurveyAdvertisingResponse.objects.filter(is_active=True)
+        }
+        advertising_pool = ["ACEPTA"] * 6 + ["RECHAZA"] * 4
 
         ad_types = list(AdvertisingType.objects.filter(is_active=True))
 
@@ -149,6 +161,14 @@ class Command(BaseCommand):
         surveys = []
         for i in range(n):
             person = random.choice(PERSON_NAMES)
+            support_code = random.choice(support_pool)
+            # Don't record advertising response when nobody answered the door.
+            if support_code == "NO_ATENDIO":
+                advertising = None
+            else:
+                advertising = advertising_responses_by_code.get(
+                    random.choice(advertising_pool)
+                ) if random.random() < 0.6 else None
             survey = FieldSurvey.objects.create(
                 campaign=campaign,
                 brigadier=brigadier,
@@ -160,12 +180,10 @@ class Command(BaseCommand):
                 person_phone=f"09{random.randint(10000000, 99999999)}",
                 voters_count=random.choice([1, 1, 2, 2, 3, 3, 4, 5]),
                 notes=random.choice(NOTES),
+                support_level=support_levels_by_code.get(support_code),
+                advertising_response=advertising,
                 created_by=brigadier,
             )
-            picked_codes = {random.choice(priority_pool)}
-            if random.random() < 0.35:
-                picked_codes.add(random.choice(["ACEPTA_PUBLICIDAD", "RECHAZA_PUBLICIDAD", "REQUIERE_SEGUIMIENTO"]))
-            survey.results.set([r for r in result_options if r.code in picked_codes])
             surveys.append(survey)
         self.stdout.write(self.style.SUCCESS(f"Levantamientos: {len(surveys)}"))
 

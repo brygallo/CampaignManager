@@ -2,22 +2,26 @@ from django.core.management.base import BaseCommand
 
 from apps.field_surveys.models import (
     AdvertisingType,
-    SurveyResultOption,
+    SurveyAdvertisingResponse,
+    SurveySupportLevel,
 )
 
 
-SURVEY_RESULTS = [
-    ("NO_ATENDIO", "No atendió"),
-    ("ATENDIO", "Atendió"),
-    ("APOYA", "Apoya"),
-    ("INDECISO", "Indeciso"),
-    ("NO_APOYA", "No apoya"),
-    ("ACEPTA_PUBLICIDAD", "Acepta publicidad"),
-    ("RECHAZA_PUBLICIDAD", "Rechaza publicidad"),
-    ("REQUIERE_SEGUIMIENTO", "Requiere seguimiento"),
+SUPPORT_LEVELS = [
+    # (code, name, color)
+    ("APOYA", "Apoya", "#50cd89"),
+    ("INDECISO", "Indeciso", "#ffc700"),
+    ("NO_APOYA", "No apoya", "#f1416c"),
+    ("NO_ATENDIO", "No atendió", "#7e8299"),
+]
+
+ADVERTISING_RESPONSES = [
+    ("ACEPTA", "Acepta publicidad", "#3e97ff"),
+    ("RECHAZA", "Rechaza publicidad", "#7e8299"),
 ]
 
 AD_TYPES = [
+    # (code, name, icon)
     ("AFICHE", "Afiche", "document"),
     ("STICKER", "Sticker", "tag"),
     ("LONA", "Lona", "picture"),
@@ -31,17 +35,26 @@ class Command(BaseCommand):
     help = "Crea los catálogos base de levantamiento de campo."
 
     def handle(self, *args, **options):
-        self._seed(SurveyResultOption, SURVEY_RESULTS)
-        self._seed(AdvertisingType, AD_TYPES)
+        self._seed_with_color(SurveySupportLevel, SUPPORT_LEVELS)
+        self._seed_with_color(SurveyAdvertisingResponse, ADVERTISING_RESPONSES)
+        self._seed_with_icon(AdvertisingType, AD_TYPES)
 
-    def _seed(self, model, values):
-        for order, value in enumerate(values, start=10):
-            code, name, *extra = value
-            defaults = {"name": name, "order": order, "is_active": True}
-            if extra:
-                defaults["icon"] = extra[0]
-            option, created = model.objects.update_or_create(
+    def _seed_with_color(self, model, values):
+        for order, (code, name, color) in enumerate(values, start=10):
+            obj, created = model.objects.update_or_create(
                 code=code,
-                defaults=defaults,
+                defaults={"name": name, "color": color, "order": order, "is_active": True},
             )
-            self.stdout.write(f"{model._meta.verbose_name}: {'Creado' if created else 'Actualizado'} {option.code}")
+            self.stdout.write(
+                f"{model._meta.verbose_name}: {'Creado' if created else 'Actualizado'} {obj.code}"
+            )
+
+    def _seed_with_icon(self, model, values):
+        for order, (code, name, icon) in enumerate(values, start=10):
+            obj, created = model.objects.update_or_create(
+                code=code,
+                defaults={"name": name, "icon": icon, "order": order, "is_active": True},
+            )
+            self.stdout.write(
+                f"{model._meta.verbose_name}: {'Creado' if created else 'Actualizado'} {obj.code}"
+            )

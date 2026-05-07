@@ -12,7 +12,8 @@ from .forms import (
     CompetitorAdvertisingDetectionForm,
     CompetitorForm,
     FieldSurveyForm,
-    SurveyResultOptionForm,
+    SurveyAdvertisingResponseForm,
+    SurveySupportLevelForm,
 )
 from .views import can_view_all_field_surveys
 
@@ -61,12 +62,22 @@ class CompetitorDetectionOwnershipMixin:
         return queryset.filter(brigadier=self.request.user)
 
 
-@register("field_surveys.SurveyResultOption")
-class SurveyResultOptionSite(BaseSite):
-    form_class = SurveyResultOptionForm
+@register("field_surveys.SurveySupportLevel")
+class SurveySupportLevelSite(BaseSite):
+    form_class = SurveySupportLevelForm
     list_mixins = (DropdownFilterMixin,)
-    list_fields = ("code", "name", "order", "is_active:Activo")
-    detail_fields = SurveyResultOptionForm.Meta.fieldsets
+    list_fields = ("code", "name", "color", "order", "is_active:Activo")
+    detail_fields = SurveySupportLevelForm.Meta.fieldsets
+    search_params = ("code__icontains", "name__icontains")
+    filter_fields = ("is_active:Activo",)
+
+
+@register("field_surveys.SurveyAdvertisingResponse")
+class SurveyAdvertisingResponseSite(BaseSite):
+    form_class = SurveyAdvertisingResponseForm
+    list_mixins = (DropdownFilterMixin,)
+    list_fields = ("code", "name", "color", "order", "is_active:Activo")
+    detail_fields = SurveyAdvertisingResponseForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
     filter_fields = ("is_active:Activo",)
 
@@ -120,7 +131,14 @@ class FieldSurveySite(BaseSite):
         "Campaña y ubicación",
         "Visita",
     )
-    list_fields = ("campaign", "brigadier", "voters_count", "created_date:Fecha")
+    list_fields = (
+        "campaign",
+        "brigadier",
+        "support_level",
+        "advertising_response",
+        "voters_count",
+        "created_date:Fecha",
+    )
     detail_fields = {
         "Campaña y ubicación": (
             ("campaign",),
@@ -130,7 +148,7 @@ class FieldSurveySite(BaseSite):
         ),
         "Visita": (
             ("voters_count",),
-            ("results_display:Resultados",),
+            ("support_level", "advertising_response"),
             ("photo",),
             ("notes",),
         ),
@@ -139,7 +157,8 @@ class FieldSurveySite(BaseSite):
     filter_fields = (
         "campaign:Campaña",
         "brigadier:Brigadista",
-        "results:Resultado",
+        "support_level:Nivel de apoyo",
+        "advertising_response:Publicidad",
         "created_date:Fecha",
     )
     detail_maps = (("Ubicación GPS", "latitude", "longitude"),)

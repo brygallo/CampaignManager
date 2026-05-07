@@ -1,5 +1,5 @@
 from django import forms
-from django_select2.forms import ModelSelect2Widget, ModelSelect2MultipleWidget
+from django_select2.forms import ModelSelect2Widget
 from superadmin.forms import ModelForm
 
 from core.widgets import LeafletMapWidget
@@ -10,17 +10,31 @@ from .models import (
     Competitor,
     CompetitorAdvertisingDetection,
     FieldSurvey,
-    SurveyResultOption,
+    SurveyAdvertisingResponse,
+    SurveySupportLevel,
 )
 
 
-class SurveyResultOptionForm(ModelForm):
+class SurveySupportLevelForm(ModelForm):
     class Meta:
-        model = SurveyResultOption
+        model = SurveySupportLevel
         fieldsets = {
-            "Resultado": (
+            "Nivel de apoyo": (
                 ("code", "name"),
-                ("order", "is_active"),
+                ("color", "order"),
+                ("is_active",),
+            ),
+        }
+
+
+class SurveyAdvertisingResponseForm(ModelForm):
+    class Meta:
+        model = SurveyAdvertisingResponse
+        fieldsets = {
+            "Respuesta a publicidad": (
+                ("code", "name"),
+                ("color", "order"),
+                ("is_active",),
             ),
         }
 
@@ -90,7 +104,7 @@ class FieldSurveyForm(ModelForm):
             ),
             "Visita": (
                 ("voters_count",),
-                ("results",),
+                ("support_level", "advertising_response"),
                 ("photo",),
                 ("notes",),
             ),
@@ -106,14 +120,24 @@ class FieldSurveyForm(ModelForm):
                     "data-model": "Campaign",
                 },
             ),
-            "results": ModelSelect2MultipleWidget(
-                model=SurveyResultOption,
+            "support_level": ModelSelect2Widget(
+                model=SurveySupportLevel,
                 search_fields=["name__icontains", "code__icontains"],
                 max_results=100,
                 attrs={
                     "data-minimum-input-length": 0,
                     "data-app": "field_surveys",
-                    "data-model": "SurveyResultOption",
+                    "data-model": "SurveySupportLevel",
+                },
+            ),
+            "advertising_response": ModelSelect2Widget(
+                model=SurveyAdvertisingResponse,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={
+                    "data-minimum-input-length": 0,
+                    "data-app": "field_surveys",
+                    "data-model": "SurveyAdvertisingResponse",
                 },
             ),
             "latitude": forms.HiddenInput(),

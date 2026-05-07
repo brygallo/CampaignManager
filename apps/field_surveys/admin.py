@@ -5,13 +5,21 @@ from .models import (
     Competitor,
     CompetitorAdvertisingDetection,
     FieldSurvey,
-    SurveyResultOption,
+    SurveyAdvertisingResponse,
+    SurveySupportLevel,
 )
 
 
-@admin.register(SurveyResultOption)
-class SurveyResultOptionAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "order", "is_active")
+@admin.register(SurveySupportLevel)
+class SurveySupportLevelAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "color", "order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+
+
+@admin.register(SurveyAdvertisingResponse)
+class SurveyAdvertisingResponseAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "color", "order", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "name")
 
@@ -31,10 +39,17 @@ class CompetitorAdvertisingDetectionInline(admin.TabularInline):
 
 @admin.register(FieldSurvey)
 class FieldSurveyAdmin(admin.ModelAdmin):
-    list_display = ("code", "campaign", "brigadier", "voters_count", "created_date")
-    list_filter = ("campaign", "brigadier", "created_date")
+    list_display = (
+        "code",
+        "campaign",
+        "brigadier",
+        "support_level",
+        "advertising_response",
+        "voters_count",
+        "created_date",
+    )
+    list_filter = ("campaign", "brigadier", "support_level", "advertising_response", "created_date")
     search_fields = ("code", "person_name", "person_phone")
-    filter_horizontal = ("results",)
     inlines = (CompetitorAdvertisingDetectionInline,)
 
 

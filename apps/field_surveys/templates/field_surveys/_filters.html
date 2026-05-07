@@ -1,7 +1,8 @@
 {% comment %}
 Collapsible filters card for the field surveys dashboard.
-Receives filter_campaigns, filter_brigadiers, filter_results, can_view_all from the view
-and reads request.GET.* to preserve selected values.
+Receives filter_campaigns, filter_brigadiers, filter_support_levels,
+filter_advertising_responses, can_view_all from the view and reads request.GET.*
+to preserve selected values.
 {% endcomment %}
 {% load i18n %}
 
@@ -13,7 +14,7 @@ and reads request.GET.* to preserve selected values.
       <span class="card-label fw-bold text-dark d-flex align-items-center gap-2">
         <i class="ki-outline ki-filter fs-2 text-primary"></i>Filtros
       </span>
-      <span class="text-muted fw-semibold fs-7">Acota visitas por campaña, brigadista, resultado o fecha.</span>
+      <span class="text-muted fw-semibold fs-7">Acota visitas por campaña, brigadista, apoyo, publicidad o fecha.</span>
     </h3>
     <div class="card-toolbar">
       <button type="button"
@@ -28,7 +29,7 @@ and reads request.GET.* to preserve selected values.
     </div>
   </div>
 
-  {% if active_filters.campaign or active_filters.brigadier or active_filters.result or active_filters.date_from or active_filters.date_to %}
+  {% if active_filters.campaign or active_filters.brigadier or active_filters.support_level or active_filters.advertising_response or active_filters.date_from or active_filters.date_to %}
     <div class="card-body pt-0 pb-3 d-flex flex-wrap gap-2">
       {% for campaign in filter_campaigns %}
         {% if active_filters.campaign == campaign.id|stringformat:"s" %}
@@ -46,10 +47,17 @@ and reads request.GET.* to preserve selected values.
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% for result in filter_results %}
-        {% if active_filters.result == result.id|stringformat:"s" %}
+      {% for level in filter_support_levels %}
+        {% if active_filters.support_level == level.id|stringformat:"s" %}
           <span class="badge badge-light-success fs-7 d-flex align-items-center gap-1">
-            <i class="ki-outline ki-check fs-7"></i>{{ result.name }}
+            <i class="ki-outline ki-check fs-7"></i>{{ level.name }}
+          </span>
+        {% endif %}
+      {% endfor %}
+      {% for response in filter_advertising_responses %}
+        {% if active_filters.advertising_response == response.id|stringformat:"s" %}
+          <span class="badge badge-light-warning fs-7 d-flex align-items-center gap-1">
+            <i class="ki-outline ki-rocket fs-7"></i>{{ response.name }}
           </span>
         {% endif %}
       {% endfor %}
@@ -96,11 +104,21 @@ and reads request.GET.* to preserve selected values.
         {% endif %}
 
         <div class="col-12 col-md-6 col-lg-2">
-          <label class="form-label fs-7 fw-semibold text-gray-700">Resultado</label>
-          <select name="result" class="form-select form-select-sm">
+          <label class="form-label fs-7 fw-semibold text-gray-700">Apoyo</label>
+          <select name="support_level" class="form-select form-select-sm">
             <option value="">Todos</option>
-            {% for result in filter_results %}
-              <option value="{{ result.id }}" {% if active_filters.result == result.id|stringformat:"s" %}selected{% endif %}>{{ result.name }}</option>
+            {% for level in filter_support_levels %}
+              <option value="{{ level.id }}" {% if active_filters.support_level == level.id|stringformat:"s" %}selected{% endif %}>{{ level.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-2">
+          <label class="form-label fs-7 fw-semibold text-gray-700">Publicidad</label>
+          <select name="advertising_response" class="form-select form-select-sm">
+            <option value="">Todas</option>
+            {% for response in filter_advertising_responses %}
+              <option value="{{ response.id }}" {% if active_filters.advertising_response == response.id|stringformat:"s" %}selected{% endif %}>{{ response.name }}</option>
             {% endfor %}
           </select>
         </div>
