@@ -1,7 +1,8 @@
 (function (window, document) {
   "use strict";
 
-  function buildBasemaps(map, overlays) {
+  function buildBasemaps(map, overlays, opts) {
+    opts = opts || {};
     var carto = window.L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
       {
@@ -27,14 +28,23 @@
           'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
       }
     );
-    carto.addTo(map);
     var baseLayers = {
       "Mapa (CARTO)": carto,
       "OSM": osm,
       "Satélite": satellite
     };
-    window.L.control.layers(baseLayers, overlays || null, { collapsed: true }).addTo(map);
-    return baseLayers;
+    var initialBasemap = opts.initialBasemap || "carto";
+    if (initialBasemap === "satellite") {
+      satellite.addTo(map);
+    } else if (initialBasemap === "osm") {
+      osm.addTo(map);
+    } else {
+      carto.addTo(map);
+    }
+    if (!opts.skipNativeControl) {
+      window.L.control.layers(baseLayers, overlays || null, { collapsed: true }).addTo(map);
+    }
+    return { baseLayers: baseLayers, refs: { carto: carto, osm: osm, satellite: satellite } };
   }
 
   window.LeafletBasemaps = { build: buildBasemaps };
@@ -101,7 +111,9 @@
     var hasPoint = latField.value !== "" && lngField.value !== "";
 
     var map = window.L.map(canvas).setView([lat, lng], zoom);
-    buildBasemaps(map);
+    buildBasemaps(map, null, {
+      initialBasemap: container.dataset.defaultBasemap || "carto"
+    });
 
     var marker = window.L.marker([lat, lng], { draggable: true });
     if (hasPoint) {

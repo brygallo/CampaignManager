@@ -6,6 +6,7 @@ from superadmin.forms import ModelForm
 
 from core.widgets import LeafletMapWidget
 from apps.campaigns.models import Campaign
+from apps.field_surveys.models import AdvertisingType
 
 from .models import AdvertisingCostType, PhysicalAdvertisement
 
@@ -56,6 +57,10 @@ class PhysicalAdvertisementForm(ModelForm):
             )
             self.fields["campaign"].queryset = active_campaigns
             self.fields["campaign"].widget.queryset = active_campaigns
+        if "advertisement_type" in self.fields:
+            active_types = AdvertisingType.objects.filter(is_active=True).order_by("order", "name")
+            self.fields["advertisement_type"].queryset = active_types
+            self.fields["advertisement_type"].widget.queryset = active_types
 
     class Meta:
         model = PhysicalAdvertisement
@@ -92,9 +97,14 @@ class PhysicalAdvertisementForm(ModelForm):
                     "data-model": "Campaign",
                 },
             ),
-            "advertisement_type": Select2Widget(
+            "advertisement_type": ModelSelect2Widget(
+                model=AdvertisingType,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
                 attrs={
                     "data-minimum-input-length": 0,
+                    "data-app": "field_surveys",
+                    "data-model": "AdvertisingType",
                 },
             ),
             "cost_type": CostTypeSelect2Widget(
@@ -257,4 +267,3 @@ class RejectPhysicalAdForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 3}),
         required=True,
     )
-

@@ -12,6 +12,7 @@ from apps.campaigns.models import (
     PoliticalMovement,
     Position,
 )
+from apps.field_surveys.models import AdvertisingType
 from apps.political_agenda.models import PoliticalAgendaEvent
 from apps.territorial_ads.models import PhysicalAdvertisement
 from apps.workflows.exceptions import WorkflowException
@@ -29,6 +30,11 @@ class CampaignWorkflowTests(TestCase):
         self.candidate = Candidate.objects.create(full_name="Candidato Workflow")
         self.movement = PoliticalMovement.objects.create(name="Movimiento Workflow")
         self.position = Position.objects.create(name="Alcaldía")
+        self.ad_type = AdvertisingType.objects.create(
+            code="LONA",
+            name="Lona",
+            icon="picture",
+        )
         self.start = timezone.now().replace(microsecond=0) + timedelta(days=1)
         self.end = self.start + timedelta(hours=2)
 
@@ -80,7 +86,7 @@ class CampaignWorkflowTests(TestCase):
 
         PhysicalAdvertisement.objects.create(
             campaign=campaign,
-            title="Lona activa",
+            advertisement_type=self.ad_type,
             owner_name="Dueño",
             owner_phone="0999999999",
             address="Av. Principal",
@@ -105,7 +111,7 @@ class CampaignWorkflowTests(TestCase):
 
         PhysicalAdvertisement.objects.create(
             campaign=campaign,
-            title="Lona activa",
+            advertisement_type=self.ad_type,
             owner_name="Dueño",
             owner_phone="0999999999",
             address="Av. Principal",
@@ -150,7 +156,7 @@ class CampaignWorkflowTests(TestCase):
 
         PhysicalAdvertisement.objects.create(
             campaign=campaign,
-            title="Lona",
+            advertisement_type=self.ad_type,
             owner_name="Dueño",
             owner_phone="0999999999",
             address="Av. Test",

@@ -70,7 +70,8 @@ class LeafletMapWidget(forms.Widget):
                  data-accuracy-field="{}"
                  data-default-lat="{}"
                  data-default-lng="{}"
-                 data-default-zoom="{}">
+                 data-default-zoom="{}"
+                 data-default-basemap="{}">
               <div class="leaflet-map-widget__toolbar">
                 <button type="button" class="btn btn-sm btn-light-primary" data-leaflet-current-location>
                   <i class="ki-outline ki-geolocation fs-3"></i>Usar ubicación actual
@@ -90,7 +91,8 @@ class LeafletMapWidget(forms.Widget):
             self.lng_field,
             attrs.get("data-manual-field", ""),
             attrs.get("data-accuracy-field", ""),
-            self.default_lat,
-            self.default_lng,
-            self.default_zoom,
+            attrs.get("data-default-lat", self.default_lat),
+            attrs.get("data-default-lng", self.default_lng),
+            attrs.get("data-default-zoom", self.default_zoom),
+            attrs.get("data-default-basemap", "carto"),
         )

@@ -1,10 +1,16 @@
 (function (window, document) {
   "use strict";
 
-  function pinIcon(color) {
+  function safeIconName(icon) {
+    return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "element-12";
+  }
+
+  function pinIcon(color, icon) {
+    var iconName = safeIconName(icon);
     return window.L.divIcon({
-      className: "leaflet-detail-pin",
+      className: "leaflet-detail-pin map-type-pin",
       html:
+        '<span class="map-type-pin__glyph"><i class="ki-outline ki-' + iconName + '"></i></span>' +
         '<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg">' +
           '<path d="M15 0 C6.72 0 0 6.72 0 15 c0 11 15 27 15 27 s15 -16 15 -27 C30 6.72 23.28 0 15 0 z" ' +
             'fill="' + color + '" stroke="#ffffff" stroke-width="2"/>' +
@@ -16,10 +22,16 @@
     });
   }
 
-  function buildCreateUrl(base, latlng) {
+  function buildCreateUrl(base, latlng, mapState) {
     var params = new URLSearchParams();
     params.set("offered_latitude", latlng.lat.toFixed(6));
     params.set("offered_longitude", latlng.lng.toFixed(6));
+    if (mapState && mapState.zoom !== undefined && mapState.zoom !== null) {
+      params.set("map_zoom", String(mapState.zoom));
+    }
+    if (mapState && mapState.layer) {
+      params.set("map_layer", mapState.layer);
+    }
     return base + (base.indexOf("?") === -1 ? "?" : "&") + params.toString();
   }
 
@@ -33,7 +45,17 @@
     if (!counterEl) {
       return;
     }
-    counterEl.textContent = count === 1 ? "1 pin" : count + " pines";
+    var numberEl = counterEl.querySelector("[data-pin-count-number]");
+    var labelEl = counterEl.querySelector("[data-pin-count-label]");
+    var label = count === 1 ? "ubicación" : "ubicaciones";
+    if (numberEl && labelEl) {
+      numberEl.textContent = String(count);
+      labelEl.textContent = label;
+      counterEl.setAttribute("aria-label", count + " " + label);
+      counterEl.classList.toggle("is-empty", count === 0);
+      return;
+    }
+    counterEl.textContent = count + " " + label;
   }
 
   function updateFilterCount(badgeEl, triggerEls, filters) {
@@ -67,10 +89,62 @@
     }
     button.disabled = !!disabled;
     button.setAttribute("aria-label", label);
-    var labelEl = button.querySelector(".physical-ad-map-fab__label");
-    if (labelEl) {
-      labelEl.textContent = label;
+    button.setAttribute("title", label);
+    button.classList.toggle("is-busy", !!disabled);
+  }
+
+  function showLocationStatus(statusEl, message, tone, autoHideMs) {
+    if (!statusEl) {
+      return;
     }
+    statusEl.textContent = message;
+    statusEl.dataset.tone = tone || "info";
+    statusEl.removeAttribute("hidden");
+    if (statusEl._hideTimer) {
+      window.clearTimeout(statusEl._hideTimer);
+    }
+    if (autoHideMs) {
+      statusEl._hideTimer = window.setTimeout(function () {
+        statusEl.setAttribute("hidden", "");
+      }, autoHideMs);
+    }
+  }
+
+  function geolocationErrorMessage(error) {
+    if (!window.isSecureContext) {
+      return "Para usar ubicación abre el sitio con HTTPS.";
+    }
+    if (!error) {
+      return "No se pudo obtener tu ubicación.";
+    }
+    if (error.code === error.PERMISSION_DENIED) {
+      return "Activa el permiso de ubicación en el navegador.";
+    }
+    if (error.code === error.POSITION_UNAVAILABLE) {
+      return "Tu celular no entregó una ubicación.";
+    }
+    if (error.code === error.TIMEOUT) {
+      return "La ubicación tardó demasiado. Intenta de nuevo.";
+    }
+    return "No se pudo obtener tu ubicación.";
+  }
+
+  function buildClusterIcon(cluster) {
+    var n = cluster.getChildCount();
+    var size = n < 10 ? 36 : n < 50 ? 44 : 52;
+    return window.L.divIcon({
+      html: '<span class="map-cluster-bubble">' + n + '</span>',
+      className: "map-cluster",
+      iconSize: [size, size]
+    });
+  }
+
+  function getLayerMaxZoom(layer, fallback) {
+    if (!layer || !layer.options || layer.options.maxZoom === undefined) {
+      return fallback;
+    }
+    var maxZoom = parseInt(layer.options.maxZoom, 10);
+    return Number.isFinite(maxZoom) ? maxZoom : fallback;
   }
 
   function setupPanel(shell, panel, triggers, map) {
@@ -203,15 +277,15 @@
     }
   }
 
-  function openCreateModal(modalEl, createUrl, latlng, onSaved) {
+  function openCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
     if (!modalEl || !window.bootstrap || !createUrl) {
-      window.location.href = buildCreateUrl(createUrl, latlng);
+      window.location.href = buildCreateUrl(createUrl, latlng, mapState);
       return;
     }
 
     var bodyEl = modalEl.querySelector("[data-create-modal-body]");
     var submitButton = modalEl.querySelector("[data-create-submit]");
-    var url = buildCreateUrl(createUrl, latlng);
+    var url = buildCreateUrl(createUrl, latlng, mapState);
     setHtml(bodyEl, loadingHtml("Cargando formulario..."));
 
     var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -297,20 +371,22 @@
     var filterTriggerEls = document.querySelectorAll(".physical-ad-map-filter-trigger");
     var resetButton = document.getElementById("physical-ad-map-reset");
     var myLocationButton = document.getElementById("physical-ad-my-location");
+    var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
 
     // Default view: Macas, Morona Santiago.
     var defaultLat = parseFloat(el.dataset.defaultLat) || -2.3046;
     var defaultLng = parseFloat(el.dataset.defaultLng) || -78.1175;
     var defaultZoom = parseInt(el.dataset.defaultZoom || "13", 10);
-    var isMobileViewport = window.matchMedia("(max-width: 767.98px)");
-    var map = window.L.map(el, { zoomControl: false }).setView([defaultLat, defaultLng], defaultZoom);
-    var pinsLayer = window.L.layerGroup().addTo(map);
-    var locationLayer = window.L.layerGroup().addTo(map);
-    window.L.control.zoom({ position: isMobileViewport.matches ? "bottomright" : "bottomleft" }).addTo(map);
+    var map = window.L.map(el, {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([defaultLat, defaultLng], defaultZoom);
 
+    var basemapRefs = null;
     if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
-      window.LeafletBasemaps.build(map, { "Pines": pinsLayer });
+      var built = window.LeafletBasemaps.build(map, null, { skipNativeControl: true });
+      basemapRefs = built && built.refs ? built.refs : null;
     } else {
       window.L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
@@ -322,6 +398,123 @@
         }
       ).addTo(map);
     }
+
+    var pinsLayer = window.L.markerClusterGroup
+      ? window.L.markerClusterGroup({
+          showCoverageOnHover: false,
+          spiderfyOnMaxZoom: true,
+          disableClusteringAtZoom: 17,
+          maxClusterRadius: 50,
+          iconCreateFunction: buildClusterIcon
+        })
+      : window.L.layerGroup();
+    pinsLayer.addTo(map);
+    var locationLayer = window.L.layerGroup().addTo(map);
+
+    window.L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+    window.L.control.scale({
+      position: "bottomleft",
+      metric: true,
+      imperial: false,
+      maxWidth: 120
+    }).addTo(map);
+
+    // ===== Custom Google-Maps-style controls (zoom, locate, layer switch) =====
+    var zoomInBtn = document.querySelector("[data-zoom-in]");
+    var zoomOutBtn = document.querySelector("[data-zoom-out]");
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener("click", function () {
+        zoomToRespectingBasemap(map.getZoom() + 1);
+      });
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener("click", function () {
+        zoomToRespectingBasemap(map.getZoom() - 1);
+      });
+    }
+
+    var layerToggleBtn = document.querySelector("[data-layer-toggle]");
+    var layerLabelEl = document.querySelector("[data-layer-label]");
+    var layerThumbEl = document.querySelector("[data-layer-thumb]");
+    var activeBasemap = "carto";
+    var preferredBasemap = "carto";
+    var satelliteMaxZoom = basemapRefs ? getLayerMaxZoom(basemapRefs.satellite, 19) : 19;
+    var cartoMaxZoom = basemapRefs ? getLayerMaxZoom(basemapRefs.carto, 20) : 20;
+    if (basemapRefs) {
+      map.setMaxZoom(Math.max(cartoMaxZoom, satelliteMaxZoom));
+    }
+
+    function syncLayerControl() {
+      var isSatellite = activeBasemap === "satellite";
+      if (layerToggleBtn) {
+        layerToggleBtn.setAttribute("aria-pressed", isSatellite ? "true" : "false");
+      }
+      if (layerLabelEl) {
+        layerLabelEl.textContent = isSatellite ? "Mapa" : "Satélite";
+      }
+      if (layerThumbEl) {
+        layerThumbEl.classList.toggle("is-satellite", !isSatellite);
+      }
+    }
+
+    function setBasemap(next) {
+      if (!basemapRefs || activeBasemap === next) {
+        syncLayerControl();
+        return;
+      }
+      if (activeBasemap === "satellite" && basemapRefs.satellite) {
+        map.removeLayer(basemapRefs.satellite);
+      } else if (activeBasemap === "carto" && basemapRefs.carto) {
+        map.removeLayer(basemapRefs.carto);
+      }
+      if (next === "satellite") {
+        basemapRefs.satellite.addTo(map);
+      } else {
+        basemapRefs.carto.addTo(map);
+      }
+      activeBasemap = next;
+      syncLayerControl();
+    }
+
+    function applyPreferredBasemapForZoom() {
+      if (!basemapRefs) {
+        return;
+      }
+      if (preferredBasemap === "satellite" && map.getZoom() <= satelliteMaxZoom) {
+        setBasemap("satellite");
+      } else if (preferredBasemap === "satellite" && map.getZoom() > satelliteMaxZoom) {
+        setBasemap("carto");
+      }
+    }
+
+    function zoomToRespectingBasemap(targetZoom) {
+      if (
+        basemapRefs &&
+        preferredBasemap === "satellite" &&
+        targetZoom > satelliteMaxZoom
+      ) {
+        setBasemap("carto");
+      }
+      map.setZoom(targetZoom);
+    }
+
+    if (layerToggleBtn && basemapRefs && basemapRefs.carto && basemapRefs.satellite) {
+      syncLayerControl();
+      layerToggleBtn.addEventListener("click", function () {
+        if (preferredBasemap === "satellite") {
+          preferredBasemap = "carto";
+          setBasemap("carto");
+        } else {
+          preferredBasemap = "satellite";
+          if (map.getZoom() <= satelliteMaxZoom) {
+            setBasemap("satellite");
+          } else {
+            setBasemap("carto");
+          }
+        }
+      });
+    }
+    map.on("zoomend", applyPreferredBasemapForZoom);
 
     var filters = document.getElementById("physical-ad-map-filters");
     var panelApi = setupPanel(shell, panel, panelTriggers, map);
@@ -352,7 +545,7 @@
           updateCount(counterEl, ads.length);
           ads.forEach(function (ad) {
             var marker = window.L.marker([ad.lat, ad.lng], {
-              icon: pinIcon(ad.color),
+              icon: pinIcon(ad.color, ad.type_icon),
               bubblingMouseEvents: false
             })
               .bindTooltip(ad.label, { direction: "top", offset: [0, -34] })
@@ -387,12 +580,21 @@
     }
     if (myLocationButton) {
       myLocationButton.addEventListener("click", function () {
-        if (!navigator.geolocation) {
-          setLocationButton(myLocationButton, "No disponible", false);
+        if (!window.isSecureContext || !navigator.geolocation) {
+          setLocationButton(myLocationButton, "Ubicación no disponible", false);
+          showLocationStatus(
+            locationStatusEl,
+            !window.isSecureContext
+              ? "Para usar ubicación abre el sitio con HTTPS."
+              : "Este navegador no soporta ubicación.",
+            "danger",
+            6000
+          );
           return;
         }
 
         setLocationButton(myLocationButton, "Ubicando...", true);
+        showLocationStatus(locationStatusEl, "Buscando tu ubicación...", "info");
         navigator.geolocation.getCurrentPosition(
           function (position) {
             var lat = position.coords.latitude;
@@ -422,12 +624,12 @@
 
             map.setView([lat, lng], Math.max(map.getZoom(), 16));
             setLocationButton(myLocationButton, "Mi ubicación", false);
+            showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
           },
-          function () {
-            setLocationButton(myLocationButton, "Permiso denegado", false);
-            window.setTimeout(function () {
-              setLocationButton(myLocationButton, "Mi ubicación", false);
-            }, 2500);
+          function (error) {
+            var message = geolocationErrorMessage(error);
+            setLocationButton(myLocationButton, message, false);
+            showLocationStatus(locationStatusEl, message, "danger", 7000);
           },
           {
             enableHighAccuracy: true,
@@ -452,7 +654,16 @@
         panelApi.close();
         return;
       }
-      openCreateModal(createModalEl, createUrl, event.latlng, load);
+      openCreateModal(
+        createModalEl,
+        createUrl,
+        event.latlng,
+        {
+          zoom: map.getZoom(),
+          layer: activeBasemap
+        },
+        load
+      );
     });
 
     // Keep the Leaflet canvas accurate across viewport / orientation changes.

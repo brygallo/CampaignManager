@@ -4,9 +4,16 @@ import os
 import sys
 
 
+def default_runserver_addrport(argv):
+    """Expose the dev server on the local network unless an address was provided."""
+    if len(argv) == 2 and argv[1] == "runserver":
+        argv.append("0.0.0.0:8000")
+
+
 def main():
     """Run administrative tasks."""
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings.development")
+    default_runserver_addrport(sys.argv)
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

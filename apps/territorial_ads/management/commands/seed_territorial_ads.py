@@ -1,4 +1,4 @@
-"""Siembra publicidad física territorial en distintos estados del workflow.
+"""Siembra publicidad territorial en distintos estados del workflow.
 
 Genera ~14 lonas/vallas/afiches con avance gradual por el flujo:
 OFRECIDA → APROBADA → PENDIENTE_INSTALACION → INSTALADA → DANADA / RETIRADA
@@ -19,6 +19,7 @@ from django.db import transaction
 from PIL import Image
 
 from apps.campaigns.models import Campaign
+from apps.field_surveys.models import AdvertisingType
 from apps.territorial_ads.models import PhysicalAdvertisement
 
 
@@ -73,7 +74,7 @@ def _jitter(base: Decimal, spread: float = 0.02) -> Decimal:
 
 
 class Command(BaseCommand):
-    help = "Siembra publicidad física territorial en varios estados."
+    help = "Siembra publicidad territorial en varios estados."
 
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true",
@@ -96,18 +97,20 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No hay usuarios."))
             return
 
+        types_by_code = {t.code: t for t in AdvertisingType.objects.filter(is_active=True)}
         wf = PhysicalAdvertisement.workflow
         created = 0
         for i, (atype, w, h, address, owner, phone, target) in enumerate(ADS):
-            # protección contra error tipográfico en datos
-            if atype not in {"lona", "valla", "afiche", "otro"}:
-                atype = "afiche"
+            advertisement_type = types_by_code.get(atype.upper()) or types_by_code.get("AFICHE")
+            if advertisement_type is None:
+                self.stderr.write(self.style.ERROR("Primero carga los tipos de publicidad."))
+                return
 
             ad, was_created = PhysicalAdvertisement.objects.get_or_create(
                 address=address,
                 defaults={
                     "campaign": campaign,
-                    "advertisement_type": atype,
+                    "advertisement_type": advertisement_type,
                     "quantity": 1,
                     "width_meters": w,
                     "height_meters": h,
@@ -127,7 +130,7 @@ class Command(BaseCommand):
             self._advance_to(ad, target, user, wf)
 
         self.stdout.write(self.style.SUCCESS(
-            f"Publicidad física: {created} nuevas (total {PhysicalAdvertisement.objects.count()})."
+            f"Publicidad: {created} nuevas (total {PhysicalAdvertisement.objects.count()})."
         ))
 
     def _advance_to(self, ad, target, user, wf):
@@ -179,4 +182,3 @@ class Command(BaseCommand):
                     retirement_notes="Retirada al cierre del periodo electoral.",
                 )
             ad.save()
-

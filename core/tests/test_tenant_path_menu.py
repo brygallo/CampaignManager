@@ -12,7 +12,7 @@ def test_tenant_path_menu_prefixes_sidebar_urls():
             "url": "/publicidad-territorial",
             "submenus": [
                 {
-                    "name": "Publicidad física",
+                    "name": "Publicidad",
                     "url": "/publicidad-territorial/mapa/",
                     "submenus": [],
                 }

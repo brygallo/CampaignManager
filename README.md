@@ -187,6 +187,7 @@ python manage.py create_tenant \
     --owner-password "cambia-esto"
 
 # 4. Start the dev server
+# Binds to 0.0.0.0:8000 by default so it is reachable from your LAN.
 python manage.py runserver
 ```
 

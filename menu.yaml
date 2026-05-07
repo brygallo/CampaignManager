@@ -42,7 +42,7 @@ Levantamientos de campo:
 
 Publicidad territorial:
   icon: picture
-  Publicidad física:
+  Publicidad:
     app: territorial_ads
     model: physicaladvertisement
 

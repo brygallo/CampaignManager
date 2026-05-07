@@ -198,7 +198,7 @@ SUPERADMIN_MODULE_META = {
     "elecciones": {"icon": "element-equal", "color": "info", "description": "Periodos y procesos electorales."},
     "movimientos políticos": {"icon": "abstract-26", "color": "warning", "description": "Organizaciones políticas registradas."},
     "cargos": {"icon": "medal-star", "color": "danger", "description": "Posiciones disputadas en cada elección."},
-    "publicidad física": {"icon": "billboard", "color": "success", "description": "Vallas, lonas y soportes publicitarios en campo."},
+    "publicidad": {"icon": "billboard", "color": "success", "description": "Vallas, lonas y soportes publicitarios en campo."},
     "usuarios": {"icon": "profile-circle", "color": "primary", "description": "Cuentas, datos y estado de los usuarios."},
     "grupos": {"icon": "people", "color": "success", "description": "Roles agrupando permisos por función."},
     "permisos": {"icon": "shield-tick", "color": "info", "description": "Permisos disponibles en el sistema."},

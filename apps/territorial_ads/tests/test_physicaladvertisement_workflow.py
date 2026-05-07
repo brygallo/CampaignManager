@@ -12,6 +12,7 @@ from apps.campaigns.models import (
     PoliticalMovement,
     Position,
 )
+from apps.field_surveys.models import AdvertisingType
 from apps.territorial_ads.models import PhysicalAdvertisement
 
 
@@ -36,10 +37,16 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
             start_date=(timezone.now() + timedelta(days=1)).date(),
             end_date=(timezone.now() + timedelta(days=30)).date(),
         )
+        self.ad_type = AdvertisingType.objects.create(
+            code="LONA",
+            name="Lona",
+            icon="picture",
+        )
 
     def _build_ad(self, **overrides):
         data = {
             "campaign": self.campaign,
+            "advertisement_type": self.ad_type,
             "owner_name": "Dueño",
             "owner_phone": "0999999999",
             "address": "Av. Principal",

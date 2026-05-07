@@ -33,7 +33,8 @@ class AdvertisingTypeForm(ModelForm):
         fieldsets = {
             "Tipo de publicidad": (
                 ("code", "name"),
-                ("order", "is_active"),
+                ("icon", "order"),
+                ("is_active",),
             ),
         }
 

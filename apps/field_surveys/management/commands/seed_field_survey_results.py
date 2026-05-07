@@ -18,12 +18,12 @@ SURVEY_RESULTS = [
 ]
 
 AD_TYPES = [
-    ("AFICHE", "Afiche"),
-    ("STICKER", "Sticker"),
-    ("LONA", "Lona"),
-    ("BANNER", "Banner"),
-    ("VALLA", "Valla"),
-    ("OTRO", "Otro"),
+    ("AFICHE", "Afiche", "document"),
+    ("STICKER", "Sticker", "sticker"),
+    ("LONA", "Lona", "picture"),
+    ("BANNER", "Banner", "tablet"),
+    ("VALLA", "Valla", "billboard"),
+    ("OTRO", "Otro", "element-12"),
 ]
 
 
@@ -35,9 +35,13 @@ class Command(BaseCommand):
         self._seed(AdvertisingType, AD_TYPES)
 
     def _seed(self, model, values):
-        for order, (code, name) in enumerate(values, start=10):
+        for order, value in enumerate(values, start=10):
+            code, name, *extra = value
+            defaults = {"name": name, "order": order, "is_active": True}
+            if extra:
+                defaults["icon"] = extra[0]
             option, created = model.objects.update_or_create(
                 code=code,
-                defaults={"name": name, "order": order, "is_active": True},
+                defaults=defaults,
             )
             self.stdout.write(f"{model._meta.verbose_name}: {'Creado' if created else 'Actualizado'} {option.code}")

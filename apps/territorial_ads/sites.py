@@ -17,6 +17,7 @@ class MapInitialLocationMixin:
     """Prefill offered coordinates when the create form is opened from the map."""
 
     coordinate_initial_fields = ("offered_latitude", "offered_longitude")
+    allowed_map_layers = {"carto", "osm", "satellite"}
 
     def get_initial(self):
         initial = super().get_initial()
@@ -25,6 +26,27 @@ class MapInitialLocationMixin:
             if value:
                 initial[field] = value
         return initial
+
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        field = form.fields.get("offered_location")
+        if not field:
+            return form
+
+        zoom = self.request.GET.get("map_zoom")
+        if zoom:
+            try:
+                parsed_zoom = int(float(zoom))
+            except (TypeError, ValueError):
+                parsed_zoom = None
+            if parsed_zoom is not None:
+                field.widget.attrs["data-default-zoom"] = max(1, min(parsed_zoom, 20))
+
+        layer = self.request.GET.get("map_layer")
+        if layer in self.allowed_map_layers:
+            field.widget.attrs["data-default-basemap"] = layer
+
+        return form
 
 
 class MapAjaxCreateMixin:

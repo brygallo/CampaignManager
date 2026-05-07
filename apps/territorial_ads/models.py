@@ -5,6 +5,7 @@ from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
+from apps.field_surveys.models import AdvertisingType
 from apps.territorial_ads.transitions import PhysicalAdTransitions
 from core.fields import CompressedImageField
 
@@ -37,23 +38,17 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
 
     workflow = PhysicalAdTransitions.workflow
 
-    class AdvertisementType(models.TextChoices):
-        LONA = "lona", "Lona"
-        VALLA = "valla", "Valla"
-        AFICHE = "afiche", "Afiche"
-        OTRO = "otro", "Otro"
-
     campaign = models.ForeignKey(
         Campaign,
         on_delete=models.PROTECT,
         related_name="physical_advertisements",
         verbose_name="Campaña",
     )
-    advertisement_type = models.CharField(
-        "Tipo de publicidad",
-        max_length=24,
-        choices=AdvertisementType.choices,
-        default=AdvertisementType.LONA,
+    advertisement_type = models.ForeignKey(
+        AdvertisingType,
+        on_delete=models.PROTECT,
+        related_name="physical_advertisements",
+        verbose_name="Tipo de publicidad",
     )
     code = models.CharField("Código", max_length=32, unique=True, blank=True)
     quantity = models.PositiveSmallIntegerField("Cantidad", default=1)
@@ -221,16 +216,16 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     )
 
     class Meta:
-        verbose_name = "Publicidad física"
-        verbose_name_plural = "Publicidad física"
+        verbose_name = "Publicidad"
+        verbose_name_plural = "Publicidad"
         ordering = ["-created_date"]
         permissions = (
-            ("approve_physicaladvertisement", "Puede aprobar publicidad física"),
-            ("reject_physicaladvertisement", "Puede rechazar publicidad física"),
-            ("assign_physicaladvertisement", "Puede asignar instalación de publicidad física"),
-            ("install_physicaladvertisement", "Puede registrar instalación de publicidad física"),
-            ("report_damage_physicaladvertisement", "Puede reportar daño de publicidad física"),
-            ("retire_physicaladvertisement", "Puede retirar publicidad física"),
+            ("approve_physicaladvertisement", "Puede aprobar publicidad"),
+            ("reject_physicaladvertisement", "Puede rechazar publicidad"),
+            ("assign_physicaladvertisement", "Puede asignar instalación de publicidad"),
+            ("install_physicaladvertisement", "Puede registrar instalación de publicidad"),
+            ("report_damage_physicaladvertisement", "Puede reportar daño de publicidad"),
+            ("retire_physicaladvertisement", "Puede retirar publicidad"),
         )
 
     def __str__(self):

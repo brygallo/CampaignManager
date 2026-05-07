@@ -38,14 +38,6 @@ STEPPER_STEPS = (
     {"value": 6, "label": "Retirada", "icon": "cross-square"},
 )
 
-AD_TYPE_ICONS = {
-    "lona": "picture",
-    "valla": "flag",
-    "afiche": "document",
-    "otro": "element-12",
-}
-
-
 def physicalad_detail_url(pk):
     return reverse("site:territorial_ads_physicaladvertisement_", kwargs={"pk": pk})
 
@@ -66,7 +58,7 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         queryset = (
-            PhysicalAdvertisement.objects.select_related("campaign")
+            PhysicalAdvertisement.objects.select_related("campaign", "advertisement_type")
             .filter(
                 Q(installed_latitude__isnull=False, installed_longitude__isnull=False)
                 | Q(offered_latitude__isnull=False, offered_longitude__isnull=False)
@@ -95,6 +87,8 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     "state_code": ad.state,
                     "state_label": ad.get_state_display(),
                     "color": STATE_COLORS.get(ad.state, "#3388ff"),
+                    "type_icon": ad.advertisement_type.icon if ad.advertisement_type_id else "element-12",
+                    "type_label": ad.advertisement_type.name if ad.advertisement_type_id else "",
                     "url": physicalad_detail_url(ad.id),
                     "campaign": ad.campaign.name if ad.campaign_id else "",
                     "address": ad.address or "",
@@ -112,6 +106,7 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
         ad = get_object_or_404(
             PhysicalAdvertisement.objects.select_related(
                 "campaign",
+                "advertisement_type",
                 "cost_type",
                 "approved_by",
                 "assigned_installer",
@@ -146,7 +141,7 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "state_color": STATE_COLORS.get(ad.state, "#3388ff"),
                 "stepper_steps": steps,
                 "is_rejected": ad.state == 0,
-                "type_icon": AD_TYPE_ICONS.get(ad.advertisement_type, "element-12"),
+                "type_icon": ad.advertisement_type.icon if ad.advertisement_type_id else "element-12",
                 "pin_kind": pin_kind,
                 "pin_lat": pin_lat,
                 "pin_lng": pin_lng,

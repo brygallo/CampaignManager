@@ -1,7 +1,7 @@
 {% extends "base/base.html" %}
 {% load static %}
 
-{% block title %}Mapa publicidad física | {{ block.super }}{% endblock %}
+{% block title %}Mapa publicidad | {{ block.super }}{% endblock %}
 
 {% block toolbar %}{% endblock %}
 
@@ -13,50 +13,31 @@
        data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"
        data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"></div>
 
-  {# ===== Floating top-bar: brand + view switch + filter trigger ===== #}
-  <header class="physical-ad-map-topbar bg-body border shadow-sm rounded-pill" aria-label="Acciones del mapa">
-    <div class="physical-ad-map-brand">
-      <span class="physical-ad-map-brand__icon symbol symbol-40px symbol-circle" aria-hidden="true">
-        <i class="ki-outline ki-map fs-2"></i>
-      </span>
-      <div class="physical-ad-map-brand__text">
-        <span class="physical-ad-map-brand__title">Publicidad física</span>
-        <span class="physical-ad-map-brand__subtitle">
-          <span id="physical-ad-map-count" class="physical-ad-map-count-pill">0 pines</span>
-        </span>
-      </div>
-    </div>
 
-    <div class="physical-ad-map-topbar__actions">
-      <div class="btn-group btn-group-sm physical-ad-map-viewswitch" role="group" aria-label="Cambiar vista">
-        <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
-           class="btn btn-light fw-semibold"
-           aria-label="Ver como lista">
-          <i class="ki-outline ki-row-horizontal fs-3"></i>
-          <span class="d-none d-md-inline ms-1">Lista</span>
-        </a>
-        <button type="button"
-                class="btn btn-light-primary fw-semibold active"
-                aria-current="page"
-                aria-label="Vista de mapa">
-          <i class="ki-outline ki-map fs-3"></i>
-          <span class="d-none d-md-inline ms-1">Mapa</span>
-        </button>
-      </div>
+  {# ===== Pin counter (top-left, minimal pill) ===== #}
+  <div id="physical-ad-map-count" class="map-pin-count" aria-live="polite">
+    <span class="map-pin-count__number" data-pin-count-number>0</span>
+    <span class="map-pin-count__label" data-pin-count-label>ubicaciones</span>
+  </div>
 
-      <button type="button"
-              class="btn btn-sm btn-primary physical-ad-map-filter-trigger"
-              data-panel-toggle
-              aria-controls="physical-ad-map-panel"
-              aria-expanded="false">
-        <i class="ki-outline ki-filter fs-3"></i>
-        <span class="physical-ad-map-filter-trigger__label">Filtros</span>
-        <span id="physical-ad-filter-count"
-              class="badge badge-circle badge-light text-primary fw-bolder physical-ad-map-filter-trigger__count"
-              hidden>0</span>
-      </button>
-    </div>
-  </header>
+  {# ===== Filter trigger (top-right, icon-only round) ===== #}
+  <button type="button"
+          class="map-filter-btn physical-ad-map-filter-trigger"
+          data-panel-toggle
+          aria-controls="physical-ad-map-panel"
+          aria-expanded="false"
+          aria-label="Abrir filtros">
+    <i class="ki-outline ki-setting-3 fs-2"></i>
+    <span id="physical-ad-filter-count"
+          class="map-filter-btn__count"
+          hidden>0</span>
+  </button>
+
+  <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
+     class="map-list-btn d-md-none"
+     aria-label="Ver como lista">
+    <i class="ki-outline ki-row-horizontal fs-2"></i>
+  </a>
 
   {# ===== Filter panel: card on desktop, bottom-sheet on mobile ===== #}
   <section id="physical-ad-map-panel"
@@ -125,26 +106,54 @@
   {# Backdrop for mobile bottom-sheet #}
   <div class="physical-ad-map-backdrop" data-panel-toggle aria-hidden="true"></div>
 
-  {# ===== Floating tools (locate + create hint) ===== #}
-  <div class="physical-ad-map-tools" aria-label="Herramientas del mapa">
-    <span class="physical-ad-map-tools__hint d-none d-md-inline-flex" aria-hidden="true">
-      <i class="ki-outline ki-cursor fs-3 text-primary"></i>
-      Toca el mapa para registrar una nueva publicidad
-    </span>
+  {# ===== Layer switcher (bottom-left, Google Maps style) ===== #}
+  <div class="map-layer-switch" aria-label="Cambiar capa del mapa">
     <button type="button"
-            class="physical-ad-map-fab btn btn-icon bg-body shadow-sm"
+            class="map-layer-switch__btn"
+            data-layer-toggle
+            aria-pressed="false"
+            aria-label="Alternar entre mapa y satélite">
+      <span class="map-layer-switch__thumb is-satellite" data-layer-thumb></span>
+      <span class="map-layer-switch__label" data-layer-label>Satélite</span>
+    </button>
+  </div>
+
+  {# ===== Floating controls (bottom-right, Google Maps style) ===== #}
+  <div class="map-controls-stack" aria-label="Controles del mapa">
+    <div class="map-controls-group" role="group" aria-label="Zoom">
+      <button type="button"
+              class="map-controls-btn"
+              data-zoom-in
+              aria-label="Acercar">
+        <i class="ki-outline ki-plus fs-2"></i>
+      </button>
+      <span class="map-controls-divider" aria-hidden="true"></span>
+      <button type="button"
+              class="map-controls-btn"
+              data-zoom-out
+              aria-label="Alejar">
+        <i class="ki-outline ki-minus fs-2"></i>
+      </button>
+    </div>
+    <button type="button"
+            class="map-controls-btn map-controls-btn--solo"
             id="physical-ad-my-location"
             aria-label="Ir a mi ubicación">
       <i class="ki-outline ki-geolocation fs-2"></i>
-      <span class="physical-ad-map-fab__label">Mi ubicación</span>
     </button>
   </div>
+  <div class="map-location-status"
+       data-location-status
+       aria-live="polite"
+       hidden></div>
+
 </div>
 
 {# Modal shown when an empty map spot is clicked. Body receives the create form. #}
-<div class="modal fade physical-ad-map-modal" id="physical-ad-create-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-md-down">
+<div class="modal fade physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-create-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
     <div class="modal-content">
+      <div class="physical-ad-map-modal__handle d-md-none" aria-hidden="true"></div>
       <div class="modal-header py-4">
         <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
           <span class="symbol symbol-40px symbol-circle flex-shrink-0">
@@ -153,7 +162,7 @@
             </span>
           </span>
           <div class="min-w-0">
-            <h5 class="modal-title fw-bolder mb-0 text-truncate">Nueva publicidad física</h5>
+            <h5 class="modal-title fw-bolder mb-0 text-truncate">Nueva publicidad</h5>
             <span class="text-muted fs-8">Completa los datos del lugar ofrecido</span>
           </div>
         </div>
@@ -179,9 +188,10 @@
 </div>
 
 {# Modal shown when a pin is clicked. Body is filled via fetch. #}
-<div class="modal fade physical-ad-map-modal" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-md-down">
+<div class="modal fade physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
     <div class="modal-content">
+      <div class="physical-ad-map-modal__handle d-md-none" aria-hidden="true"></div>
       <div class="modal-header py-4">
         <h5 class="modal-title fw-bolder text-truncate" data-modal-title>Publicidad</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>

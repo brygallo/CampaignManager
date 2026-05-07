@@ -161,10 +161,9 @@ class PhysicalAdTransitions:
             icon="cross-circle",
             color="danger",
             title="Retirar publicidad",
-            text="¿Confirmas el retiro de esta publicidad física?",
+            text="¿Confirmas el retiro de esta publicidad?",
         ),
     )
     def retire(self, user=None, **kwargs):
         self.retired_by = user
         self.retired_at = timezone.now()
-

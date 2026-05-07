@@ -19,7 +19,7 @@ class SurveyResultOptionAdmin(admin.ModelAdmin):
 
 @admin.register(AdvertisingType)
 class AdvertisingTypeAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "order", "is_active")
+    list_display = ("code", "name", "icon", "order", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "name")
 

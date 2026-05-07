@@ -11,9 +11,8 @@
       <button type="button" class="btn btn-icon btn-active-color-primary w-35px h-35px me-1" id="kt_app_sidebar_mobile_toggle" aria-label="Abrir menú lateral">
         <i class="ki-outline ki-abstract-14 fs-2"></i>
       </button>
-      <a href="{% url 'home' %}" class="d-flex align-items-center">
-        <img src="{{ brand_icon_url }}" class="h-35px me-2" alt="{{ brand_name|default:'Control de Campaña' }}">
-        <span class="fs-3 fw-bolder text-gray-900">{{ brand_name|default:"Control de Campaña" }}</span>
+      <a href="{% url 'home' %}" class="d-flex align-items-center min-w-0">
+        <span class="fs-3 fw-bolder text-gray-900 text-truncate">{{ brand_name|default:"Control de Campaña" }}</span>
       </a>
     </div>
 
@@ -53,7 +52,7 @@
           <div class="menu-item px-3 my-0">
             <a href="/territorial_ads/physicaladvertisement/agregar/" class="menu-link px-3 py-2">
               <span class="menu-icon"><i class="ki-outline ki-billboard fs-3 text-warning"></i></span>
-              <span class="menu-title">Nueva publicidad física</span>
+              <span class="menu-title">Nueva publicidad</span>
             </a>
           </div>
           <div class="separator my-2"></div>

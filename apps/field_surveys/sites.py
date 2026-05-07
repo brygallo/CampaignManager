@@ -60,7 +60,7 @@ class SurveyResultOptionSite(BaseSite):
 class AdvertisingTypeSite(BaseSite):
     form_class = AdvertisingTypeForm
     list_mixins = (DropdownFilterMixin,)
-    list_fields = ("code", "name", "order", "is_active:Activo")
+    list_fields = ("code", "name", "icon", "order", "is_active:Activo")
     detail_fields = AdvertisingTypeForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
     filter_fields = ("is_active:Activo",)

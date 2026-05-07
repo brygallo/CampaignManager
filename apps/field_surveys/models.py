@@ -116,6 +116,12 @@ class FieldSurvey(BaseModel):
 class AdvertisingType(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
+    icon = models.CharField(
+        "Icono",
+        max_length=60,
+        default="element-12",
+        help_text="Nombre del icono KeenIcons usado en mapas y vistas.",
+    )
     order = models.PositiveSmallIntegerField("Orden", default=0)
 
     class Meta:
