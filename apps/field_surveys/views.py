@@ -150,26 +150,78 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
 
 
 class FieldSurveyDashboardHeatmapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
-    """Return support-density points ([lat, lng, weight]) for the dashboard heatmap.
+    """Return density points for the dashboard heatmap, grouped by layer.
 
-    Honors the dashboard filters via FieldSurveyFilterMixin. Restricts to surveys
-    flagged as APOYA so the map reflects candidate/campaign support density.
+    Honors the dashboard filters via FieldSurveyFilterMixin and returns three
+    layers: APOYA (support), INDECISO (undecided) and competitor advertising
+    detections. Each layer is a list of [lat, lng, weight] tuples plus a count.
     """
 
-    def get(self, request, *args, **kwargs):
-        surveys = (
-            self.filtered_queryset()
-            .filter(results__code="APOYA")
+    def _survey_points(self, base_qs, result_code):
+        rows = (
+            base_qs.filter(results__code=result_code)
             .values_list("latitude", "longitude", "voters_count")
             .distinct()
         )
         points = []
-        for lat, lng, voters in surveys:
+        for lat, lng, voters in rows:
             if lat is None or lng is None:
                 continue
             weight = float(voters) if voters else 1.0
             points.append([float(lat), float(lng), weight])
-        return JsonResponse({"points": points, "count": len(points)})
+        return points
+
+    def get(self, request, *args, **kwargs):
+        surveys = self.filtered_queryset()
+
+        competitor_ads = CompetitorAdvertisingDetection.objects.filter(
+            field_survey__in=surveys
+        )
+        if not can_view_all_field_surveys(request.user):
+            competitor_ads = competitor_ads.filter(brigadier=request.user)
+
+        competitor_points = []
+        for lat, lng in competitor_ads.values_list("latitude", "longitude"):
+            if lat is None or lng is None:
+                continue
+            competitor_points.append([float(lat), float(lng), 1.0])
+
+        layers = {
+            "apoyo": {
+                "label": "Apoyo",
+                "color": RESULT_COLORS["APOYA"],
+                "points": self._survey_points(surveys, "APOYA"),
+            },
+            "indecisos": {
+                "label": "Indecisos",
+                "color": RESULT_COLORS["INDECISO"],
+                "points": self._survey_points(surveys, "INDECISO"),
+            },
+            "competencia": {
+                "label": "Competencia",
+                "color": "#d9214e",
+                "points": competitor_points,
+            },
+        }
+        for layer in layers.values():
+            layer["count"] = len(layer["points"])
+
+        total = sum(layer["count"] for layer in layers.values())
+
+        # Legacy shape for callers that still expect a flat point list (combined).
+        combined = (
+            layers["apoyo"]["points"]
+            + layers["indecisos"]["points"]
+            + layers["competencia"]["points"]
+        )
+        return JsonResponse(
+            {
+                "layers": layers,
+                "total": total,
+                "points": combined,
+                "count": total,
+            }
+        )
 
 
 class FieldSurveyMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
