@@ -198,26 +198,26 @@
 
   {% if object.created_date or object.modified_date %}
     <div class="card-footer py-3 bg-light">
-      <div class="d-flex flex-nowrap align-items-center justify-content-between gap-2 text-muted small w-100 overflow-x-auto">
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2 text-muted small w-100">
         {% if object.created_date %}
-          <span class="d-inline-flex align-items-center gap-2 text-nowrap" style="min-width:0;">
+          <span class="d-flex flex-wrap align-items-center gap-2" style="min-width:0;">
             <i class="ki-outline ki-add-files fs-5 flex-shrink-0"></i>
             <span class="fw-semibold">Creado:</span>
             <span>{{ object.created_date|date:"d/m/Y H:i" }}</span>
             {% if object.created_user %}
-              <span>·</span>
+              <span class="d-none d-sm-inline">·</span>
               <span class="fw-semibold">por</span>
               <span class="text-truncate" style="max-width: 12rem;">{{ object.creation_user|default:object.created_user }}</span>
             {% endif %}
           </span>
         {% endif %}
         {% if object.modified_date %}
-          <span class="d-inline-flex align-items-center gap-2 text-nowrap ms-auto" style="min-width:0;">
+          <span class="d-flex flex-wrap align-items-center gap-2 ms-md-auto" style="min-width:0;">
             <i class="ki-outline ki-pencil fs-5 flex-shrink-0"></i>
             <span class="fw-semibold">Modificado:</span>
             <span>{{ object.modified_date|date:"d/m/Y H:i" }}</span>
             {% if object.modified_user %}
-              <span>·</span>
+              <span class="d-none d-sm-inline">·</span>
               <span class="fw-semibold">por</span>
               <span class="text-truncate" style="max-width: 12rem;">{{ object.modification_user|default:object.modified_user }}</span>
             {% endif %}
