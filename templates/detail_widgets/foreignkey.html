@@ -1,21 +1,21 @@
 {% load site_urls %}
-<label class="form-label fw-semibold">{{ label|capfirst }}</label>
+<label class="form-label fs-7 fw-semibold mb-1">{{ label|capfirst }}</label>
 {% safe_site_url value 'detail' as related_url %}
 {% if value and related_url %}
-  <div class="input-group">
+  <div class="input-group input-group-sm">
     <input type="text"
-           class="form-control form-control-solid"
+           class="form-control form-control-sm form-control-solid"
            value="{{ value }}"
            readonly>
     <a href="{{ related_url }}"
-       class="btn btn-light-primary"
+       class="btn btn-sm btn-light-primary"
        title="Abrir detalle de {{ label|lower }}">
-      <i class="ki-outline ki-exit-right fs-3"></i>
+      <i class="ki-outline ki-exit-right fs-4"></i>
     </a>
   </div>
 {% else %}
   <input type="text"
-         class="form-control form-control-solid"
+         class="form-control form-control-sm form-control-solid"
          value="{{ value|default_if_none:'' }}"
          readonly>
 {% endif %}

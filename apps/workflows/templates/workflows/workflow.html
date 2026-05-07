@@ -5,6 +5,7 @@
     {% with states=object.get_visible_states %}
 
       <style>
+        /* Desktop horizontal stepper (legacy) */
         .wf-stepper { display: flex; align-items: flex-end; padding: 0.75rem 1rem; gap: 0.75rem; }
         .wf-stepper .wf-step { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; color: var(--bs-gray-500); }
         .wf-stepper .wf-step .wf-step-title { font-size: 0.9rem; font-weight: 600; line-height: 1.2; margin: 0 0 0.5rem 0; display: flex; align-items: baseline; min-width: 0; }
@@ -30,22 +31,28 @@
       <div class="card mb-5">
         <div class="card-body p-0">
 
-          {# Mobile summary chip (< lg) #}
-          <div class="d-lg-none p-4 border-bottom">
+          {# Mobile summary chip (< lg) — tap opens modal with full state list #}
+          <div class="d-lg-none p-4 border-bottom cursor-pointer"
+               role="button"
+               tabindex="0"
+               data-bs-toggle="modal"
+               data-bs-target="#wfStatesModal"
+               aria-label="Ver todos los estados del flujo">
             <div class="d-flex align-items-center mb-3 gap-3">
               <div class="symbol symbol-45px">
                 <span class="symbol-label bg-primary text-white fw-bolder fs-4">
                   {% for s in states %}{% if s.value == object.state %}{{ forloop.counter }}{% endif %}{% endfor %}
                 </span>
               </div>
-              <div class="flex-grow-1" style="min-width: 0;">
-                <div class="text-muted small fw-bolder text-uppercase mb-1">
-                  Paso{% for s in states %}{% if s.value == object.state %} {{ forloop.counter }}{% endif %}{% endfor %} de {{ states|length }}
+              <div class="flex-grow-1 min-w-0">
+                <div class="text-muted fs-8 fw-bold text-uppercase mb-1 d-flex align-items-center gap-2">
+                  <span>Paso{% for s in states %}{% if s.value == object.state %} {{ forloop.counter }}{% endif %}{% endfor %} de {{ states|length }}</span>
                 </div>
-                <div class="fw-bolder fs-6 text-truncate" data-bs-toggle="tooltip" title="{{ object.get_current_state.label }}">
+                <div class="fw-bolder fs-6 text-truncate">
                   {{ object.get_current_state.label }}
                 </div>
               </div>
+              <i class="ki-outline ki-arrow-right fs-2 text-muted flex-shrink-0" aria-hidden="true"></i>
             </div>
             {% with last_state=states|last %}
               {% widthratio object.state last_state.value 100 as pct %}
@@ -53,6 +60,75 @@
                 <div class="progress-bar bg-primary" role="progressbar" style="width: {{ pct }}%" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
               </div>
             {% endwith %}
+          </div>
+
+          {# Mobile modal: vertical timeline of visible states (Metronic timeline) #}
+          <div class="modal fade d-lg-none" id="wfStatesModal" tabindex="-1" aria-labelledby="wfStatesModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header py-4">
+                  <h5 class="modal-title fw-bolder" id="wfStatesModalLabel">Estados del proceso</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body pt-4">
+
+                  {% with last_state=states|last %}
+                    {% widthratio object.state last_state.value 100 as pct %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="text-muted fw-bold fs-8 text-uppercase">Avance</span>
+                      <span class="fw-bolder fs-7 text-primary">
+                        {% for s in states %}{% if s.value == object.state %}{{ forloop.counter }}{% endif %}{% endfor %}<span class="text-muted">/{{ states|length }}</span>
+                      </span>
+                    </div>
+                    <div class="progress h-6px mb-6">
+                      <div class="progress-bar bg-primary" role="progressbar" style="width: {{ pct }}%" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                  {% endwith %}
+
+                  <div class="timeline">
+                    {% for state in states %}
+                      <div class="timeline-item"{% if state.value == object.state %} aria-current="step"{% endif %}>
+                        <div class="timeline-line w-40px"></div>
+                        <div class="timeline-icon symbol symbol-circle symbol-30px me-3">
+                          <div class="symbol-label
+                            {% if state.value < object.state %}bg-light-success
+                            {% elif state.value == object.state %}bg-primary
+                            {% else %}bg-light{% endif %}">
+                            {% if state.value < object.state %}
+                              <i class="ki-outline ki-check fs-4 text-success"></i>
+                            {% elif state.value == object.state %}
+                              <span class="fs-7 fw-bolder text-white">{{ forloop.counter }}</span>
+                            {% else %}
+                              <span class="fs-7 fw-bolder text-muted">{{ forloop.counter }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="timeline-content mb-4 mt-n1">
+                          <div class="d-flex align-items-center flex-wrap gap-2">
+                            <span class="fw-bolder fs-6
+                              {% if state.value < object.state %}text-gray-700
+                              {% elif state.value == object.state %}text-primary
+                              {% else %}text-gray-600{% endif %}">{{ state.label }}</span>
+                            {% if state.value|add:-1 == object.state %}
+                              <span class="badge badge-light-primary fs-9">Siguiente</span>
+                            {% endif %}
+                          </div>
+                          <div class="fs-8 fw-semibold mt-1
+                            {% if state.value < object.state %}text-success
+                            {% elif state.value == object.state %}text-primary
+                            {% else %}text-muted{% endif %}">
+                            {% if state.value < object.state %}Completado
+                            {% elif state.value == object.state %}En curso
+                            {% else %}Pendiente{% endif %}
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+
+                </div>
+              </div>
+            </div>
           </div>
 
           {# Desktop stepper (≥ lg) #}

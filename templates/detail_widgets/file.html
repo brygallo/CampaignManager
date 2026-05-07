@@ -1,25 +1,25 @@
-<label class="form-label fw-semibold">{{ label|capfirst }}</label>
-<div class="input-group">
+<label class="form-label fs-7 fw-semibold mb-1">{{ label|capfirst }}</label>
+<div class="input-group input-group-sm">
   <input type="text"
-         class="form-control form-control-solid"
+         class="form-control form-control-sm form-control-solid"
          value="{% if value %}{{ value.name|default:'Archivo' }}{% else %}Sin archivo{% endif %}"
          readonly>
   {% if value %}
     {% with name=value.name|lower %}
       {% if name|slice:'-4:' == '.pdf' %}
         <button type="button"
-                class="btn btn-light-info pdf-preview-trigger"
+                class="btn btn-sm btn-light-info pdf-preview-trigger"
                 data-bs-toggle="modal"
                 data-bs-target="#pdf-preview-modal"
                 data-file-url="{{ value.url }}"
                 data-file-name="{{ value.name|default:label }}"
                 title="Previsualizar PDF">
-          <i class="ki-outline ki-eye fs-3"></i>
+          <i class="ki-outline ki-eye fs-4"></i>
         </button>
       {% endif %}
     {% endwith %}
-    <a href="{{ value.url }}" target="_blank" class="btn btn-light-primary" title="Abrir archivo">
-      <i class="ki-outline ki-paper-clip fs-3"></i>
+    <a href="{{ value.url }}" target="_blank" class="btn btn-sm btn-light-primary" title="Abrir archivo">
+      <i class="ki-outline ki-paper-clip fs-4"></i>
     </a>
   {% endif %}
 </div>

@@ -24,7 +24,7 @@
               {% if field.field.widget.input_type == "checkbox" %}
                 {{ field }}
               {% else %}
-                {% render_field field class="form-control" %}
+                {% render_field field class="form-control form-control-sm" %}
               {% endif %}
               {% if field.errors %}
                 <div class="text-danger small mt-1">{{ field.errors|join:" · " }}</div>
