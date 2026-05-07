@@ -57,7 +57,7 @@ class WorkflowChoicesMeta(ChoicesMeta):
         return [
             member
             for member in cls.__members__.values()
-            if not hasattr(member, "visible") or not member.visible == False
+            if not hasattr(member, "visible") or member.visible is not False
         ]
 
 

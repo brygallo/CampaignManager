@@ -26,7 +26,7 @@
         <div class="d-flex flex-column">
           <span class="fs-2 fw-bolder text-gray-900">{{ object.get_full_name|default:object.username }}</span>
           <div class="d-flex flex-wrap align-items-center gap-3 fs-7 text-muted mt-1">
-            <span><i class="ki-outline ki-sms fs-7 me-1"></i>{{ object.email|default:"sin correo" }}</span>
+            <span><i class="ki-outline ki-sms fs-7 me-1" aria-hidden="true"></i>{{ object.email|default:"Sin correo" }}</span>
             <span><i class="ki-outline ki-user fs-7 me-1"></i>@{{ object.username }}</span>
             {% if object.date_joined %}
               <span><i class="ki-outline ki-calendar fs-7 me-1"></i>Desde {{ object.date_joined|date:"d/m/Y" }}</span>
@@ -73,22 +73,16 @@
   <div class="tab-pane fade" id="tab-permissions" role="tabpanel">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div>
-        <h4 class="fw-bold text-gray-900 mb-1">{{ permissions_list_title }}</h4>
-        <div class="text-muted fs-7">{{ permissions_entries|length }} permiso{{ permissions_entries|length|pluralize:"s" }} efectivo{{ permissions_entries|length|pluralize:"s" }} (directos + heredados)</div>
+        <h4 class="fw-bold text-gray-900 mb-1">Permisos del usuario</h4>
+        <div class="text-muted fs-7">Vista de solo lectura · directos + heredados de grupos</div>
       </div>
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <div class="position-relative w-md-250px">
-          <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-4"></i>
-          <input id="permissions-list-search" type="text" class="form-control form-control-sm form-control-solid ps-11" placeholder="Buscar permiso...">
-        </div>
-        {% if request.user.is_staff %}
-          <a href="{% url 'authentication:user_permissions' username=object.username %}"
-             class="btn btn-sm btn-light-primary">
-            <i class="ki-outline ki-pencil fs-3 me-1"></i>Editar permisos
-          </a>
-        {% endif %}
-      </div>
+      {% if request.user.is_staff %}
+        <a href="{% url 'authentication:user_permissions' username=object.username %}"
+           class="btn btn-sm btn-light-primary">
+          <i class="ki-outline ki-pencil fs-3 me-1"></i>Editar permisos
+        </a>
+      {% endif %}
     </div>
-    {% include "authentication/components/permissions_list.html" %}
+    {% include "authentication/components/permissions_matrix.html" with enabled=False %}
   </div>
 {% endblock %}

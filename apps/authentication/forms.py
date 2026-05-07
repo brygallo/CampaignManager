@@ -3,7 +3,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django_select2 import forms as s2forms
 from superadmin.forms import ModelForm
 from tracing.models import Rule
@@ -45,7 +45,10 @@ class EmailOrUsernameAuthenticationForm(AuthenticationForm):
 class UserForm(ModelForm):
     password = forms.CharField(
         label="Contraseña",
-        widget=forms.PasswordInput(render_value=False),
+        widget=forms.PasswordInput(
+            render_value=False,
+            attrs={"autocomplete": "new-password"},
+        ),
         required=False,
         help_text="Déjalo en blanco para mantener la contraseña actual.",
     )
@@ -97,19 +100,23 @@ class UserForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            self.fields[
-                "password"
-            ].help_text = "Déjalo en blanco para mantener la contraseña actual."
-        else:
+        if not (self.instance and self.instance.pk):
             self.fields["password"].required = True
             self.fields["password"].help_text = "Define la contraseña inicial del usuario."
+        # Snapshot the existing hash so save() can restore it when the admin
+        # leaves the password blank — construct_instance() would otherwise
+        # overwrite instance.password with the empty form value.
+        self._original_password = (
+            self.instance.password if self.instance and self.instance.pk else None
+        )
 
     def save(self, commit=True):
         user = super().save(commit=False)
         pwd = self.cleaned_data.get("password")
         if pwd:
             user.set_password(pwd)
+        elif self._original_password is not None:
+            user.password = self._original_password
         if commit:
             user.save()
             self.save_m2m()
@@ -123,6 +130,16 @@ class ProfileForm(ModelForm):
             "Perfil": (
                 ("phone_number", "avatar"),
                 ("bio",),
+            ),
+        }
+
+
+class GroupForm(ModelForm):
+    class Meta:
+        model = Group
+        fieldsets = {
+            "Datos del grupo": (
+                ("name",),
             ),
         }
 

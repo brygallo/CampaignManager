@@ -3,69 +3,303 @@
 
 {% block title %}Dashboard levantamiento | {{ block.super }}{% endblock %}
 
-{% block toolbar %}
-<div class="d-flex flex-wrap flex-stack mb-6 gap-3">
-  <h1 class="page-heading text-dark fw-bold fs-3 my-0">Dashboard de levantamiento</h1>
-  {% include "field_surveys/_section_nav.html" with active="dashboard" %}
-</div>
-{% endblock %}
-
 {% block content %}
-<div class="card mb-5"><div class="card-body">{% include "field_surveys/_filters.html" %}</div></div>
-<div class="row g-5 mb-5">
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Visitas</div><div class="fs-2hx fw-bold">{{ metrics.total_visits }}</div></div></div></div>
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Votantes</div><div class="fs-2hx fw-bold">{{ metrics.total_voters }}</div></div></div></div>
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Apoyan</div><div class="fs-2hx fw-bold text-success">{{ metrics.support }}</div></div></div></div>
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Indecisos</div><div class="fs-2hx fw-bold text-warning">{{ metrics.undecided }}</div></div></div></div>
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">No apoyan</div><div class="fs-2hx fw-bold text-danger">{{ metrics.not_support }}</div></div></div></div>
-  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted">Publicidad competencia</div><div class="fs-2hx fw-bold">{{ metrics.competitor_ads }}</div></div></div></div>
-</div>
-
-<div class="card mb-5">
-  <div class="card-header align-items-center">
-    <h3 class="card-title d-flex flex-column">
-      <span class="fw-bold">Mapa de calor — Apoyo</span>
-      <span class="text-muted fs-7 fw-normal">Concentración de votantes que apoyan, según los filtros activos.</span>
-    </h3>
-    <div class="card-toolbar">
-      <span class="badge badge-light-success" id="dashboard-heatmap-count">0 puntos</span>
-    </div>
-  </div>
-  <div class="card-body">
-    <div id="dashboard-support-heatmap"
-         data-url="{% url 'field_surveys:dashboard_heatmap_data' %}"
-         data-querystring="{{ request.GET.urlencode }}"
-         style="height: 460px; border-radius: 12px; overflow: hidden;"></div>
-    <div id="dashboard-heatmap-empty"
-         class="text-center text-muted py-5 d-none">
-      Sin levantamientos con apoyo registrados para los filtros seleccionados.
+<div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+  <div class="col-12">
+    <div class="card bg-primary card-flush">
+      <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-4 py-7">
+        <div class="d-flex align-items-center">
+          <span class="symbol symbol-50px me-5">
+            <span class="symbol-label bg-white bg-opacity-25">
+              <i class="ki-outline ki-geolocation text-white fs-2x"></i>
+            </span>
+          </span>
+          <div class="d-flex flex-column">
+            <h2 class="text-white fw-bolder mb-1">Dashboard de levantamiento</h2>
+            <span class="text-white opacity-75 fs-6">
+              Vista operativa del trabajo de campo: visitas, resultados y publicidad de la competencia.
+            </span>
+          </div>
+        </div>
+        {% include "field_surveys/_section_nav.html" with active="dashboard" %}
+      </div>
     </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header"><h3 class="card-title">Ranking de brigadistas</h3></div>
-  <div class="card-body">
-    <table class="table table-sm align-middle">
-      <thead><tr class="text-muted fw-bold text-uppercase fs-7"><th>Brigadista</th><th>Visitas</th><th>Votantes</th></tr></thead>
-      <tbody>
-      {% for row in brigadier_ranking %}
-        <tr>
-          <td>{% firstof row.brigadier__first_name row.brigadier__username %} {{ row.brigadier__last_name }}</td>
-          <td>{{ row.visits }}</td>
-          <td>{{ row.voters|default:0 }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="3" class="text-muted text-center py-8">Sin datos.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+<div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+  <div class="col-md-6 col-xl-2">
+    <div class="card card-flush border-hover-primary h-100">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ metrics.total_visits }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Visitas</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-primary mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-row-horizontal fs-2 text-primary"></i></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-2">
+    <div class="card card-flush border-hover-info h-100">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ metrics.total_voters }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Votantes</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-info mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-people fs-2 text-info"></i></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-2">
+    <div class="card card-flush border-hover-success h-100">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-success me-2 lh-1 ls-n2">{{ metrics.support }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Apoyan</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-success mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-user-tick fs-2 text-success"></i></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-2">
+    <div class="card card-flush border-hover-warning h-100">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-warning me-2 lh-1 ls-n2">{{ metrics.undecided }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Indecisos</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-warning mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-questionnaire-tablet fs-2 text-warning"></i></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-2">
+    <div class="card card-flush border-hover-danger h-100">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-danger me-2 lh-1 ls-n2">{{ metrics.not_support }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">No apoyan</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-danger mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-cross-circle fs-2 text-danger"></i></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-2">
+    <a href="{% url 'site:field_surveys_competitoradvertisingdetection_listar' %}"
+       class="card card-flush border-hover-dark h-100 text-decoration-none">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-dark me-2 lh-1 ls-n2">{{ metrics.competitor_ads }}</span>
+          <span class="text-gray-500 pt-1 fw-semibold fs-6">Pub. competencia</span>
+        </div>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-end pe-0">
+        <span class="symbol symbol-50px symbol-circle bg-light-dark mb-3">
+          <span class="symbol-label"><i class="ki-outline ki-flag fs-2 text-dark"></i></span>
+        </span>
+      </div>
+    </a>
+  </div>
+</div>
+
+{% include "field_surveys/_filters.html" %}
+
+<div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+  <div class="col-xl-6">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Mapa de calor — Apoyo</span>
+          <span class="text-muted fw-semibold fs-7">Concentración de votantes que apoyan, según los filtros activos.</span>
+        </h3>
+        <div class="card-toolbar">
+          <span class="badge badge-light-success" id="dashboard-heatmap-count">0 puntos</span>
+        </div>
+      </div>
+      <div class="card-body pt-3">
+        <div id="dashboard-support-heatmap"
+             data-url="{% url 'field_surveys:dashboard_heatmap_data' %}"
+             data-querystring="{{ request.GET.urlencode }}"
+             style="height: 420px; border-radius: 12px; overflow: hidden;"></div>
+        <div id="dashboard-heatmap-empty" class="text-center py-10 d-none">
+          <i class="ki-outline ki-geolocation fs-3hx text-muted mb-3 d-block"></i>
+          <h4 class="fs-5 fw-bold text-gray-900 mb-1">Sin levantamientos con apoyo</h4>
+          <p class="text-muted fs-7 mb-0">Ajusta los filtros para ver puntos en el mapa.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Distribución de resultados</span>
+          <span class="text-muted fw-semibold fs-7">Visitas por resultado primario</span>
+        </h3>
+      </div>
+      <div class="card-body pt-2 d-flex flex-column">
+        <div id="kt_chart_results_distribution" class="d-flex justify-content-center"></div>
+        <div class="mt-4 d-flex flex-column gap-2" id="kt_chart_results_legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Top competencia</span>
+          <span class="text-muted fw-semibold fs-7">Detecciones de publicidad</span>
+        </h3>
+      </div>
+      <div class="card-body pt-3">
+        {% if competitor_ads_breakdown %}
+          <div class="d-flex flex-column gap-4">
+            {% for row in competitor_ads_breakdown %}
+              <div>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="d-flex align-items-center gap-2">
+                    <span class="bullet bullet-vertical h-20px" style="background-color: {{ row.color }};"></span>
+                    <span class="text-dark fw-bold fs-7">{{ row.label }}</span>
+                  </span>
+                  <span class="badge badge-light-dark fs-8 fw-bold">{{ row.detections }}</span>
+                </div>
+                <div class="progress h-6px w-100 bg-light">
+                  <div class="progress-bar"
+                       role="progressbar"
+                       style="width: {{ row.pct }}%; background-color: {{ row.color }};"
+                       aria-valuenow="{{ row.pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-10">
+            <i class="ki-outline ki-flag fs-3hx text-muted mb-3 d-block"></i>
+            <h4 class="fs-5 fw-bold text-gray-900 mb-1">Sin detecciones</h4>
+            <p class="text-muted fs-7 mb-0">No se ha registrado publicidad de competencia para los filtros activos.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-5 g-xl-10">
+  <div class="col-xl-7">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Tendencia de visitas</span>
+          <span class="text-muted fw-semibold fs-7">Visitas por día en el rango activo</span>
+        </h3>
+      </div>
+      <div class="card-body pt-2">
+        <div id="kt_chart_visits_trend" class="min-h-275px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bolder text-dark">Ranking de brigadistas</span>
+          <span class="text-muted fw-semibold fs-7">Top 10 según visitas registradas</span>
+        </h3>
+        <div class="card-toolbar">
+          <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-sm btn-light-primary">
+            <i class="ki-outline ki-arrow-right fs-3"></i>Ver visitas
+          </a>
+        </div>
+      </div>
+      <div class="card-body pt-3">
+        {% if brigadier_ranking %}
+          <div class="table-responsive">
+            <table class="table table-row-dashed align-middle gs-0 gy-3 mb-0">
+              <thead>
+                <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                  <th>Brigadista</th>
+                  <th class="w-50">Visitas</th>
+                  <th class="text-end">Votantes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in brigadier_ranking %}
+                  <tr>
+                    <td>
+                      <span class="d-flex align-items-center gap-2">
+                        <span class="symbol symbol-circle symbol-35px">
+                          <span class="symbol-label bg-light-primary text-primary fw-bold fs-7">
+                            {% firstof row.brigadier__first_name|slice:":1" row.brigadier__username|slice:":1" "?" %}{{ row.brigadier__last_name|slice:":1" }}
+                          </span>
+                        </span>
+                        <span class="text-dark fw-bold">
+                          {% firstof row.brigadier__first_name row.brigadier__username %} {{ row.brigadier__last_name }}
+                        </span>
+                      </span>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center gap-3">
+                        <div class="progress h-6px w-100 bg-light">
+                          <div class="progress-bar bg-primary"
+                               role="progressbar"
+                               style="width: {{ row.progress }}%;"
+                               aria-valuenow="{{ row.progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="text-dark fw-bold fs-7">{{ row.visits }}</span>
+                      </div>
+                    </td>
+                    <td class="text-end">
+                      <span class="badge badge-light-info fw-bold">{{ row.voters }}</span>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-10">
+            <i class="ki-outline ki-people fs-3hx text-muted mb-3 d-block"></i>
+            <h4 class="fs-5 fw-bold text-gray-900 mb-1">Sin actividad</h4>
+            <p class="text-muted fs-7 mb-0">No hay visitas registradas en el rango filtrado.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
+{{ chart_data|json_script:"dashboard-chart-data" }}
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="{% static 'assets/js/field_surveys/dashboard_heatmap.js' %}"></script>
+<script src="{% static 'assets/js/field_surveys/dashboard_charts.js' %}"></script>
 {% endblock %}

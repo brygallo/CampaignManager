@@ -1,7 +1,11 @@
+from datetime import timedelta
+
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.urls import reverse
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -15,7 +19,7 @@ from .models import (
 )
 
 
-# Color por código de resultado primario para los pines del mapa.
+# Primary result code → map pin color mapping.
 RESULT_COLORS = {
     "APOYA": "#50cd89",
     "INDECISO": "#ffc700",
@@ -99,6 +103,8 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
             support=Count("id", filter=Q(results__code="APOYA"), distinct=True),
             undecided=Count("id", filter=Q(results__code="INDECISO"), distinct=True),
             not_support=Count("id", filter=Q(results__code="NO_APOYA"), distinct=True),
+            attended=Count("id", filter=Q(results__code="ATENDIO"), distinct=True),
+            not_attended=Count("id", filter=Q(results__code="NO_ATENDIO"), distinct=True),
         )
         context["metrics"] = {
             "total_visits": result_counts["total_visits"] or 0,
@@ -108,11 +114,38 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
             "not_support": result_counts["not_support"] or 0,
             "competitor_ads": competitor_ads.count(),
         }
-        context["brigadier_ranking"] = (
-            surveys.values("brigadier__first_name", "brigadier__last_name", "brigadier__username")
+        ranking = list(
+            surveys.values(
+                "brigadier_id",
+                "brigadier__first_name",
+                "brigadier__last_name",
+                "brigadier__username",
+            )
             .annotate(visits=Count("id"), voters=Sum("voters_count"))
             .order_by("-visits", "-voters")[:10]
         )
+        max_visits = max((row["visits"] for row in ranking), default=0)
+        for row in ranking:
+            row["progress"] = (
+                int(round((row["visits"] / max_visits) * 100)) if max_visits else 0
+            )
+            row["voters"] = row["voters"] or 0
+        context["brigadier_ranking"] = ranking
+
+        result_distribution = build_result_distribution(result_counts)
+        context["result_distribution"] = result_distribution
+
+        visits_trend = build_visits_trend(self.request, surveys)
+        competitor_ads_breakdown = build_competitor_breakdown(competitor_ads)
+        context["competitor_ads_breakdown"] = competitor_ads_breakdown
+
+        context["chart_data"] = {
+            "results": [
+                {"label": item["label"], "value": item["value"], "color": item["color"]}
+                for item in result_distribution
+            ],
+            "trend": visits_trend,
+        }
         return context
 
 
@@ -165,6 +198,12 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             competitor_ads = competitor_ads.filter(campaign_id=request.GET["campaign"])
         if request.GET.get("competitor"):
             competitor_ads = competitor_ads.filter(competitor_id=request.GET["competitor"])
+        # Apply the same temporal window as surveys so the map stays coherent
+        # when the user filters by date range (#A12).
+        if request.GET.get("date_from"):
+            competitor_ads = competitor_ads.filter(created_date__date__gte=request.GET["date_from"])
+        if request.GET.get("date_to"):
+            competitor_ads = competitor_ads.filter(created_date__date__lte=request.GET["date_to"])
 
         visits = []
         for survey in surveys:
@@ -202,6 +241,71 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             )
 
         return JsonResponse({"visits": visits, "competitor_ads": competitor_data})
+
+
+def build_result_distribution(result_counts):
+    """Build the donut input: ordered list of {code, label, value, color}."""
+    rows = [
+        ("APOYA", "Apoyan", result_counts.get("support") or 0),
+        ("INDECISO", "Indecisos", result_counts.get("undecided") or 0),
+        ("NO_APOYA", "No apoyan", result_counts.get("not_support") or 0),
+        ("ATENDIO", "Atendieron", result_counts.get("attended") or 0),
+        ("NO_ATENDIO", "No atendieron", result_counts.get("not_attended") or 0),
+    ]
+    return [
+        {"code": code, "label": label, "value": value, "color": RESULT_COLORS[code]}
+        for code, label, value in rows
+    ]
+
+
+def build_visits_trend(request, surveys):
+    """Daily visit counts over the active range (or the last 30 days by default)."""
+    today = timezone.localdate()
+    date_from = request.GET.get("date_from") or None
+    date_to = request.GET.get("date_to") or None
+    try:
+        start = (
+            timezone.datetime.fromisoformat(date_from).date() if date_from else today - timedelta(days=29)
+        )
+        end = timezone.datetime.fromisoformat(date_to).date() if date_to else today
+    except ValueError:
+        start, end = today - timedelta(days=29), today
+    if end < start:
+        start, end = end, start
+
+    counts = {
+        row["day"]: row["count"]
+        for row in surveys.annotate(day=TruncDate("created_date"))
+        .values("day")
+        .annotate(count=Count("id", distinct=True))
+        .filter(day__gte=start, day__lte=end)
+    }
+    labels, values = [], []
+    cursor = start
+    while cursor <= end:
+        labels.append(cursor.strftime("%d %b"))
+        values.append(counts.get(cursor, 0))
+        cursor += timedelta(days=1)
+    return {"labels": labels, "values": values}
+
+
+def build_competitor_breakdown(competitor_ads):
+    """Top competitors by detection count for the small breakdown card."""
+    rows = list(
+        competitor_ads.values(
+            "competitor_id",
+            "competitor__political_organization",
+            "competitor__color",
+        )
+        .annotate(detections=Count("id"))
+        .order_by("-detections")[:5]
+    )
+    total = sum(row["detections"] for row in rows) or 1
+    for row in rows:
+        row["pct"] = int(round((row["detections"] / total) * 100))
+        row["color"] = row["competitor__color"] or "#d9214e"
+        row["label"] = row["competitor__political_organization"] or "—"
+    return rows
 
 
 def get_filter_context(request):

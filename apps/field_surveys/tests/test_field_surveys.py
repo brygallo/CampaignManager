@@ -96,6 +96,13 @@ class FieldSurveyRulesTests(TestCase):
         self.assertIn("latitude", form.errors)
         self.assertIn("longitude", form.errors)
 
+    def test_competitor_select_depends_on_campaign(self):
+        form = CompetitorAdvertisingDetectionForm()
+
+        widget = form.fields["competitor"].widget
+
+        self.assertEqual(widget.dependent_fields, {"campaign": "campaign"})
+
     def test_competitor_detection_form_rejects_competitor_from_other_campaign(self):
         other_candidate = Candidate.objects.create(full_name="Otro Candidato")
         other_position = Position.objects.create(name="Prefectura")

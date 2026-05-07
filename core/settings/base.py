@@ -282,6 +282,7 @@ TEMPLATE_WIDGETS = {
     "costtypeselect2": "widgets/selectinput.html",
     "email": "widgets/textinput.html",
     "number": "widgets/textinput.html",
+    "password": "widgets/textinput.html",
     "ckeditor": "widgets/ckeditorinput.html",
     "leafletmap": "widgets/textinput.html",
 }

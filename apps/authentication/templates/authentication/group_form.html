@@ -1,0 +1,7 @@
+{% extends "base/base_form.html" %}
+
+{% block form %}
+  {{ block.super }}
+  <div class="separator separator-dashed my-7"></div>
+  {% include "authentication/components/permissions_matrix.html" with enabled=True %}
+{% endblock %}

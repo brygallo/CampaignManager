@@ -1,7 +1,9 @@
-"""View to response rendered templates"""
+"""Views that render templates as JSON responses for inline (insoles) interactions."""
 
 # Django
 from django import forms
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.shortcuts import get_object_or_404
 from django.views.generic import View
@@ -24,8 +26,32 @@ class RenderDetailMixin(DetailMixin):
         super().__init__()
 
 
-class RenderFormView(View):
-    """View to get record filtering by date"""
+class _InsolesPermMixin(LoginRequiredMixin):
+    """Require authentication + ``<app>.<perm_action>_<model>`` perm on every method.
+
+    Replaces the per-method permission checks that only protected GET — POST
+    used to slip through. Also returns 404 when the (app, model) URL pair does
+    not resolve to a real model.
+    """
+
+    raise_exception = True
+    perm_action = "add"
+
+    def dispatch(self, request, *args, **kwargs):
+        app_name = kwargs.get("app", "")
+        model_name = kwargs.get("model", "")
+        try:
+            apps.get_app_config(app_name).get_model(model_name)
+        except LookupError:
+            return JsonResponse({"error": "Recurso no encontrado"}, status=404)
+        required = f"{app_name.lower()}.{self.perm_action}_{model_name.lower()}"
+        if not request.user.has_perm(required):
+            return HttpResponseForbidden()
+        return super().dispatch(request, *args, **kwargs)
+
+
+class RenderFormView(_InsolesPermMixin, View):
+    """Render an inline create form as JSON (Insoles pattern)."""
 
     http_method_names = ["get", "post"]
 
@@ -47,19 +73,6 @@ class RenderFormView(View):
     def get(self, request, *args, **kwargs):
         app_name = kwargs.get("app")
         model_name = kwargs.get("model")
-        perms = [
-            f"{app_name.lower()}.add_{model_name.lower()}",
-        ]
-        if model_name.lower() == "taxpayer":
-            perms.extend(
-                [
-                    f"{app_name.lower()}.add_naturaltaxpayer",
-                    f"{app_name.lower()}.add_legaltaxpayer",
-                ]
-            )
-
-        if not any([request.user.has_perm(perm) for perm in perms]):
-            return HttpResponseForbidden()
         form_class = self.get_form_class(**kwargs)
         context = {
             "form": form_class(),
@@ -87,20 +100,13 @@ class RenderFormView(View):
 
 
 class RenderFieldView(RenderFormView):
-    """View to get record filtering by date"""
+    """Render a single inline field as JSON."""
 
-    http_method_names = [
-        "get",
-    ]
+    perm_action = "change"
+    http_method_names = ["get"]
 
     def get(self, request, *args, **kwargs):
-        app_name = kwargs.get("app")
-        model_name = kwargs.get("model")
         field_name = kwargs.get("field")
-
-        if not self.request.user.has_perm(f"{app_name}.change_{model_name}"):
-            return HttpResponseForbidden()
-
         form_class = self.get_form_class(**kwargs)
         form = form_class()
         context = {"field": form[field_name]}
@@ -110,7 +116,8 @@ class RenderFieldView(RenderFormView):
         return JsonResponse(res, status=200)
 
 
-class RenderDetailView(View):
+class RenderDetailView(_InsolesPermMixin, View):
+    perm_action = "view"
     http_method_names = ["get"]
     template_name = "insoles/detail.html"
 
@@ -121,8 +128,13 @@ class RenderDetailView(View):
         reverse_value = kwargs.get("slug")
         field = kwargs.get("field")
         search = {field: reverse_value}
-        app = apps.get_app_config(app_name)
-        model = app.get_model(model_name)
+        try:
+            app = apps.get_app_config(app_name)
+            model = app.get_model(model_name)
+        except LookupError:
+            return None
+        if model not in site._registry:
+            return None
         instance = model.objects.filter(**search)
         if instance.exists():
             instance = instance.get()
@@ -137,17 +149,20 @@ class RenderDetailView(View):
         return detail
 
     def get(self, request, *args, **kwargs):
-        site = self.get_data(**kwargs)
-        flatten_results, results = site.get_results()
-        context = {"results": results, "object": site.object}
-        if hasattr(site.site, "insoles_detail"):
-            self.template_name = getattr(site.site, "insoles_detail")
+        detail = self.get_data(**kwargs)
+        if detail is None:
+            return JsonResponse({"error": "Recurso no encontrado"}, status=404)
+        flatten_results, results = detail.get_results()
+        context = {"results": results, "object": detail.object}
+        if hasattr(detail.site, "insoles_detail"):
+            self.template_name = getattr(detail.site, "insoles_detail")
         template = render_to_string(self.template_name, context=context)
         res = {"template": template}
         return JsonResponse(res, status=200)
 
 
-class RenderEditView(View):
+class RenderEditView(_InsolesPermMixin, View):
+    perm_action = "change"
     http_method_names = ["get", "post"]
 
     def get_instance(self, **kwargs):
@@ -160,10 +175,7 @@ class RenderEditView(View):
         search = {field: reverse_value}
         app = apps.get_app_config(app_name)
         model = app.get_model(model_name)
-        instance = model.objects.filter(**search)
-        if instance.exists():
-            return instance.get()
-        return False
+        return model.objects.filter(**search).first()
 
     def get_form_class(self, **kwargs):
         app_name = kwargs.get("app")
@@ -181,20 +193,10 @@ class RenderEditView(View):
     def get(self, request, *args, **kwargs):
         app_name = kwargs.get("app")
         model_name = kwargs.get("model")
-        perms = [
-            f"{app_name.lower()}.add_{model_name.lower()}",
-        ]
-        if model_name.lower() == "taxpayer":
-            perms.extend(
-                [
-                    f"{app_name.lower()}.add_naturaltaxpayer",
-                    f"{app_name.lower()}.add_legaltaxpayer",
-                ]
-            )
-        if not any([request.user.has_perm(perm) for perm in perms]):
-            return HttpResponseForbidden()
         form_class = self.get_form_class(**kwargs)
         instance = self.get_instance(**kwargs)
+        if instance is None:
+            return JsonResponse({"error": "Registro no encontrado"}, status=404)
         context = {
             "form": form_class(instance=instance),
         }
@@ -207,17 +209,13 @@ class RenderEditView(View):
     def post(self, request, *args, **kwargs):
         form_class = self.get_form_class(**kwargs)
         instance = self.get_instance(**kwargs)
+        if instance is None:
+            return JsonResponse({"error": "Registro no encontrado"}, status=404)
         form = form_class(self.request.POST, self.request.FILES, instance=instance)
-
-        if form.is_valid():
-            instance = form.save()
-
-        res = {
-            "id": instance.id,
-            "text": str(instance),
-        }
-
-        return JsonResponse(res, status=200)
+        if not form.is_valid():
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        instance = form.save()
+        return JsonResponse({"id": instance.id, "text": str(instance)}, status=200)
 
 
 class InstanceBaseFormView(View):
@@ -232,7 +230,7 @@ class InstanceBaseFormView(View):
 
     def get_create_url(self):
         if not self.create_url_name:
-            raise Exception("En enlace de creación no se encuentra configurado")
+            raise ImproperlyConfigured("create_url_name is not configured")
         kwargs = {key: value for key, value in self.kwargs.items()}
         url = reverse_lazy(str(self.create_url_name), kwargs={**kwargs})
         return url
@@ -253,7 +251,7 @@ class InstanceBaseFormView(View):
 
     def get_form(self):
         if not self.form_class:
-            raise Exception(f"La clase de formulario no se encuentra configurada")
+            raise ImproperlyConfigured("form_class is not configured")
         return self.form_class(**self.get_form_kwargs())
 
     def get_context(self, request, *args, **kwargs):
@@ -372,7 +370,7 @@ class InstanceBaseFormsetView(InstanceBaseFormView):
 
     def get_formset(self):
         if not self.formset_class:
-            raise Exception("No se encuentra configurado formset_class")
+            raise ImproperlyConfigured("formset_class is not configured")
         formset = self.formset_class(**self.get_formset_kwargs())
         formset.headers = [
             field.label

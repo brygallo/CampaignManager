@@ -281,7 +281,7 @@
     }
   }
 
-  function openCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
+  function openCreateModal(modalEl, createUrl, latlng, mapState, onSaved, saveErrorText) {
     if (!modalEl || !window.bootstrap || !createUrl) {
       window.location.href = buildCreateUrl(createUrl, latlng, mapState);
       return;
@@ -306,7 +306,7 @@
         if (submitButton) {
           submitButton.disabled = true;
         }
-        fetch(form.action, {
+        fetch(url, {
           method: "POST",
           body: new FormData(form),
           headers: {
@@ -332,8 +332,16 @@
             setHtml(bodyEl, result.data.html || "");
             bindForm();
           })
-          .catch(function () {
-            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar el levantamiento.</div>');
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("field-surveys map create failed", error);
+            }
+            setHtml(
+              bodyEl,
+              '<div class="alert alert-danger">' +
+                (saveErrorText || "No se pudo guardar el levantamiento.") +
+              '</div>'
+            );
           })
           .finally(function () {
             if (submitButton) {
@@ -583,6 +591,12 @@
           if (bounds.length) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
           }
+        })
+        .catch(function () {
+          updateCount(counterEl, 0);
+          if (window.console && window.console.error) {
+            window.console.error("Field survey map data load failed");
+          }
         });
     }
 
@@ -722,7 +736,16 @@
           return;
         }
         applyCreatePreset(action);
-        openCreateModal(createModalEl, targetUrl, latlng, mapState, load);
+        openCreateModal(
+          createModalEl,
+          targetUrl,
+          latlng,
+          mapState,
+          load,
+          action === "competitor"
+            ? "No se pudo guardar la detección de competencia."
+            : "No se pudo guardar el levantamiento."
+        );
       }
 
       // Re-bind on each open so we don't accumulate stale closures.

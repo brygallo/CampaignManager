@@ -163,6 +163,7 @@
                  value="{{ request.GET.search|default:'' }}"
                  placeholder="Buscar en esta lista"
                  aria-label="Buscar en esta lista"
+                 enterkeyhint="search"
                  title="Puedes escribir varios términos separados por coma. Presiona Enter para buscar.">
         </div>
       </form>
@@ -265,76 +266,79 @@
   {% endif %}
 
   <div class="card-body py-4">
-    <table id="datatable" class="table table-sm align-middle table-row-dashed fs-7 gy-3" style="width:100%">
-      <thead>
-        <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-          {% for field_name, label in site.fields %}
-            {% if forloop.first %}
-              <th data-priority="1">{{ label }}</th>
-            {% elif 'state' in field_name %}
-              <th data-priority="3">{{ label }}</th>
-            {% else %}
-              <th data-priority="{{ forloop.counter|add:5 }}">{{ label }}</th>
-            {% endif %}
-          {% endfor %}
-          <th class="text-end min-w-125px all" data-priority="1">Acciones</th>
-        </tr>
-      </thead>
-      <tbody class="text-gray-700 fw-semibold">
-        {% for row in site.rows %}
-          <tr>
-            {% for value in row.values %}
+    {% with rows=site.rows %}
+    {% if rows %}
+      <table id="datatable" class="table table-sm align-middle table-row-dashed fs-7 gy-3" style="width:100%">
+        <caption class="visually-hidden">{% firstof site.title site.model_name|title "Listado" %}</caption>
+        <thead>
+          <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+            {% for field_name, label in site.fields %}
               {% if forloop.first %}
-                <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:"" }}</span></td>
+                <th data-priority="1">{{ label }}</th>
+              {% elif 'state' in field_name %}
+                <th data-priority="3">{{ label }}</th>
               {% else %}
-                <td>{{ value|default_if_none:"" }}</td>
+                <th data-priority="{{ forloop.counter|add:5 }}">{{ label }}</th>
               {% endif %}
             {% endfor %}
-            <td class="text-end text-nowrap">
-              {% if row.urls.detail %}
-                <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver" aria-label="Ver detalle">
-                  <i class="ki-outline ki-eye fs-4"></i>
-                </a>
-              {% endif %}
-              {% if row.urls.update %}
-                <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar" aria-label="Editar registro">
-                  <i class="ki-outline ki-pencil fs-4"></i>
-                </a>
-              {% endif %}
-              {% if row.urls.delete %}
-                <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
-                  <i class="ki-outline ki-trash fs-4"></i>
-                </a>
-              {% endif %}
-            </td>
+            <th class="text-end min-w-125px all" data-priority="1">Acciones</th>
           </tr>
-        {% empty %}
-          <tr>
-            <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
-              <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
-              {% if site.current_filters or request.GET.search %}
-                <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
-                <p class="text-muted fs-6 mb-4">No encontramos registros que cumplan los filtros aplicados.</p>
-                <a href="?" class="btn btn-light-primary btn-sm">
-                  <i class="ki-outline ki-eraser fs-3"></i>Limpiar filtros
-                </a>
-              {% else %}
-                <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
-                <p class="text-muted fs-6 mb-4">
-                  Comienza creando el primer registro de
-                  {% firstof site|verbose_name_plural site.model_name|title %}.
-                </p>
-                {% if site.urls.create %}
-                  <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">
-                    <i class="ki-outline ki-plus fs-3"></i>Crear el primero
+        </thead>
+        <tbody class="text-gray-700 fw-semibold">
+          {% for row in rows %}
+            <tr>
+              {% for value in row.values %}
+                {% if forloop.first %}
+                  <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:"" }}</span></td>
+                {% else %}
+                  <td>{{ value|default_if_none:"" }}</td>
+                {% endif %}
+              {% endfor %}
+              <td class="text-end text-nowrap">
+                {% if row.urls.detail %}
+                  <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver" aria-label="Ver detalle">
+                    <i class="ki-outline ki-eye fs-4"></i>
                   </a>
                 {% endif %}
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+                {% if row.urls.update %}
+                  <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar" aria-label="Editar registro">
+                    <i class="ki-outline ki-pencil fs-4"></i>
+                  </a>
+                {% endif %}
+                {% if row.urls.delete %}
+                  <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
+                    <i class="ki-outline ki-trash fs-4"></i>
+                  </a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="text-center py-10">
+        <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
+        {% if site.current_filters or request.GET.search %}
+          <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
+          <p class="text-muted fs-6 mb-4">No encontramos registros que cumplan los filtros aplicados.</p>
+          <a href="?" class="btn btn-light-primary btn-sm">
+            <i class="ki-outline ki-eraser fs-3"></i>Limpiar filtros
+          </a>
+        {% else %}
+          <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
+          <p class="text-muted fs-6 mb-4">
+            Comienza creando el primer registro de
+            {% firstof site|verbose_name_plural site.model_name|title %}.
+          </p>
+          {% if site.urls.create %}
+            <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">
+              <i class="ki-outline ki-plus fs-3"></i>Crear el primero
+            </a>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+    {% endwith %}
 
     {% include "base/paginator.html" %}
   </div>

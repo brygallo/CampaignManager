@@ -1,12 +1,16 @@
 """Context helpers for authentication system views."""
-from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
 from django.db.models import Q
+
+from .permissions import (
+    build_group_permission_context,
+    build_user_permission_context,
+    resolve_posted_permissions,
+)
 
 
 class UserListMixin:
-    """Match SIM behavior: staff can see all users; regular users see themselves."""
+    """Staff users see all users; non-staff see only themselves."""
 
     def get_queryset(self):
         queryset = (
@@ -22,78 +26,24 @@ class UserListMixin:
 
 
 class UserPermissionsListMixin:
-    """Expose direct and group-inherited user permissions to the detail template."""
+    """Inject the read-only permission matrix into the user detail context."""
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
-        user = self.get_object()
-        direct_perms = set(user.user_permissions.select_related("content_type"))
-        group_perm_map = {}
-
-        for group in user.groups.prefetch_related("permissions").all():
-            for perm in group.permissions.all():
-                group_perm_map.setdefault(perm.id, []).append(group)
-
-        permission_ids = {perm.id for perm in direct_perms} | set(group_perm_map)
-        permissions = (
-            Permission.objects.filter(id__in=permission_ids)
-            .select_related("content_type")
-            .order_by("content_type__app_label", "content_type__model", "name")
-        )
-
-        context.update(
-            {
-                "permissions_entries": [
-                    {
-                        "permission": perm,
-                        "direct": perm in direct_perms,
-                        "groups": group_perm_map.get(perm.id, []),
-                        "app_name": self._get_app_name(perm),
-                        "model_name": self._get_model_name(perm),
-                    }
-                    for perm in permissions
-                ],
-                "permissions_list_title": "Permisos del usuario",
-                "permissions_list_empty": "Este usuario no tiene permisos asignados.",
-                "show_permission_origin": True,
-            }
-        )
+        context.update(build_user_permission_context(self.get_object(), enabled=False))
         return context
-
-    def _get_app_name(self, permission):
-        try:
-            return str(apps.get_app_config(permission.content_type.app_label).verbose_name).capitalize()
-        except LookupError:
-            return permission.content_type.app_label
-
-    def _get_model_name(self, permission):
-        model_class = permission.content_type.model_class()
-        if model_class:
-            return str(model_class._meta.verbose_name_plural).capitalize()
-        return permission.content_type.model
 
 
 class GroupDetailMixin:
-    """Add group permissions and assigned users to group detail."""
+    """Inject the read-only permission matrix and member users into group detail."""
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
         group = self.get_object()
         User = get_user_model()
+        context.update(build_group_permission_context(group, enabled=False))
         context.update(
             {
-                "permissions_entries": [
-                    {
-                        "permission": perm,
-                        "app_name": self._get_app_name(perm),
-                        "model_name": self._get_model_name(perm),
-                    }
-                    for perm in group.permissions.select_related("content_type").order_by(
-                        "content_type__app_label", "content_type__model", "name"
-                    )
-                ],
-                "permissions_list_title": "Permisos del grupo",
-                "permissions_list_empty": "Este grupo no tiene permisos asignados.",
                 "users_list": User.objects.filter(groups=group)
                 .select_related("profile")
                 .order_by("-is_active", "first_name", "last_name", "username")
@@ -104,17 +54,44 @@ class GroupDetailMixin:
         )
         return context
 
-    def _get_app_name(self, permission):
-        try:
-            return str(apps.get_app_config(permission.content_type.app_label).verbose_name).capitalize()
-        except LookupError:
-            return permission.content_type.app_label
 
-    def _get_model_name(self, permission):
-        model_class = permission.content_type.model_class()
-        if model_class:
-            return str(model_class._meta.verbose_name_plural).capitalize()
-        return permission.content_type.model
+class RestrictPrivilegedFieldsMixin:
+    """Prevent non-superusers from changing privileged fields on UserForm.
+
+    Sets ``disabled=True`` on each privileged field, so Django ignores any
+    submitted value and falls back to the instance's existing one — even if
+    a malicious POST tries to inject ``is_superuser=True``.
+    """
+
+    PRIVILEGED_FIELDS = ("is_superuser", "is_staff", "groups", "user_permissions")
+
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        if not self.request.user.is_superuser:
+            for name in self.PRIVILEGED_FIELDS:
+                if name in form.fields:
+                    form.fields[name].disabled = True
+        return form
+
+
+class GroupPermissionFormMixin:
+    """Render the editable permission matrix on the GroupSite create/update form
+    and persist `perm_<codename>` POST values onto Group.permissions."""
+
+    def get_context_data(self, *args, **kwargs):
+        context = super().get_context_data(*args, **kwargs)
+        # During create the object doesn't exist yet -> empty selection.
+        instance = getattr(self, "object", None)
+        context.update(build_group_permission_context(instance, enabled=True))
+        return context
+
+    def form_valid(self, form):
+        # Defer to the parent so SaveOptionsMixin's _continue/_addanother
+        # handling and the standard redirect behavior keep working.
+        response = super().form_valid(form)
+        if self.object is not None:
+            self.object.permissions.set(resolve_posted_permissions(self.request.POST))
+        return response
 
 
 class PermissionUsersMixin:

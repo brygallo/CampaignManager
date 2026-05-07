@@ -1,5 +1,6 @@
 # Django
 from django.apps import apps
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import JsonResponse
 from django.template.loader import render_to_string
@@ -14,7 +15,9 @@ from superadmin.utils import import_class
 from .exceptions import WorkflowException
 
 
-class ChangeStateView(View):
+class ChangeStateView(LoginRequiredMixin, View):
+    # Anonymous AJAX requests get 403 instead of a redirect to login.
+    raise_exception = True
     http_method_names = ["get", "post"]
 
     def get(self, request, *args, **kwargs):
@@ -48,47 +51,46 @@ class ChangeStateView(View):
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        with transaction.atomic():
-            try:
+        try:
+            transition_name = request.POST.get("transition")
+            object = self.get_object()
 
-                transition_name = request.POST.get("transition")
-                object = self.get_object()
+            if not hasattr(object, transition_name):
+                message = "La transición %s no existe." % transition_name
+                return self.error(message)
 
-                if not hasattr(object, transition_name):
-                    message = "La transición %s no existe." % transition_name
-                    return self.error(message)
+            transition = getattr(object, transition_name)
+            if not has_transition_perm(transition, request.user):
+                return self.error(
+                    "No tiene los permisos para realizar esta acción."
+                )
 
-                transition = getattr(object, transition_name)
-                if not has_transition_perm(transition, request.user):
-                    return self.error(
-                        "No tiene los permisos para realizar esta acción."
+            transition_method = self.get_transition(object, transition_name)
+            form_class = self.get_form(transition_method)
+            if form_class:
+                form = form_class(**self.get_kwargs_form())
+                if not form.is_valid():
+                    template = render_to_string(
+                        "workflows/form.html",
+                        context={"form": form},
                     )
-
-                transition_method = self.get_transition(object, transition_name)
-                form_class = self.get_form(transition_method)
-                if form_class:
-                    form = form_class(**self.get_kwargs_form())
-                    if not form.is_valid():
-                        template = render_to_string(
-                            "workflows/form.html",
-                            context={"form": form},
-                        )
-                        return JsonResponse(
-                            {
-                                "template": template,
-                                "form_invalid": True,
-                                "error": "Revisa los campos marcados.",
-                            },
-                            status=400,
-                        )
-                response = transition(**self.get_kwargs())
-                if response:
-                    return response
-                object.save()
-                return self.success("La acción ha sido realizada con éxito.")
-            except WorkflowException as e:
-                transaction.set_rollback(True)
-                return self.error(str(e))
+                    return JsonResponse(
+                        {
+                            "template": template,
+                            "form_invalid": True,
+                            "error": "Revisa los campos marcados.",
+                        },
+                        status=400,
+                    )
+            response = transition(**self.get_kwargs())
+            if response:
+                return response
+            object.save()
+            return self.success("La acción ha sido realizada con éxito.")
+        except WorkflowException as e:
+            # Mark the @transaction.atomic frame for rollback (no inner savepoint).
+            transaction.set_rollback(True)
+            return self.error(str(e))
 
     def get_kwargs(self):
         kwargs = {"user": self.request.user}

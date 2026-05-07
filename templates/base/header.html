@@ -176,7 +176,7 @@
              aria-haspopup="menu"
              aria-label="Menú de usuario {{ user.get_full_name|default:user.username }}">
           {% if user.profile.avatar %}
-            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" />
+            <img src="{{ user.profile.avatar.url }}" alt="" />
           {% else %}
             <div class="symbol-label fs-3 bg-light-primary text-primary fw-bolder">
               {{ user.get_full_name|default:user.username|first|upper }}
@@ -189,7 +189,7 @@
             <div class="menu-content d-flex align-items-center px-3">
               <div class="symbol symbol-50px me-5">
                 {% if user.profile.avatar %}
-                  <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" />
+                  <img src="{{ user.profile.avatar.url }}" alt="" />
                 {% else %}
                   <div class="symbol-label fs-3 bg-light-primary text-primary fw-bolder">
                     {{ user.get_full_name|default:user.username|first|upper }}

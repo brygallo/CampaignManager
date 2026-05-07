@@ -42,7 +42,8 @@ def insoles_edit(instance):
 
 @register.simple_tag()
 def insoles_create_url(instance):
-    return None
+    # TODO: not yet implemented; return empty string to avoid breaking templates.
+    return ""
 
 
 @register.simple_tag()

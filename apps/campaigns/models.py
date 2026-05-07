@@ -135,8 +135,8 @@ class Campaign(BaseModel, CampaignTransitions, TransitionRequirementsMixin):
     def get_active_dependencies(self):
         """Return counts of dependent records that block close/cancel.
 
-        Eventos en SCHEDULED bloquean la agenda del candidato; publicidades
-        en estados intermedios siguen activas en territorio.
+        Scheduled events block the candidate agenda; ads in intermediate
+        states remain active in the territory.
         """
         from apps.political_agenda.models import PoliticalAgendaEvent
         from apps.territorial_ads.models import PhysicalAdvertisement

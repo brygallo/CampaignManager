@@ -1,0 +1,177 @@
+{% load permission_extras %}
+
+<div class="card card-flush mb-5 mb-xl-10">
+  <div class="card-header pt-7 flex-wrap gap-3">
+    <h3 class="card-title fw-bolder text-gray-900">
+      <i class="ki-outline ki-shield-tick fs-2 me-2 text-primary"></i>
+      Configuración de permisos
+    </h3>
+    <div class="card-toolbar d-flex align-items-center gap-3 flex-wrap">
+      <div class="position-relative w-md-300px">
+        <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-4"></i>
+        <label for="permissions-matrix-search" class="visually-hidden">Filtrar permisos</label>
+        <input id="permissions-matrix-search" type="search"
+               class="form-control form-control-sm form-control-solid ps-11"
+               placeholder="Filtrar por app, modelo o permiso..."
+               aria-label="Filtrar permisos"
+               enterkeyhint="search">
+      </div>
+      <span class="fs-7 text-muted" id="permissions-matrix-count"></span>
+    </div>
+  </div>
+
+  <div class="card-body pt-3">
+    {% if enabled %}
+      <div class="alert alert-primary d-flex align-items-center p-5 mb-7">
+        <i class="ki-outline ki-information-5 fs-2hx text-primary me-4"></i>
+        <div class="d-flex flex-column">
+          <span class="fw-bold mb-1">Cómo funciona</span>
+          <span class="fs-7">
+            Marca o desmarca cada acción para asignar permisos.
+            <i class="ki-outline ki-people fs-7 text-success"></i> indica que el permiso ya está disponible mediante un grupo.
+          </span>
+        </div>
+      </div>
+    {% endif %}
+
+    <div id="permissions-matrix-accordion">
+      {% for app in permission_groups %}
+        <div class="border rounded mb-4" data-permission-app
+             data-search-key="{{ app.app_label|lower }} {{ app.app_name|lower }}">
+          <button class="btn btn-light w-100 d-flex justify-content-between align-items-center rounded-bottom-0"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#permissions-app-{{ forloop.counter }}">
+            <span class="fw-bolder text-gray-800 d-flex align-items-center">
+              <i class="ki-outline ki-cube-2 fs-3 me-2 text-primary"></i>{{ app.app_name }}
+              <span class="text-muted fs-8 ms-2">({{ app.app_label }})</span>
+            </span>
+            <span class="badge badge-light-primary" data-permission-app-count>{{ app.models|length }}</span>
+          </button>
+          <div id="permissions-app-{{ forloop.counter }}" class="collapse show">
+            <div class="table-responsive">
+              <table class="table table-sm table-row-dashed align-middle mb-0">
+                <thead>
+                  <tr class="text-start text-muted fw-bold fs-7 text-uppercase">
+                    <th style="min-width:200px">Modelo</th>
+                    {% for action in standard_actions %}
+                      <th class="text-center">{{ standard_labels|get_item:action }}</th>
+                    {% endfor %}
+                    <th>Otros permisos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for model in app.models %}
+                    <tr data-permission-row
+                        data-search-key="{{ app.app_label|lower }} {{ app.app_name|lower }} {{ model.model_name|lower }} {{ model.model_label|lower }}">
+                      <td>
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold text-gray-800">{{ model.model_label }}</span>
+                          <code class="fs-8 text-muted">{{ model.model_name }}</code>
+                        </div>
+                      </td>
+                      {% for action in standard_actions %}
+                        {% with perm=model.standard|get_item:action %}
+                          <td class="text-center">
+                            {% if perm %}
+                              <label class="form-check form-check-custom form-check-solid form-check-sm justify-content-center">
+                                <input type="checkbox" class="form-check-input"
+                                       name="perm_{{ perm.codename }}"
+                                       value="{{ perm.content_type_id }}"
+                                       {% if perm.has_direct %}checked{% endif %}
+                                       {% if not enabled %}disabled{% endif %}
+                                       data-perm-id="{{ perm.id }}"
+                                       aria-label="{{ standard_labels|get_item:action }} {{ model.model_label }}">
+                              </label>
+                              {% if perm.via_groups %}
+                                <div class="mt-1">
+                                  {% for g in perm.via_groups %}
+                                    <i class="ki-outline ki-people fs-8 text-success" title="Heredado del grupo {{ g }}"></i>
+                                  {% endfor %}
+                                </div>
+                              {% endif %}
+                            {% else %}
+                              <span class="text-muted fs-8">—</span>
+                            {% endif %}
+                          </td>
+                        {% endwith %}
+                      {% endfor %}
+                      <td>
+                        {% if model.custom %}
+                          <div class="d-flex flex-wrap gap-3">
+                            {% for perm in model.custom %}
+                              <label class="form-check form-check-custom form-check-solid form-check-sm">
+                                <input type="checkbox" class="form-check-input"
+                                       name="perm_{{ perm.codename }}"
+                                       value="{{ perm.content_type_id }}"
+                                       {% if perm.has_direct %}checked{% endif %}
+                                       {% if not enabled %}disabled{% endif %}>
+                                <span class="form-check-label fs-7 ms-2">
+                                  {{ perm.name }}
+                                  {% if perm.via_groups %}
+                                    <i class="ki-outline ki-people fs-8 text-success ms-1" title="Heredado de grupo"></i>
+                                  {% endif %}
+                                </span>
+                              </label>
+                            {% endfor %}
+                          </div>
+                        {% else %}
+                          <span class="text-muted fs-8">—</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="alert alert-info mb-0">No hay permisos registrados en el sistema.</div>
+      {% endfor %}
+    </div>
+
+    <div id="permissions-matrix-empty" class="alert alert-warning d-none mt-4">
+      No se encontraron permisos que coincidan con el filtro.
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const input = document.getElementById("permissions-matrix-search");
+    const apps  = document.querySelectorAll("[data-permission-app]");
+    const empty = document.getElementById("permissions-matrix-empty");
+    const counter = document.getElementById("permissions-matrix-count");
+    if (!input || !apps.length) return;
+
+    function totalRows() {
+      let total = 0;
+      apps.forEach(a => total += a.querySelectorAll("[data-permission-row]").length);
+      return total;
+    }
+    const TOTAL = totalRows();
+    if (counter) counter.textContent = TOTAL + " permisos visibles";
+
+    input.addEventListener("input", function () {
+      const q = input.value.toLowerCase().trim();
+      let visibleRows = 0;
+
+      apps.forEach(app => {
+        let appRowsVisible = 0;
+        app.querySelectorAll("[data-permission-row]").forEach(row => {
+          const match = !q || (row.dataset.searchKey || "").includes(q);
+          row.classList.toggle("d-none", !match);
+          if (match) appRowsVisible++;
+        });
+        const counterEl = app.querySelector("[data-permission-app-count]");
+        if (counterEl) counterEl.textContent = appRowsVisible;
+        app.classList.toggle("d-none", !!q && appRowsVisible === 0);
+        visibleRows += appRowsVisible;
+      });
+
+      if (empty) empty.classList.toggle("d-none", visibleRows > 0);
+      if (counter) counter.textContent = visibleRows + " de " + TOTAL + " permisos visibles";
+    });
+  })();
+</script>

@@ -229,6 +229,7 @@ class WorkflowStateFilterMixin:
 
         base_qs = self._base_queryset_for_counts()
         counts = dict(base_qs.values("state").annotate(c=Count("state")).values_list("state", "c"))
+        total_count = base_qs.count()
 
         current = self.get_state_filter_value()
         base_params = self._request_params_without_state()
@@ -245,7 +246,7 @@ class WorkflowStateFilterMixin:
             {
                 "value": "",
                 "label": "Todos",
-                "count": base_qs.count(),
+                "count": total_count,
                 "css": "primary",
                 "icon": "row-horizontal",
                 "url": make_url(),
@@ -268,6 +269,6 @@ class WorkflowStateFilterMixin:
             )
 
         context["state_filter_items"] = items
-        context["state_filter_total"] = base_qs.count()
+        context["state_filter_total"] = total_count
         context["current_state_filter"] = current
         return context

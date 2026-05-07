@@ -190,6 +190,7 @@ class CompetitorAdvertisingDetectionForm(ModelForm):
                     "political_organization__icontains",
                     "candidate_name__icontains",
                 ],
+                dependent_fields={"campaign": "campaign"},
                 max_results=100,
                 attrs={
                     "data-minimum-input-length": 0,

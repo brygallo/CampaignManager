@@ -43,9 +43,11 @@
     };
   </script>
 
-  <a href="#kt_app_content_container" class="visually-hidden-focusable position-absolute top-0 start-50 translate-middle-x mt-2 btn btn-sm btn-primary" style="z-index: 1100;">
+  <a href="#kt_app_content_container" class="visually-hidden-focusable position-absolute top-0 start-50 translate-middle-x mt-2 btn btn-sm btn-primary" style="z-index: 1101;">
     Saltar al contenido principal
   </a>
+
+  <div id="cm-live-region" class="visually-hidden" role="status" aria-live="polite"></div>
 
   <div class="d-flex flex-column flex-root app-root" id="kt_app_root">
     <div class="app-page flex-column flex-column-fluid" id="kt_app_page">
@@ -75,6 +77,12 @@
                   {% endfor %}
                   <script>
                     document.addEventListener("DOMContentLoaded", function () {
+                      var liveRegion = document.getElementById("cm-live-region");
+                      {% for message in messages %}
+                        {% if message.tags != 'error' %}
+                          if (liveRegion) { liveRegion.textContent = "{{ message|escapejs }}"; }
+                        {% endif %}
+                      {% endfor %}
                       if (typeof toastr === "undefined") return;
                       toastr.options = {
                         positionClass: "toastr-top-right",

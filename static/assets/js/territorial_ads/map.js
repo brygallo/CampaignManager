@@ -233,8 +233,12 @@
     var titleEl = modalEl.querySelector("[data-modal-title]");
     var bodyEl = modalEl.querySelector("[data-modal-body]");
     var detailLink = modalEl.querySelector("[data-detail-link]");
-    titleEl.textContent = ad.label || "Publicidad";
-    detailLink.href = ad.url;
+    if (titleEl) {
+      titleEl.textContent = ad.label || "Publicidad";
+    }
+    if (detailLink) {
+      detailLink.href = ad.url;
+    }
     setHtml(
       bodyEl,
       '<div class="text-center text-muted py-10">' +
@@ -312,7 +316,7 @@
         if (submitButton) {
           submitButton.disabled = true;
         }
-        fetch(form.action, {
+        fetch(url, {
           method: "POST",
           body: new FormData(form),
           headers: {
@@ -337,7 +341,10 @@
             setHtml(bodyEl, result.data.html || "");
             bindForm();
           })
-          .catch(function () {
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("territorial-ads map create failed", error);
+            }
             setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar el aviso.</div>');
           })
           .finally(function () {
@@ -568,6 +575,12 @@
           });
           if (bounds.length) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
+          }
+        })
+        .catch(function () {
+          updateCount(counterEl, 0);
+          if (window.console && window.console.error) {
+            window.console.error("Physical ad map data load failed");
           }
         });
     }

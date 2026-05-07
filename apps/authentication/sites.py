@@ -6,10 +6,12 @@ from superadmin.decorators import register
 
 from core.base import BaseSite
 
-from .forms import PermissionForm, RuleForm, UserForm
+from .forms import GroupForm, PermissionForm, RuleForm, UserForm
 from .mixins import (
     GroupDetailMixin,
+    GroupPermissionFormMixin,
     PermissionUsersMixin,
+    RestrictPrivilegedFieldsMixin,
     UserListMixin,
     UserPermissionsListMixin,
 )
@@ -19,6 +21,7 @@ from .models import User
 @register("authentication.User")
 class UserSite(BaseSite):
     form_class = UserForm
+    form_mixins = (RestrictPrivilegedFieldsMixin,)
     queryset = User.objects.select_related("profile").prefetch_related("groups")
     list_mixins = (UserListMixin,)
     detail_mixins = (UserPermissionsListMixin,)
@@ -53,10 +56,12 @@ class UserSite(BaseSite):
 
 @register("auth.Group")
 class GroupSite(BaseSite):
-    queryset = Group.objects.prefetch_related("permissions").order_by("name")
+    form_class = GroupForm
+    form_mixins = (GroupPermissionFormMixin,)
     detail_mixins = (GroupDetailMixin,)
+    form_template_name = "authentication/group_form.html"
     detail_template_name = "authentication/group_detail.html"
-    fields = ("name", "permissions")
+    queryset = Group.objects.prefetch_related("permissions").order_by("name")
     list_fields = ("name",)
     detail_fields = ("name",)
     search_params = ("name__icontains",)
@@ -74,13 +79,12 @@ class PermissionSite(BaseSite):
     detail_template_name = "authentication/permission_detail.html"
     list_fields = ("name", "codename", "content_type:objeto")
     detail_fields = PermissionForm.Meta.fieldsets
-    search_fields = (
+    search_params = (
         "name__icontains",
         "codename__icontains",
         "content_type__model__icontains",
         "content_type__app_label__icontains",
     )
-    search_params = search_fields
 
 
 @register("tracing.Trace")

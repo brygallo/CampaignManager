@@ -27,7 +27,7 @@
              class="form-control bg-transparent {% if form.username.errors %}is-invalid{% endif %}"
              value="{{ form.username.value|default_if_none:'' }}"
              placeholder="equipo@campana.com" autofocus required>
-      {% if form.username.errors %}<div class="text-danger small mt-2">{{ form.username.errors|join:", " }}</div>{% endif %}
+      {% if form.username.errors %}<div class="invalid-feedback d-block" role="alert">{{ form.username.errors|join:", " }}</div>{% endif %}
     </div>
 
     <div class="fv-row mb-3" data-kt-password-meter="true">

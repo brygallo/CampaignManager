@@ -65,18 +65,21 @@ class PoliticalAgendaRequestForm(ModelForm):
             "canton": ModelSelect2Widget(
                 model=Canton,
                 search_fields=["name__icontains", "province__name__icontains"],
+                dependent_fields={"province": "province"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
             ),
             "parish": ModelSelect2Widget(
                 model=Parish,
                 search_fields=["name__icontains", "canton__name__icontains"],
+                dependent_fields={"canton": "canton"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
             ),
             "sector": ModelSelect2Widget(
                 model=Sector,
                 search_fields=["name__icontains", "parish__name__icontains"],
+                dependent_fields={"parish": "parish"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
             ),
@@ -123,6 +126,7 @@ class PoliticalAgendaEventForm(ModelForm):
             "source_request": ModelSelect2Widget(
                 model=PoliticalAgendaRequest,
                 search_fields=["title__icontains", "requester_name__icontains", "organization__icontains"],
+                dependent_fields={"campaign": "campaign"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "PoliticalAgendaRequest"},
             ),
@@ -135,18 +139,21 @@ class PoliticalAgendaEventForm(ModelForm):
             "canton": ModelSelect2Widget(
                 model=Canton,
                 search_fields=["name__icontains", "province__name__icontains"],
+                dependent_fields={"province": "province"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
             ),
             "parish": ModelSelect2Widget(
                 model=Parish,
                 search_fields=["name__icontains", "canton__name__icontains"],
+                dependent_fields={"canton": "canton"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
             ),
             "sector": ModelSelect2Widget(
                 model=Sector,
                 search_fields=["name__icontains", "parish__name__icontains"],
+                dependent_fields={"parish": "parish"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
             ),

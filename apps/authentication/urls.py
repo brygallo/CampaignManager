@@ -59,10 +59,4 @@ urlpatterns = [
         views.UserPermissionView.as_view(),
         name="user_permissions",
     ),
-    # Group permissions matrix (staff only)
-    path(
-        "groups/<int:pk>/permissions/",
-        views.GroupPermissionView.as_view(),
-        name="group_permissions",
-    ),
 ]

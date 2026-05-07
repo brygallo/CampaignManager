@@ -1,89 +1,55 @@
-{% load superadmin_forms %}
-{# Custom widget for image fields. Replaces Django's default ClearableFileInput
-   with a thumbnail + drag-and-drop replacement + live preview. The hidden
-   inputs reproduce the names ClearableFileInput expects on POST:
-     - <name>        : the new file
-     - <name>-clear  : "on" when the user wants to remove the existing file
-#}
+{% load static %}
 {% with input_id=field.id_for_label input_name=field.html_name help_id=field.id_for_label|add:"-help" %}
-<div class="image-input-card{% if field.errors %} image-input-card--invalid{% endif %}"
-     data-image-input
-     data-input-id="{{ input_id }}">
+<div class="image-input image-input-outline{% if not file_url %} image-input-empty image-input-placeholder{% endif %}"
+     data-kt-image-input="true"
+     style="background-image: url('{% static 'assets/media/svg/files/blank-image.svg' %}')">
+  <div class="image-input-wrapper w-150px h-150px"
+       {% if file_url %}style="background-image: url('{{ file_url }}')"{% endif %}></div>
 
-  {% if file_url %}
-    <div class="image-input-card__current" data-current>
-      <a class="image-input-card__thumb"
-         href="{{ file_url }}"
-         data-image-lightbox
-         data-image-src="{{ file_url }}"
-         data-image-name="{{ file_name }}"
-         aria-label="Ampliar imagen">
-        <img src="{{ file_url }}" alt="{{ file_name }}" loading="lazy">
-        <span class="image-input-card__thumb-zoom" aria-hidden="true">
-          <i class="ki-outline ki-magnifier fs-3"></i>
-        </span>
-      </a>
-      <div class="image-input-card__current-meta">
-        <div class="image-input-card__filename text-truncate" title="{{ file_name }}">
-          <i class="ki-outline ki-picture fs-6 me-1 text-primary" aria-hidden="true"></i>
-          <span>{{ file_name }}</span>
-        </div>
-        <div class="image-input-card__actions">
-          <a href="{{ file_url }}" target="_blank" rel="noopener"
-             class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-1">
-            <i class="ki-outline ki-exit-up fs-5"></i>
-            <span>Abrir</span>
-          </a>
-          {% if not field.field.required %}
-            <label class="image-input-card__clear-toggle" data-clear-toggle>
-              <input type="checkbox"
-                     name="{{ input_name }}-clear"
-                     id="{{ input_id }}-clear_id"
-                     data-clear-checkbox>
-              <span><i class="ki-outline ki-trash fs-5 me-1"></i>Eliminar</span>
-            </label>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  {% endif %}
-
-  <label class="image-input-card__dropzone{% if not file_url %} image-input-card__dropzone--empty{% endif %}"
-         for="{{ input_id }}"
-         data-dropzone>
-    <div class="image-input-card__dropzone-empty" data-empty-state>
-      <span class="image-input-card__dropzone-icon">
-        <i class="ki-outline ki-picture fs-2x text-primary" aria-hidden="true"></i>
-      </span>
-      <div class="image-input-card__dropzone-text">
-        <strong class="d-block fs-7 text-dark">
-          {% if file_url %}Reemplazar imagen{% else %}Sube una imagen{% endif %}
-        </strong>
-        <span class="text-muted fs-8">Haz clic o arrastra el archivo aquí · JPG, PNG o WEBP</span>
-      </div>
-    </div>
-    <div class="image-input-card__dropzone-preview d-none" data-new-preview>
-      <img src="" alt="Vista previa" data-new-image>
-      <div class="image-input-card__dropzone-info">
-        <div class="image-input-card__filename text-truncate fs-7 fw-semibold text-dark" data-new-name></div>
-        <span class="text-muted fs-8" data-new-size></span>
-      </div>
-      <button type="button"
-              class="btn btn-sm btn-icon btn-light-danger image-input-card__clear-new"
-              data-clear-new
-              aria-label="Quitar selección">
-        <i class="ki-outline ki-cross fs-3"></i>
-      </button>
-    </div>
+  <label class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+         data-kt-image-input-action="change"
+         data-bs-toggle="tooltip"
+         title="Cambiar imagen">
+    <i class="ki-outline ki-pencil fs-7"></i>
     <input type="file"
-           class="image-input-card__input"
            id="{{ input_id }}"
            name="{{ input_name }}"
-           accept="image/*"
-           data-file-input
+           accept=".png, .jpg, .jpeg, .webp"
+           aria-label="{{ field.label }}"
            {% if field.field.required and not file_url %}required{% endif %}
            {% if help_id %}aria-describedby="{{ help_id }}"{% endif %}>
+    <input type="hidden" name="{{ input_name }}-clear" value="">
   </label>
 
+  <span class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+        data-kt-image-input-action="cancel"
+        data-bs-toggle="tooltip"
+        title="Cancelar cambio">
+    <i class="ki-outline ki-cross fs-2"></i>
+  </span>
+
+  {% if not field.field.required and file_url %}
+    <span class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+          data-kt-image-input-action="remove"
+          data-bs-toggle="tooltip"
+          title="Eliminar imagen">
+      <i class="ki-outline ki-cross fs-2"></i>
+    </span>
+  {% endif %}
 </div>
+{% if file_url %}
+  <div class="d-flex align-items-center gap-2 mt-2 fs-8 text-muted">
+    <i class="ki-outline ki-picture fs-6 text-primary" aria-hidden="true"></i>
+    <span class="text-truncate" title="{{ file_name }}">{{ file_name }}</span>
+    <a href="{{ file_url }}"
+       data-image-lightbox
+       data-image-src="{{ file_url }}"
+       data-image-name="{{ file_name }}"
+       class="btn btn-sm btn-light-primary py-1 px-2 ms-auto d-inline-flex align-items-center gap-1"
+       aria-label="Ampliar imagen">
+      <i class="ki-outline ki-magnifier fs-5"></i>
+      <span>Ver</span>
+    </a>
+  </div>
+{% endif %}
 {% endwith %}
