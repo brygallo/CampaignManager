@@ -9,6 +9,7 @@ The cards consume Metronic v10 ``ki-outline`` icon names (no Font Awesome
 or Material Icons) and Bootstrap color names — see ``base_list.html``
 for the exact rendering contract.
 """
+
 from django.db.models import Count
 from django.urls import reverse
 
@@ -112,8 +113,7 @@ class DropdownFilterMixin:
 
         params = self._get_session_params()
         options = [
-            self._build_filter_option(field_def, params)
-            for field_def in site_obj.filter_fields
+            self._build_filter_option(field_def, params) for field_def in site_obj.filter_fields
         ]
 
         session_url = reverse(
@@ -152,23 +152,23 @@ class WorkflowStateFilterMixin:
     # (lowercased substring of the label, ki-* icon name, Bootstrap color).
     # First match wins; fall back is ``("abstract-26", "info")``.
     STATE_META_RULES = (
-        ("anulad",   "cross-circle", "danger"),
-        ("cancel",   "cross-circle", "danger"),
-        ("rechaz",   "cross-square", "danger"),
-        ("finaliz",  "check-circle", "success"),
+        ("anulad", "cross-circle", "danger"),
+        ("cancel", "cross-circle", "danger"),
+        ("rechaz", "cross-square", "danger"),
+        ("finaliz", "check-circle", "success"),
         ("terminad", "check-circle", "success"),
-        ("cerrad",   "lock-2",       "success"),
-        ("closed",   "lock-2",       "success"),
-        ("aprobad",  "verify",       "success"),
-        ("ejecu",    "rocket",       "primary"),
-        ("activ",    "rocket",       "primary"),
-        ("active",   "rocket",       "primary"),
-        ("publicad", "global",       "primary"),
-        ("pendient", "time",         "warning"),
-        ("pres",     "time",         "warning"),
-        ("revisi",   "magnifier",    "info"),
-        ("borrador", "document",     "warning"),
-        ("draft",    "document",     "warning"),
+        ("cerrad", "lock-2", "success"),
+        ("closed", "lock-2", "success"),
+        ("aprobad", "verify", "success"),
+        ("ejecu", "rocket", "primary"),
+        ("activ", "rocket", "primary"),
+        ("active", "rocket", "primary"),
+        ("publicad", "global", "primary"),
+        ("pendient", "time", "warning"),
+        ("pres", "time", "warning"),
+        ("revisi", "magnifier", "info"),
+        ("borrador", "document", "warning"),
+        ("draft", "document", "warning"),
     )
 
     # ----- helpers -----
@@ -194,9 +194,7 @@ class WorkflowStateFilterMixin:
         workflow = getattr(model, "workflow", None)
         if not workflow:
             return ()
-        return tuple(
-            (str(value), str(label)) for value, label in workflow.choices
-        )
+        return tuple((str(value), str(label)) for value, label in workflow.choices)
 
     def get_state_filter_item_meta(self, label):
         ll = (label or "").lower()
@@ -230,13 +228,10 @@ class WorkflowStateFilterMixin:
             return context
 
         base_qs = self._base_queryset_for_counts()
-        counts = dict(
-            base_qs.values("state").annotate(c=Count("state")).values_list("state", "c")
-        )
+        counts = dict(base_qs.values("state").annotate(c=Count("state")).values_list("state", "c"))
 
         current = self.get_state_filter_value()
         base_params = self._request_params_without_state()
-        base_qs_string = base_params.urlencode()
         path = self._request_visible_path()
 
         def make_url(extra=None):
@@ -246,27 +241,31 @@ class WorkflowStateFilterMixin:
             qs = params.urlencode()
             return f"{path}?{qs}" if qs else path
 
-        items = [{
-            "value": "",
-            "label": "Todos",
-            "count": base_qs.count(),
-            "css": "primary",
-            "icon": "row-horizontal",
-            "url": make_url(),
-            "active": not current,
-        }]
+        items = [
+            {
+                "value": "",
+                "label": "Todos",
+                "count": base_qs.count(),
+                "css": "primary",
+                "icon": "row-horizontal",
+                "url": make_url(),
+                "active": not current,
+            }
+        ]
 
         for value, label in choices:
             icon, css = self.get_state_filter_item_meta(label)
-            items.append({
-                "value": value,
-                "label": label,
-                "count": counts.get(int(value), 0),
-                "css": css,
-                "icon": icon,
-                "url": make_url(value),
-                "active": current == value,
-            })
+            items.append(
+                {
+                    "value": value,
+                    "label": label,
+                    "count": counts.get(int(value), 0),
+                    "css": css,
+                    "icon": icon,
+                    "url": make_url(value),
+                    "active": current == value,
+                }
+            )
 
         context["state_filter_items"] = items
         context["state_filter_total"] = base_qs.count()

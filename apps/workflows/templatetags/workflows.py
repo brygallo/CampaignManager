@@ -1,6 +1,4 @@
 from django import template
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
 
 register = template.Library()

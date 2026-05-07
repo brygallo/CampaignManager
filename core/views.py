@@ -1,4 +1,5 @@
 """Generic views: home dashboard, Select2 AutoResponse, error pages."""
+
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -75,9 +76,7 @@ class AutoResponseView(BaseAutoResponseView):
         }
         kwargs.update(
             {
-                f"{model_field_name}__in": self.request.GET.getlist(
-                    f"{form_field_name}[]", []
-                )
+                f"{model_field_name}__in": self.request.GET.getlist(f"{form_field_name}[]", [])
                 for form_field_name, model_field_name in self.widget.dependent_fields.items()
             }
         )
@@ -114,17 +113,14 @@ def home(request):
         "elections_upcoming": upcoming_elections_qs.count(),
     }
 
-    recent_campaigns = (
-        Campaign.objects
-        .select_related("candidate", "election", "movement")
-        .order_by("-created_date")[:5]
-    )
+    recent_campaigns = Campaign.objects.select_related(
+        "candidate", "election", "movement"
+    ).order_by("-created_date")[:5]
 
     # Trend: campaigns created per month, last 6 months (oldest -> newest).
     six_months_ago = (today.replace(day=1) - timedelta(days=180)).replace(day=1)
     monthly = (
-        Campaign.objects
-        .filter(created_date__gte=six_months_ago)
+        Campaign.objects.filter(created_date__gte=six_months_ago)
         .annotate(month=TruncMonth("created_date"))
         .values("month")
         .annotate(total=Count("id"))
@@ -146,8 +142,7 @@ def home(request):
     # Distribution: physical ads by state (workflow choices order).
     ad_workflow = PhysicalAdWorkflow()
     ad_state_counts = dict(
-        PhysicalAdvertisement.objects
-        .values_list("state")
+        PhysicalAdvertisement.objects.values_list("state")
         .annotate(total=Count("id"))
         .values_list("state", "total")
     )
@@ -159,8 +154,7 @@ def home(request):
     # Distribution: campaigns by visible state.
     campaign_workflow = CampaignWorkflow()
     campaign_state_counts = dict(
-        Campaign.objects
-        .values_list("state")
+        Campaign.objects.values_list("state")
         .annotate(total=Count("id"))
         .values_list("state", "total")
     )
@@ -189,21 +183,77 @@ def home(request):
 # defaults defined in module_list.html are used.
 SUPERADMIN_MODULE_META = {
     # Group-level metadata (sections from menu.yaml)
-    "campañas": {"icon": "flag", "color": "primary", "description": "Campañas, candidatos, elecciones y movimientos políticos."},
-    "control territorial": {"icon": "geolocation", "color": "success", "description": "Publicidad y operaciones en territorio."},
-    "sistema": {"icon": "setting-2", "color": "info", "description": "Cuentas, roles, permisos y auditoría del sistema."},
+    "campañas": {
+        "icon": "flag",
+        "color": "primary",
+        "description": "Campañas, candidatos, elecciones y movimientos políticos.",
+    },
+    "control territorial": {
+        "icon": "geolocation",
+        "color": "success",
+        "description": "Publicidad y operaciones en territorio.",
+    },
+    "sistema": {
+        "icon": "setting-2",
+        "color": "info",
+        "description": "Cuentas, roles, permisos y auditoría del sistema.",
+    },
     # Leaf-level metadata
-    "campañas electorales": {"icon": "flag", "color": "primary", "description": "Gestiona campañas activas y archivadas."},
-    "candidatos": {"icon": "user-tick", "color": "success", "description": "Personas que postulan a cargos."},
-    "elecciones": {"icon": "element-equal", "color": "info", "description": "Periodos y procesos electorales."},
-    "movimientos políticos": {"icon": "abstract-26", "color": "warning", "description": "Organizaciones políticas registradas."},
-    "cargos": {"icon": "medal-star", "color": "danger", "description": "Posiciones disputadas en cada elección."},
-    "publicidad": {"icon": "billboard", "color": "success", "description": "Vallas, lonas y soportes publicitarios en campo."},
-    "usuarios": {"icon": "profile-circle", "color": "primary", "description": "Cuentas, datos y estado de los usuarios."},
-    "grupos": {"icon": "people", "color": "success", "description": "Roles agrupando permisos por función."},
-    "permisos": {"icon": "shield-tick", "color": "info", "description": "Permisos disponibles en el sistema."},
-    "auditoría": {"icon": "time", "color": "warning", "description": "Trazabilidad de acciones realizadas."},
-    "reglas de auditoría": {"icon": "rule", "color": "danger", "description": "Configura qué eventos se registran."},
+    "campañas electorales": {
+        "icon": "flag",
+        "color": "primary",
+        "description": "Gestiona campañas activas y archivadas.",
+    },
+    "candidatos": {
+        "icon": "user-tick",
+        "color": "success",
+        "description": "Personas que postulan a cargos.",
+    },
+    "elecciones": {
+        "icon": "element-equal",
+        "color": "info",
+        "description": "Periodos y procesos electorales.",
+    },
+    "movimientos políticos": {
+        "icon": "abstract-26",
+        "color": "warning",
+        "description": "Organizaciones políticas registradas.",
+    },
+    "cargos": {
+        "icon": "medal-star",
+        "color": "danger",
+        "description": "Posiciones disputadas en cada elección.",
+    },
+    "publicidad": {
+        "icon": "billboard",
+        "color": "success",
+        "description": "Vallas, lonas y soportes publicitarios en campo.",
+    },
+    "usuarios": {
+        "icon": "profile-circle",
+        "color": "primary",
+        "description": "Cuentas, datos y estado de los usuarios.",
+    },
+    "grupos": {
+        "icon": "people",
+        "color": "success",
+        "description": "Roles agrupando permisos por función.",
+    },
+    "permisos": {
+        "icon": "shield-tick",
+        "color": "info",
+        "description": "Permisos disponibles en el sistema.",
+    },
+    "auditoría": {
+        "icon": "time",
+        "color": "warning",
+        "description": "Trazabilidad de acciones realizadas.",
+    },
+    "reglas de auditoría": {
+        "icon": "rule",
+        "color": "danger",
+        "description": "Configura qué eventos se registran.",
+    },
 }
 
 
@@ -239,7 +289,6 @@ class SuperAdminLandingView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        menu_tree = self.request.session.get("__noop__") or kwargs.get("menu_tree")
         # menu_tree comes from the superadmin context processor; re-decorate it.
         from superadmin.context_processors import menu as menu_cp
 

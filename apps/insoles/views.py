@@ -1,4 +1,4 @@
-"""View to response rendered templates """
+"""View to response rendered templates"""
 
 # Django
 from django import forms
@@ -10,7 +10,6 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse_lazy
 from django.apps import apps
 from django.forms import modelform_factory
-from django.contrib.admin.utils import flatten
 
 # Third party integration
 from superadmin import site
@@ -400,9 +399,7 @@ class InstanceBaseRelatedFormView(InstanceBaseFormView):
         instance = form.save(commit=False)
         related_field = self.find_related_field()
         if related_field:
-            related_instance = get_object_or_404(
-                self.parent_model, pk=self.kwargs.get("pk")
-            )
+            related_instance = get_object_or_404(self.parent_model, pk=self.kwargs.get("pk"))
             setattr(instance, related_field.name, related_instance)
         else:
             return self.error("No se encontró la relación entre los modelos.")

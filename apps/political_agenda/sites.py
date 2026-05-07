@@ -4,7 +4,6 @@ from core.base import BaseSite
 from core.list_mixins import DropdownFilterMixin, WorkflowStateFilterMixin
 
 from .forms import PoliticalAgendaEventForm, PoliticalAgendaRequestForm
-from .models import PoliticalAgendaEvent, PoliticalAgendaRequest
 
 
 @register("political_agenda.PoliticalAgendaRequest")

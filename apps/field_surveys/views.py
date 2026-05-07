@@ -1,15 +1,12 @@
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
-from django.shortcuts import redirect
 from django.urls import reverse
 from django.views import View
-from django.views.generic import FormView, TemplateView
+from django.views.generic import TemplateView
 
 from apps.campaigns.models import Campaign
 
-from .forms import FieldSurveyQuickForm
 from .models import (
     Competitor,
     CompetitorAdvertisingDetection,
@@ -30,11 +27,7 @@ DEFAULT_VISIT_COLOR = "#3e97ff"
 
 
 def can_view_all_field_surveys(user):
-    return (
-        user.is_superuser
-        or user.is_staff
-        or user.has_perm("field_surveys.view_all_fieldsurvey")
-    )
+    return user.is_superuser or user.is_staff or user.has_perm("field_surveys.view_all_fieldsurvey")
 
 
 def fieldsurvey_queryset_for_user(user):
@@ -72,10 +65,6 @@ class FieldSurveyFilterMixin:
             queryset = queryset.filter(campaign_id=params["campaign"])
         if params.get("brigadier") and can_view_all_field_surveys(self.request.user):
             queryset = queryset.filter(brigadier_id=params["brigadier"])
-        if params.get("parish"):
-            queryset = queryset.filter(parish__name__icontains=params["parish"])
-        if params.get("neighborhood"):
-            queryset = queryset.filter(neighborhood__name__icontains=params["neighborhood"])
         if params.get("result"):
             queryset = queryset.filter(results__id=params["result"])
         if params.get("date_from"):
@@ -90,21 +79,6 @@ class FieldSurveyFilterMixin:
 
 class FieldSurveyAccessMixin(FieldSurveySpecialViewMixin):
     pass
-
-
-class FieldSurveyQuickCreateView(LoginRequiredMixin, FormView):
-    template_name = "field_surveys/survey_form.html"
-    form_class = FieldSurveyQuickForm
-
-    def form_valid(self, form):
-        survey = form.save(commit=False)
-        survey.brigadier = self.request.user
-        survey.created_by = self.request.user
-        survey.save()
-        form.save_m2m()
-        form.save_related_records(survey, self.request.user)
-        messages.success(self.request, "Levantamiento guardado correctamente.")
-        return redirect(fieldsurvey_detail_url(survey.pk))
 
 
 class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, TemplateView):
@@ -200,7 +174,7 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
                     "id": survey.id,
                     "lat": float(survey.latitude),
                     "lng": float(survey.longitude),
-                    "label": survey.code or str(survey),
+                    "label": str(survey),
                     "result": result_code,
                     "result_label": result_code.replace("_", " ").title() if result_code else "",
                     "voters": survey.voters_count,
@@ -219,7 +193,9 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
                     "lng": float(ad.longitude),
                     "label": str(ad.competitor),
                     "type_label": ad.advertising_type.name if ad.advertising_type_id else "",
-                    "type_icon": ad.advertising_type.icon if ad.advertising_type_id else "element-12",
+                    "type_icon": ad.advertising_type.icon
+                    if ad.advertising_type_id
+                    else "element-12",
                     "color": ad.competitor.color or "#d9214e",
                     "url": competitor_detection_detail_url(ad.id),
                 }
@@ -234,8 +210,12 @@ def get_filter_context(request):
         campaigns = campaigns.filter(field_surveys__brigadier=request.user).distinct()
     return {
         "filter_campaigns": campaigns,
-        "filter_results": SurveyResultOption.objects.filter(is_active=True).order_by("order", "name"),
-        "filter_brigadiers": FieldSurvey.objects.values("brigadier_id", "brigadier__username", "brigadier__first_name", "brigadier__last_name")
+        "filter_results": SurveyResultOption.objects.filter(is_active=True).order_by(
+            "order", "name"
+        ),
+        "filter_brigadiers": FieldSurvey.objects.values(
+            "brigadier_id", "brigadier__username", "brigadier__first_name", "brigadier__last_name"
+        )
         .distinct()
         .order_by("brigadier__first_name", "brigadier__last_name", "brigadier__username"),
     }

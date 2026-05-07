@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from apps.campaigns.models import Campaign, Candidate, Election, PoliticalMovement, Position
-from apps.field_surveys.forms import FieldSurveyQuickForm
+from apps.field_surveys.forms import CompetitorAdvertisingDetectionForm, FieldSurveyForm
 from apps.field_surveys.models import (
     AdvertisingType,
     Competitor,
@@ -12,7 +12,6 @@ from apps.field_surveys.models import (
     FieldSurvey,
 )
 from apps.field_surveys.views import fieldsurvey_queryset_for_user
-from apps.territorial_ads.models import AdvertisingCostType, PhysicalAdvertisement
 
 
 class FieldSurveyRulesTests(TestCase):
@@ -42,9 +41,6 @@ class FieldSurveyRulesTests(TestCase):
         self.ad_type, _ = AdvertisingType.objects.get_or_create(
             code="AFICHE", defaults={"name": "Afiche", "icon": "document"}
         )
-        self.cost_type, _ = AdvertisingCostType.objects.get_or_create(
-            code="GRATUITA", defaults={"name": "Gratuita", "requires_amount": False}
-        )
         self.competitor = Competitor.objects.create(
             campaign=self.campaign,
             list_number="1",
@@ -62,8 +58,8 @@ class FieldSurveyRulesTests(TestCase):
         self.assertTrue(self.survey.code.startswith("LC-"))
         self.assertEqual(self.survey.code, f"LC-{self.survey.pk:06d}")
 
-    def test_quick_form_allows_empty_person_data_with_required_gps(self):
-        form = FieldSurveyQuickForm(
+    def test_field_survey_form_allows_empty_person_data_with_required_gps(self):
+        form = FieldSurveyForm(
             data={
                 "campaign": self.campaign.id,
                 "latitude": "-2.170998",
@@ -75,8 +71,8 @@ class FieldSurveyRulesTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_quick_form_requires_gps(self):
-        form = FieldSurveyQuickForm(
+    def test_field_survey_form_requires_gps(self):
+        form = FieldSurveyForm(
             data={
                 "campaign": self.campaign.id,
                 "voters_count": "0",
@@ -87,52 +83,47 @@ class FieldSurveyRulesTests(TestCase):
         self.assertIn("latitude", form.errors)
         self.assertIn("longitude", form.errors)
 
-    def test_quick_form_offering_advertising_requires_owner_data(self):
-        form = FieldSurveyQuickForm(
+    def test_competitor_detection_form_requires_gps(self):
+        form = CompetitorAdvertisingDetectionForm(
             data={
                 "campaign": self.campaign.id,
-                "latitude": "-2.170998",
-                "longitude": "-79.922359",
-                "location_was_manually_adjusted": "False",
-                "voters_count": "0",
-                "offer_advertising": "on",
-                "offered_advertisement_type": self.ad_type.id,
+                "competitor": self.competitor.id,
+                "advertising_type": self.ad_type.id,
             }
         )
 
         self.assertFalse(form.is_valid())
-        self.assertIn("offered_owner_name", form.errors)
-        self.assertIn("offered_owner_phone", form.errors)
+        self.assertIn("latitude", form.errors)
+        self.assertIn("longitude", form.errors)
 
-    def test_quick_form_offering_advertising_creates_physical_ad(self):
-        form = FieldSurveyQuickForm(
+    def test_competitor_detection_form_rejects_competitor_from_other_campaign(self):
+        other_candidate = Candidate.objects.create(full_name="Otro Candidato")
+        other_position = Position.objects.create(name="Prefectura")
+        other_campaign = Campaign.objects.create(
+            name="Otra campaña",
+            election=self.campaign.election,
+            candidate=other_candidate,
+            movement=self.campaign.movement,
+            position=other_position,
+        )
+        other_competitor = Competitor.objects.create(
+            campaign=other_campaign,
+            list_number="2",
+            political_organization="Lista Externa",
+        )
+        form = CompetitorAdvertisingDetectionForm(
             data={
                 "campaign": self.campaign.id,
+                "competitor": other_competitor.id,
+                "advertising_type": self.ad_type.id,
                 "latitude": "-2.170998",
                 "longitude": "-79.922359",
                 "location_was_manually_adjusted": "False",
-                "voters_count": "0",
-                "address": "Av. test",
-                "offer_advertising": "on",
-                "offered_advertisement_type": self.ad_type.id,
-                "offered_owner_name": "Sr. Pruebas",
-                "offered_owner_phone": "0999999999",
-                "offered_cost_type": self.cost_type.id,
             }
         )
-        self.assertTrue(form.is_valid(), form.errors)
-        survey = form.save(commit=False)
-        survey.brigadier = self.user
-        survey.created_by = self.user
-        survey.save()
-        form.save_m2m()
-        form.save_related_records(survey, self.user)
 
-        ad = PhysicalAdvertisement.objects.filter(campaign=self.campaign).order_by("-pk").first()
-        self.assertIsNotNone(ad)
-        self.assertEqual(ad.owner_name, "Sr. Pruebas")
-        self.assertEqual(ad.advertisement_type_id, self.ad_type.id)
-        self.assertEqual(ad.state, PhysicalAdvertisement.workflow.OFRECIDA)
+        self.assertFalse(form.is_valid())
+        self.assertIn("competitor", form.errors)
 
     def test_competitor_detection_photo_is_optional(self):
         detection = CompetitorAdvertisingDetection(

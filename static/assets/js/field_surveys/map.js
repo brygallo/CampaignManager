@@ -195,6 +195,75 @@
     return { open: open, close: close, toggle: toggle };
   }
 
+  function detailHtmlFromPage(html) {
+    var doc = new window.DOMParser().parseFromString(html, "text/html");
+    var container = doc.querySelector("#kt_app_content_container");
+    if (!container) {
+      return "";
+    }
+
+    var clone = container.cloneNode(true);
+    var toolbar = clone.querySelector(".app-toolbar-wrapper");
+    if (toolbar) {
+      toolbar.remove();
+    }
+    return clone.innerHTML;
+  }
+
+  function initDynamicContent(scope) {
+    if (window.initFormWidgets) {
+      window.initFormWidgets(scope);
+    } else if (window.initLeafletMaps) {
+      window.initLeafletMaps(scope);
+    }
+    if (window.KTApp && window.KTApp.init) {
+      window.KTApp.init();
+    }
+  }
+
+  function openDetailModal(modalEl, item, fallbackTitle) {
+    if (!modalEl || !window.bootstrap || !item.url) {
+      if (item.url) {
+        window.location.href = item.url;
+      }
+      return;
+    }
+
+    var titleEl = modalEl.querySelector("[data-modal-title]");
+    var bodyEl = modalEl.querySelector("[data-modal-body]");
+    var detailLink = modalEl.querySelector("[data-detail-link]");
+    if (titleEl) {
+      titleEl.textContent = item.label || fallbackTitle || "Detalle";
+    }
+    if (detailLink) {
+      detailLink.href = item.url;
+    }
+    setHtml(bodyEl, loadingHtml("Cargando..."));
+
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    fetch(item.url, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin"
+    })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var detailHtml = detailHtmlFromPage(html);
+        if (!detailHtml) {
+          throw new Error("Empty detail content");
+        }
+        setHtml(bodyEl, detailHtml);
+        initDynamicContent(bodyEl);
+      })
+      .catch(function () {
+        setHtml(
+          bodyEl,
+          '<div class="alert alert-danger">No se pudo cargar la información del registro.</div>'
+        );
+      });
+  }
+
   function loadingHtml(text) {
     return (
       '<div class="text-center text-muted py-10">' +
@@ -301,6 +370,7 @@
     var shell = el.closest(".field-survey-map-shell");
     var panel = document.getElementById("field-survey-map-panel");
     var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
+    var detailModalEl = document.getElementById("field-survey-detail-modal");
     var createModalEl = document.getElementById("field-survey-create-modal");
     var chooseModalEl = document.getElementById("field-survey-choose-modal");
     var counterEl = document.getElementById("field-survey-map-count");
@@ -492,9 +562,7 @@
               .bindTooltip(item.label, { direction: "top", offset: [0, -34] })
               .addTo(pinsLayer);
             marker.on("click", function () {
-              if (item.url) {
-                window.location.href = item.url;
-              }
+              openDetailModal(detailModalEl, item, "Levantamiento");
             });
             bounds.push([item.lat, item.lng]);
           });
@@ -507,9 +575,7 @@
               .bindTooltip(item.label + " · " + item.type_label, { direction: "top", offset: [0, -34] })
               .addTo(competitorLayer);
             marker.on("click", function () {
-              if (item.url) {
-                window.location.href = item.url;
-              }
+              openDetailModal(detailModalEl, item, "Detección de competencia");
             });
             bounds.push([item.lat, item.lng]);
           });

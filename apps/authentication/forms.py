@@ -1,8 +1,8 @@
 """Forms for the authentication app."""
+
 from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.forms import UserChangeForm
 from django.contrib.auth.models import Permission
 from django_select2 import forms as s2forms
 from superadmin.forms import ModelForm
@@ -98,14 +98,12 @@ class UserForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.fields["password"].help_text = (
-                "Déjalo en blanco para mantener la contraseña actual."
-            )
+            self.fields[
+                "password"
+            ].help_text = "Déjalo en blanco para mantener la contraseña actual."
         else:
             self.fields["password"].required = True
-            self.fields["password"].help_text = (
-                "Define la contraseña inicial del usuario."
-            )
+            self.fields["password"].help_text = "Define la contraseña inicial del usuario."
 
     def save(self, commit=True):
         user = super().save(commit=False)

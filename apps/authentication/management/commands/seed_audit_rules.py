@@ -13,8 +13,8 @@ Uso:
     python manage.py tenant_command seed_audit_rules --schema=<tenant>
     python manage.py tenant_command seed_audit_rules --schema=<tenant> --reset
 """
+
 from django.apps import apps
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
@@ -89,6 +89,8 @@ class Command(BaseCommand):
                 updated += 1
             self.stdout.write(f"  · {ct.app_label}.{ct.model}")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\n✔ Reglas de auditoría aplicadas: {created} creadas, {updated} actualizadas."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\n✔ Reglas de auditoría aplicadas: {created} creadas, {updated} actualizadas."
+            )
+        )

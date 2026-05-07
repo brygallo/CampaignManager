@@ -9,7 +9,8 @@ Uso:
 Requiere previamente:
     seed_campaigns, seed_sectors
 """
-from datetime import datetime, timedelta
+
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -30,18 +31,95 @@ User = get_user_model()
 
 REQUESTS = [
     # (title, type, priority, requester, org, state)
-    ("Reunión con dirigentes barriales La Loma",   "REUNION",      "MEDIA",   "Carlos Tankamash",         "Comité barrial La Loma",            "APPROVED"),
-    ("Visita a feria de productores Macas",        "VISITA",       "ALTA",    "Asociación Agroproductora", "Asociación de Productores Morona", "APPROVED"),
-    ("Recorrido casa por casa Yantzaza",           "RECORRIDO",    "MEDIA",   "Equipo de campaña",         "Movimiento territorial",           "PENDING"),
-    ("Mitin en parque central Sevilla Don Bosco",  "MITIN",        "ALTA",    "Federación Shuar",          "FICSH local",                       "IN_REVIEW"),
-    ("Entrevista Radio La Voz del Upano",          "ENTREVISTA",   "ALTA",    "Mario Naichap",             "Radio La Voz del Upano",            "APPROVED"),
-    ("Rueda de prensa propuesta vial",             "RUEDA_PRENSA", "URGENTE", "Coordinadora de prensa",   "Equipo de campaña",                 "APPROVED"),
-    ("Reunión con docentes UEP Don Bosco",         "REUNION",      "MEDIA",   "Mariana Sharup",            "UEP Don Bosco",                     "PENDING"),
-    ("Visita comunidad Tunants",                   "VISITA",       "MEDIA",   "Síndico Wisuma",            "Centro Tunants",                    "PENDING"),
-    ("Mitin cierre semana 1",                      "MITIN",        "ALTA",    "Equipo de campaña",         "Movimiento territorial",            "REJECTED"),
-    ("Recorrido feria del 9 de Octubre",           "RECORRIDO",    "BAJA",    "Comité 9 de Octubre",       "Comité barrial",                    "PENDING"),
-    ("Reunión con transportistas urbanos",         "REUNION",      "ALTA",    "Cooperativa San Cristóbal", "Coop. de transportes",              "IN_REVIEW"),
-    ("Visita Centro de Salud General Proaño",      "VISITA",       "MEDIA",   "Dra. Rocío Vargas",         "MSP - Subcentro",                   "APPROVED"),
+    (
+        "Reunión con dirigentes barriales La Loma",
+        "REUNION",
+        "MEDIA",
+        "Carlos Tankamash",
+        "Comité barrial La Loma",
+        "APPROVED",
+    ),
+    (
+        "Visita a feria de productores Macas",
+        "VISITA",
+        "ALTA",
+        "Asociación Agroproductora",
+        "Asociación de Productores Morona",
+        "APPROVED",
+    ),
+    (
+        "Recorrido casa por casa Yantzaza",
+        "RECORRIDO",
+        "MEDIA",
+        "Equipo de campaña",
+        "Movimiento territorial",
+        "PENDING",
+    ),
+    (
+        "Mitin en parque central Sevilla Don Bosco",
+        "MITIN",
+        "ALTA",
+        "Federación Shuar",
+        "FICSH local",
+        "IN_REVIEW",
+    ),
+    (
+        "Entrevista Radio La Voz del Upano",
+        "ENTREVISTA",
+        "ALTA",
+        "Mario Naichap",
+        "Radio La Voz del Upano",
+        "APPROVED",
+    ),
+    (
+        "Rueda de prensa propuesta vial",
+        "RUEDA_PRENSA",
+        "URGENTE",
+        "Coordinadora de prensa",
+        "Equipo de campaña",
+        "APPROVED",
+    ),
+    (
+        "Reunión con docentes UEP Don Bosco",
+        "REUNION",
+        "MEDIA",
+        "Mariana Sharup",
+        "UEP Don Bosco",
+        "PENDING",
+    ),
+    ("Visita comunidad Tunants", "VISITA", "MEDIA", "Síndico Wisuma", "Centro Tunants", "PENDING"),
+    (
+        "Mitin cierre semana 1",
+        "MITIN",
+        "ALTA",
+        "Equipo de campaña",
+        "Movimiento territorial",
+        "REJECTED",
+    ),
+    (
+        "Recorrido feria del 9 de Octubre",
+        "RECORRIDO",
+        "BAJA",
+        "Comité 9 de Octubre",
+        "Comité barrial",
+        "PENDING",
+    ),
+    (
+        "Reunión con transportistas urbanos",
+        "REUNION",
+        "ALTA",
+        "Cooperativa San Cristóbal",
+        "Coop. de transportes",
+        "IN_REVIEW",
+    ),
+    (
+        "Visita Centro de Salud General Proaño",
+        "VISITA",
+        "MEDIA",
+        "Dra. Rocío Vargas",
+        "MSP - Subcentro",
+        "APPROVED",
+    ),
 ]
 
 
@@ -54,8 +132,9 @@ class Command(BaseCommand):
     help = "Siembra solicitudes y eventos de agenda política."
 
     def add_arguments(self, parser):
-        parser.add_argument("--reset", action="store_true",
-                            help="Borra eventos y solicitudes antes de sembrar.")
+        parser.add_argument(
+            "--reset", action="store_true", help="Borra eventos y solicitudes antes de sembrar."
+        )
 
     @transaction.atomic
     def handle(self, *args, **opts):
@@ -84,12 +163,6 @@ class Command(BaseCommand):
 
         # solicitudes
         wf_req = PoliticalAgendaRequest.workflow
-        target_state = {
-            "PENDING": wf_req.PENDING,
-            "IN_REVIEW": wf_req.IN_REVIEW,
-            "APPROVED": wf_req.APPROVED,
-            "REJECTED": wf_req.REJECTED,
-        }
         approved_requests = []
         for i, (title, etype, priority, requester, org, state) in enumerate(REQUESTS):
             parish = parishes[i % len(parishes)] if parishes else None
@@ -107,7 +180,7 @@ class Command(BaseCommand):
                     "requester_email": f"{requester.split()[0].lower()}@example.ec",
                     "organization": org,
                     "proposed_start_at": _at(7 + i, hour=9 + (i % 6), minute=0),
-                    "proposed_end_at":   _at(7 + i, hour=11 + (i % 6), minute=0),
+                    "proposed_end_at": _at(7 + i, hour=11 + (i % 6), minute=0),
                     "province": province,
                     "canton": canton,
                     "parish": parish,
@@ -127,12 +200,16 @@ class Command(BaseCommand):
                     req.approve(user=user)
                     req.save()
                 elif state == "REJECTED":
-                    req.reject(user=user, rejection_reason="Cruce de agenda con otro evento priorizado.")
+                    req.reject(
+                        user=user, rejection_reason="Cruce de agenda con otro evento priorizado."
+                    )
                     req.save()
             if req.state == wf_req.APPROVED:
                 approved_requests.append(req)
 
-        self.stdout.write(self.style.SUCCESS(f"Solicitudes: {PoliticalAgendaRequest.objects.count()}"))
+        self.stdout.write(
+            self.style.SUCCESS(f"Solicitudes: {PoliticalAgendaRequest.objects.count()}")
+        )
 
         # eventos: 4 SCHEDULED desde solicitudes aprobadas, 2 DONE pasadas, 2 DRAFT futuras
         wf_evt = PoliticalAgendaEvent.workflow
@@ -222,5 +299,9 @@ class Command(BaseCommand):
             )
             events_made += 1
 
-        self.stdout.write(self.style.SUCCESS(f"Eventos: {events_made} procesados (total {PoliticalAgendaEvent.objects.count()})"))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Eventos: {events_made} procesados (total {PoliticalAgendaEvent.objects.count()})"
+            )
+        )
         self.stdout.write(self.style.SUCCESS("✔ Siembra de political_agenda completa."))

@@ -31,9 +31,9 @@ class CompetitorAdvertisingDetectionInline(admin.TabularInline):
 
 @admin.register(FieldSurvey)
 class FieldSurveyAdmin(admin.ModelAdmin):
-    list_display = ("code", "campaign", "brigadier", "parish", "neighborhood", "voters_count", "created_date")
-    list_filter = ("campaign", "brigadier", "parish", "created_date")
-    search_fields = ("code", "person_name", "person_phone", "address", "reference", "neighborhood__name")
+    list_display = ("code", "campaign", "brigadier", "voters_count", "created_date")
+    list_filter = ("campaign", "brigadier", "created_date")
+    search_fields = ("code", "person_name", "person_phone")
     filter_horizontal = ("results",)
     inlines = (CompetitorAdvertisingDetectionInline,)
 
@@ -49,4 +49,4 @@ class CompetitorAdmin(admin.ModelAdmin):
 class CompetitorAdvertisingDetectionAdmin(admin.ModelAdmin):
     list_display = ("campaign", "competitor", "brigadier", "advertising_type", "created_date")
     list_filter = ("campaign", "competitor", "advertising_type", "created_date")
-    search_fields = ("address", "reference", "observation")
+    search_fields = ("competitor__political_organization", "competitor__candidate_name", "observation")

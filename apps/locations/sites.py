@@ -3,8 +3,6 @@ from superadmin.decorators import register
 from core.base import BaseSite
 from core.list_mixins import DropdownFilterMixin
 
-from .models import Canton, Parish, Province, Sector
-
 
 @register("locations.Province")
 class ProvinceSite(BaseSite):

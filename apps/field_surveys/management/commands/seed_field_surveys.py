@@ -8,7 +8,7 @@ Uso:
     python manage.py tenant_command seed_field_surveys --schema=<tenant>
 
 Requiere previamente:
-    seed_campaigns, seed_field_survey_results, seed_sectors
+    seed_campaigns, seed_field_survey_results
 """
 import io
 import random
@@ -28,7 +28,6 @@ from apps.field_surveys.models import (
     FieldSurvey,
     SurveyResultOption,
 )
-from apps.locations.models import Parish, Sector
 
 
 User = get_user_model()
@@ -46,28 +45,6 @@ PERSON_NAMES = [
     "Gladys Margarita Sharup", "Jaime Vinicio Andrade", "Cecilia Tankamash",
     "Fernando Benigno Cobo", "Daniela Sharup Pinchupá", "Wilson Naichap",
     "Mónica Yajaira Calle", "Galo Patricio Tello",
-]
-
-ADDRESSES = [
-    "Av. Don Bosco entre 24 de Mayo y 9 de Octubre",
-    "Calle Soasti y Bolívar, casa esquinera",
-    "Av. 29 de Mayo, frente al parque central",
-    "Calle Cuenca y Domingo Comín",
-    "Av. Amazonas, sector La Loma",
-    "Calle Sucre, junto a la Catedral",
-    "Av. 13 de Abril, barrio Yantzaza",
-    "Calle Tarqui y Riobamba",
-    "Av. Pasaje Tres de Noviembre",
-    "Calle 10 de Agosto y Quito",
-    "Vía a Sevilla, km 2",
-    "Recinto Yukutais, casa de tabla",
-    "Comunidad Tunants, vía principal",
-    "Sevilla Don Bosco, frente a la escuela",
-    "General Proaño, junto a la iglesia",
-    "San Isidro centro, casa color azul",
-    "Comunidad Kuamar, sector alto",
-    "Cuchaentza centro",
-    "Sinaí, vía a Mera",
 ]
 
 NOTES = [
@@ -157,9 +134,6 @@ class Command(BaseCommand):
             competitors.append(obj)
         self.stdout.write(self.style.SUCCESS(f"Competidores: {len(competitors)}"))
 
-        parishes = list(Parish.objects.filter(canton__code="1401"))
-        sectors_by_parish = {p.id: list(Sector.objects.filter(parish=p)) for p in parishes}
-
         result_options = list(SurveyResultOption.objects.filter(is_active=True))
         result_priority = {
             "APOYA": 0.45, "INDECISO": 0.20, "NO_APOYA": 0.10,
@@ -174,9 +148,6 @@ class Command(BaseCommand):
         n = opts["surveys"]
         surveys = []
         for i in range(n):
-            parish = random.choice(parishes) if parishes else None
-            sectors = sectors_by_parish.get(parish.id, []) if parish else []
-            sector = random.choice(sectors) if sectors else None
             person = random.choice(PERSON_NAMES)
             survey = FieldSurvey.objects.create(
                 campaign=campaign,
@@ -185,10 +156,6 @@ class Command(BaseCommand):
                 longitude=_jitter(LON_BASE),
                 gps_accuracy=Decimal(str(round(random.uniform(3, 12), 2))),
                 location_was_manually_adjusted=random.random() < 0.15,
-                address=random.choice(ADDRESSES),
-                reference="" if random.random() < 0.5 else "Cerca de la tienda del barrio",
-                parish=parish,
-                neighborhood=sector,
                 person_name=person,
                 person_phone=f"09{random.randint(10000000, 99999999)}",
                 voters_count=random.choice([1, 1, 2, 2, 3, 3, 4, 5]),
@@ -215,8 +182,6 @@ class Command(BaseCommand):
                     longitude=_jitter(survey.longitude, spread=0.001),
                     gps_accuracy=Decimal(str(round(random.uniform(4, 15), 2))),
                     location_was_manually_adjusted=random.random() < 0.1,
-                    address=random.choice(ADDRESSES),
-                    reference="" if random.random() < 0.5 else "Esquina concurrida",
                     observation=random.choice([
                         "Lona en buen estado, alta visibilidad.",
                         "Afiche reciente, sin daños.",

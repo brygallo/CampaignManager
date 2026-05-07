@@ -5,7 +5,6 @@ from django.db import models
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
-from apps.locations.models import Parish, Sector
 from core.fields import CompressedImageField
 
 
@@ -55,24 +54,6 @@ class FieldSurvey(BaseModel):
     location_was_manually_adjusted = models.BooleanField(
         "Ubicación ajustada manualmente", default=False
     )
-    address = models.CharField("Dirección", max_length=255, blank=True)
-    reference = models.CharField("Referencia", max_length=255, blank=True)
-    parish = models.ForeignKey(
-        Parish,
-        on_delete=models.PROTECT,
-        related_name="field_surveys",
-        verbose_name="Parroquia",
-        null=True,
-        blank=True,
-    )
-    neighborhood = models.ForeignKey(
-        Sector,
-        on_delete=models.PROTECT,
-        related_name="field_surveys",
-        verbose_name="Barrio / sector",
-        null=True,
-        blank=True,
-    )
     person_name = models.CharField("Nombre de persona", max_length=180, blank=True)
     person_phone = models.CharField("Teléfono", max_length=32, blank=True)
     voters_count = models.PositiveIntegerField("Cantidad de votantes", default=0)
@@ -108,7 +89,7 @@ class FieldSurvey(BaseModel):
         )
 
     def __str__(self):
-        return self.code or f"{self.campaign} - {self.brigadier} - {self.created_date:%d/%m/%Y %H:%M}"
+        return f"{self.campaign} - {self.brigadier} - {self.created_date:%d/%m/%Y %H:%M}"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -227,8 +208,6 @@ class CompetitorAdvertisingDetection(BaseModel):
     location_was_manually_adjusted = models.BooleanField(
         "Ubicación ajustada manualmente", default=False
     )
-    address = models.CharField("Dirección", max_length=255, blank=True)
-    reference = models.CharField("Referencia", max_length=255, blank=True)
     photo = CompressedImageField(
         "Foto", upload_to="field_surveys/competitor_advertising/", null=True, blank=True
     )
