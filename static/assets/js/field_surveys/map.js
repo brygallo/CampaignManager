@@ -212,44 +212,6 @@
     }
   }
 
-  function openPopupModal(modalEl, popupUrl, label, fallbackUrl) {
-    if (!modalEl || !window.bootstrap) {
-      window.location.href = fallbackUrl;
-      return;
-    }
-    var titleEl = modalEl.querySelector("[data-modal-title]");
-    var bodyEl = modalEl.querySelector("[data-modal-body]");
-    var detailLink = modalEl.querySelector("[data-detail-link]");
-    titleEl.textContent = label || "Levantamiento";
-    detailLink.href = fallbackUrl;
-    setHtml(bodyEl, loadingHtml("Cargando…"));
-
-    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.show();
-
-    fetch(popupUrl, {
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      credentials: "same-origin"
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        // data.html comes from a server-rendered Django template with autoescape on.
-        setHtml(bodyEl, data.html || "");
-        if (data.title) {
-          titleEl.textContent = data.title;
-        }
-        if (data.url) {
-          detailLink.href = data.url;
-        }
-      })
-      .catch(function () {
-        setHtml(
-          bodyEl,
-          '<div class="alert alert-danger">No se pudo cargar la información.</div>'
-        );
-      });
-  }
-
   function openCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
     if (!modalEl || !window.bootstrap || !createUrl) {
       window.location.href = buildCreateUrl(createUrl, latlng, mapState);
@@ -339,7 +301,6 @@
     var shell = el.closest(".field-survey-map-shell");
     var panel = document.getElementById("field-survey-map-panel");
     var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
-    var modalEl = document.getElementById("field-survey-modal");
     var createModalEl = document.getElementById("field-survey-create-modal");
     var chooseModalEl = document.getElementById("field-survey-choose-modal");
     var counterEl = document.getElementById("field-survey-map-count");
@@ -350,8 +311,6 @@
     var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
     var createCompetitorUrl = el.dataset.createCompetitorUrl || "";
-    var popupUrlTemplate = el.dataset.popupUrl || "";
-    var popupCompetitorUrlTemplate = el.dataset.popupCompetitorUrl || "";
 
     var tenantCenter = window.TENANT_MAP_CENTER || {};
     var defaultLat = parseFloat(el.dataset.defaultLat) || tenantCenter.lat || -2.3046;
@@ -512,11 +471,6 @@
       return qs ? base + (base.indexOf("?") === -1 ? "?" : "&") + qs : base;
     }
 
-    function popupUrlFor(template, id) {
-      // Templates carry a `/0/` placeholder; swap in the real id.
-      return template.replace(/0(?=\/?$|\?)/, String(id));
-    }
-
     function load() {
       pinsLayer.clearLayers();
       competitorLayer.clearLayers();
@@ -538,12 +492,9 @@
               .bindTooltip(item.label, { direction: "top", offset: [0, -34] })
               .addTo(pinsLayer);
             marker.on("click", function () {
-              openPopupModal(
-                modalEl,
-                popupUrlFor(popupUrlTemplate, item.id),
-                item.label,
-                item.url
-              );
+              if (item.url) {
+                window.location.href = item.url;
+              }
             });
             bounds.push([item.lat, item.lng]);
           });
@@ -556,12 +507,9 @@
               .bindTooltip(item.label + " · " + item.type_label, { direction: "top", offset: [0, -34] })
               .addTo(competitorLayer);
             marker.on("click", function () {
-              openPopupModal(
-                modalEl,
-                popupUrlFor(popupCompetitorUrlTemplate, item.id),
-                item.label,
-                item.url
-              );
+              if (item.url) {
+                window.location.href = item.url;
+              }
             });
             bounds.push([item.lat, item.lng]);
           });

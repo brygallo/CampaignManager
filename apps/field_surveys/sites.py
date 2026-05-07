@@ -199,6 +199,7 @@ class FieldSurveySite(BaseSite):
         "Visita": (
             ("voters_count",),
             ("results_display:Resultados",),
+            ("photo",),
             ("notes",),
         ),
     }

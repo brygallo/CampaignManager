@@ -87,6 +87,7 @@ class FieldSurveyForm(ModelForm):
             "Visita": (
                 ("voters_count",),
                 ("results",),
+                ("photo",),
                 ("notes",),
             ),
         }
@@ -117,6 +118,8 @@ class FieldSurveyForm(ModelForm):
         self.fields.pop("reference", None)
         self.fields.pop("person_name", None)
         self.fields.pop("person_phone", None)
+        if "photo" in self.fields:
+            self.fields["photo"].required = False
 
     def clean(self):
         cleaned_data = super().clean()
@@ -206,6 +209,7 @@ class FieldSurveyQuickForm(FieldSurveyForm):
             "Visita": (
                 ("voters_count",),
                 ("results",),
+                ("photo",),
                 ("notes",),
             ),
             "Ofrecer publicidad": (

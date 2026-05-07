@@ -2,17 +2,5 @@
 
 {% block list_toolbar_extra %}
   {{ block.super }}
-  <div class="btn-group btn-group-sm" role="group" aria-label="Cambiar vista">
-    <button type="button"
-            class="btn btn-light-primary active d-flex align-items-center gap-1"
-            aria-current="page">
-      <i class="ki-outline ki-row-horizontal fs-3"></i>
-      <span class="d-none d-md-inline">Lista</span>
-    </button>
-    <a href="{% url 'territorial_ads:map' %}"
-       class="btn btn-light d-flex align-items-center gap-1">
-      <i class="ki-outline ki-map fs-3"></i>
-      <span class="d-none d-md-inline">Mapa</span>
-    </a>
-  </div>
+  {% include "territorial_ads/_section_nav.html" with active="list" %}
 {% endblock %}

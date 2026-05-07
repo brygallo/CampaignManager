@@ -36,11 +36,9 @@
           hidden>0</span>
   </button>
 
-  <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
-     class="map-list-btn"
-     aria-label="Ver como lista">
-    <i class="ki-outline ki-row-horizontal fs-2"></i>
-  </a>
+  <div class="physical-ad-map-nav">
+    {% include "territorial_ads/_section_nav.html" with active="map" %}
+  </div>
 
   {# ===== Filter panel: card on desktop, bottom-sheet on mobile ===== #}
   <section id="physical-ad-map-panel"

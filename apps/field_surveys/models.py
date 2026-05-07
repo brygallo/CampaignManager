@@ -77,6 +77,13 @@ class FieldSurvey(BaseModel):
     person_phone = models.CharField("Teléfono", max_length=32, blank=True)
     voters_count = models.PositiveIntegerField("Cantidad de votantes", default=0)
     notes = models.TextField("Notas", blank=True)
+    photo = CompressedImageField(
+        "Foto del lugar",
+        upload_to="field_surveys/visits/",
+        null=True,
+        blank=True,
+        help_text="Opcional. Foto referencial del lugar visitado.",
+    )
     results = models.ManyToManyField(
         SurveyResultOption,
         related_name="field_surveys",

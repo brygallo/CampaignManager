@@ -2,8 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
-from django.template.loader import render_to_string
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.views import View
 from django.views.generic import FormView, TemplateView
@@ -227,61 +226,6 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             )
 
         return JsonResponse({"visits": visits, "competitor_ads": competitor_data})
-
-
-class FieldSurveyMapPopupView(FieldSurveyAccessMixin, View):
-    """Render a rich HTML card for a single field survey, used inside the map's modal."""
-
-    def get(self, request, pk, *args, **kwargs):
-        survey = get_object_or_404(
-            self.get_queryset().prefetch_related("results", "competitor_advertising_detections"),
-            pk=pk,
-        )
-        result_code = survey.primary_result_code
-        html = render_to_string(
-            "field_surveys/_map_popup.html",
-            {
-                "survey": survey,
-                "result_code": result_code,
-                "result_color": RESULT_COLORS.get(result_code, DEFAULT_VISIT_COLOR),
-                "results": list(survey.results.order_by("order", "name")),
-                "competitor_detections": list(
-                    survey.competitor_advertising_detections.select_related("competitor", "advertising_type")
-                ),
-            },
-            request=request,
-        )
-        return JsonResponse(
-            {
-                "html": html,
-                "title": survey.code or str(survey),
-                "url": fieldsurvey_detail_url(survey.pk),
-            }
-        )
-
-
-class CompetitorDetectionMapPopupView(LoginRequiredMixin, View):
-    """Pop-up para detección de publicidad de la competencia."""
-
-    def get(self, request, pk, *args, **kwargs):
-        queryset = CompetitorAdvertisingDetection.objects.select_related(
-            "competitor", "campaign", "brigadier", "advertising_type", "field_survey"
-        )
-        if not can_view_all_field_surveys(request.user):
-            queryset = queryset.filter(brigadier=request.user)
-        detection = get_object_or_404(queryset, pk=pk)
-        html = render_to_string(
-            "field_surveys/_map_popup_competitor.html",
-            {"detection": detection},
-            request=request,
-        )
-        return JsonResponse(
-            {
-                "html": html,
-                "title": str(detection.competitor),
-                "url": competitor_detection_detail_url(detection.pk),
-            }
-        )
 
 
 def get_filter_context(request):

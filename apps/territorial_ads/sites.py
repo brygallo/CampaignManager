@@ -115,11 +115,6 @@ class PhysicalAdvertisementSite(BaseSite):
     create_mixins = (MapInitialLocationMixin, MapAjaxCreateMixin, SaveOptionsMixin)
     detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
 
-    def get_url_name(self, suffix):
-        if suffix == "list":
-            return "territorial_ads:map"
-        return super().get_url_name(suffix)
-
     always_visible_fieldsets = (
         "Publicidad",
         "Contacto que ofreció el lugar",
