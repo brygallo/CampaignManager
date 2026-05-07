@@ -19,10 +19,10 @@ SURVEY_RESULTS = [
 
 AD_TYPES = [
     ("AFICHE", "Afiche", "document"),
-    ("STICKER", "Sticker", "sticker"),
+    ("STICKER", "Sticker", "tag"),
     ("LONA", "Lona", "picture"),
     ("BANNER", "Banner", "tablet"),
-    ("VALLA", "Valla", "billboard"),
+    ("VALLA", "Valla", "flag"),
     ("OTRO", "Otro", "element-12"),
 ]
 

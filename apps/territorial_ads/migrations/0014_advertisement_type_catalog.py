@@ -4,10 +4,10 @@ import django.db.models.deletion
 
 AD_TYPES = [
     ("AFICHE", "Afiche", "document", 10),
-    ("STICKER", "Sticker", "sticker", 20),
+    ("STICKER", "Sticker", "tag", 20),
     ("LONA", "Lona", "picture", 30),
     ("BANNER", "Banner", "tablet", 40),
-    ("VALLA", "Valla", "billboard", 50),
+    ("VALLA", "Valla", "flag", 50),
     ("OTRO", "Otro", "element-12", 60),
 ]
 

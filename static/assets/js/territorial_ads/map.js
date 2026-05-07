@@ -1,24 +1,34 @@
 (function (window, document) {
   "use strict";
 
+  // Legacy icon names that exist in the DB but not in the bundled KeenIcons
+  // font set. Remap on the client so markers render even before the
+  // 0006 backfill migration runs.
+  var ICON_ALIASES = {
+    "billboard": "flag",
+    "sticker": "tag"
+  };
+
   function safeIconName(icon) {
+    var raw = (icon || "").toLowerCase();
+    if (ICON_ALIASES[raw]) {
+      return ICON_ALIASES[raw];
+    }
     return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "element-12";
   }
 
   function pinIcon(color, icon) {
     var iconName = safeIconName(icon);
+    var safeColor = /^#[0-9a-f]{3,8}$/i.test(color || "") ? color : "#3388ff";
     return window.L.divIcon({
-      className: "leaflet-detail-pin map-type-pin",
+      className: "map-type-pin",
       html:
-        '<span class="map-type-pin__glyph"><i class="ki-outline ki-' + iconName + '"></i></span>' +
-        '<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg">' +
-          '<path d="M15 0 C6.72 0 0 6.72 0 15 c0 11 15 27 15 27 s15 -16 15 -27 C30 6.72 23.28 0 15 0 z" ' +
-            'fill="' + color + '" stroke="#ffffff" stroke-width="2"/>' +
-          '<circle cx="15" cy="15" r="5.5" fill="#ffffff"/>' +
-        '</svg>',
-      iconSize: [30, 42],
-      iconAnchor: [15, 42],
-      popupAnchor: [0, -38]
+        '<span class="map-type-pin__inner" style="background:' + safeColor + ';color:#fff">' +
+          '<i class="ki-solid ki-' + iconName + '" style="color:#fff"></i>' +
+        '</span>',
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+      popupAnchor: [0, -18]
     });
   }
 
@@ -403,8 +413,8 @@
       ? window.L.markerClusterGroup({
           showCoverageOnHover: false,
           spiderfyOnMaxZoom: true,
-          disableClusteringAtZoom: 17,
-          maxClusterRadius: 50,
+          disableClusteringAtZoom: 15,
+          maxClusterRadius: 22,
           iconCreateFunction: buildClusterIcon
         })
       : window.L.layerGroup();

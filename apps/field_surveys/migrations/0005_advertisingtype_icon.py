@@ -3,10 +3,10 @@ from django.db import migrations, models
 
 AD_TYPE_ICONS = {
     "AFICHE": "document",
-    "STICKER": "sticker",
+    "STICKER": "tag",
     "LONA": "picture",
     "BANNER": "tablet",
-    "VALLA": "billboard",
+    "VALLA": "flag",
     "OTRO": "element-12",
 }
 
