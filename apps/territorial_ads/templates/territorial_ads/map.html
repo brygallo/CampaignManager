@@ -14,9 +14,9 @@
        data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"></div>
 
   {# ===== Floating top-bar: brand + view switch + filter trigger ===== #}
-  <header class="physical-ad-map-topbar" aria-label="Acciones del mapa">
+  <header class="physical-ad-map-topbar bg-body border shadow-sm rounded-pill" aria-label="Acciones del mapa">
     <div class="physical-ad-map-brand">
-      <span class="physical-ad-map-brand__icon" aria-hidden="true">
+      <span class="physical-ad-map-brand__icon symbol symbol-40px symbol-circle" aria-hidden="true">
         <i class="ki-outline ki-map fs-2"></i>
       </span>
       <div class="physical-ad-map-brand__text">
@@ -60,7 +60,7 @@
 
   {# ===== Filter panel: card on desktop, bottom-sheet on mobile ===== #}
   <section id="physical-ad-map-panel"
-           class="physical-ad-map-panel card shadow-sm"
+           class="physical-ad-map-panel card card-flush shadow-sm"
            aria-label="Filtros del mapa"
            aria-hidden="true">
     <div class="physical-ad-map-panel__handle" aria-hidden="true"></div>
@@ -88,7 +88,7 @@
           class="card-body px-0 py-3 physical-ad-map-panel__form">
       <div class="physical-ad-map-field">
         <label class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
-        <select name="campaign" class="form-select form-select-solid">
+        <select name="campaign" class="form-select form-select-sm form-select-solid">
           <option value="">Todas las campañas</option>
           {% for campaign in campaigns %}
             <option value="{{ campaign.id }}">{{ campaign.name }}</option>
@@ -97,7 +97,7 @@
       </div>
       <div class="physical-ad-map-field">
         <label class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
-        <select name="state" class="form-select form-select-solid">
+        <select name="state" class="form-select form-select-sm form-select-solid">
           <option value="">Todos los estados</option>
           {% for value, label in states %}
             <option value="{{ value }}">{{ label }}</option>
@@ -107,13 +107,13 @@
 
       <div class="physical-ad-map-panel__actions">
         <button type="button"
-                class="btn btn-light fw-semibold flex-fill"
+                class="btn btn-sm btn-light fw-semibold flex-fill"
                 id="physical-ad-map-reset">
           <i class="ki-outline ki-eraser fs-3"></i>
           <span>Limpiar</span>
         </button>
         <button type="button"
-                class="btn btn-primary fw-semibold flex-fill d-md-none"
+                class="btn btn-sm btn-primary fw-semibold flex-fill d-md-none"
                 data-panel-toggle>
           <i class="ki-outline ki-check fs-3"></i>
           <span>Ver mapa</span>
@@ -132,7 +132,7 @@
       Toca el mapa para registrar una nueva publicidad
     </span>
     <button type="button"
-            class="physical-ad-map-fab"
+            class="physical-ad-map-fab btn btn-icon bg-body shadow-sm"
             id="physical-ad-my-location"
             aria-label="Ir a mi ubicación">
       <i class="ki-outline ki-geolocation fs-2"></i>
@@ -166,10 +166,10 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button type="submit"
                 form="physical-ad-map-create-form"
-                class="btn btn-primary d-flex align-items-center gap-2"
+                class="btn btn-sm btn-primary d-flex align-items-center gap-2"
                 data-create-submit>
           <i class="ki-outline ki-check fs-3"></i>Guardar
         </button>
@@ -193,8 +193,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-        <a href="#" class="btn btn-primary d-flex align-items-center gap-2" data-detail-link>
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cerrar</button>
+        <a href="#" class="btn btn-sm btn-primary d-flex align-items-center gap-2" data-detail-link>
           Abrir página completa
           <i class="ki-outline ki-arrow-right fs-3"></i>
         </a>

@@ -35,7 +35,7 @@
 
         {% if opt.is_select %}
           <select id="filter_{{ opt.name }}"
-                  class="form-select form-select-solid fw-bold"
+                  class="form-select form-select-sm form-select-solid fw-bold"
                   name="{{ opt.name }}__{{ opt.default_lookup }}"
                   data-kt-select2="true"
                   data-placeholder="Seleccione una opción"
@@ -51,10 +51,10 @@
           </select>
 
         {% elif opt.is_date %}
-          <div class="input-group">
+          <div class="input-group input-group-sm">
             <input type="text"
                    id="filter_{{ opt.name }}"
-                   class="form-control form-control-solid rounded rounded-end-0"
+                   class="form-control form-control-sm form-control-solid rounded rounded-end-0"
                    data-kt-list-filter-daterange="true"
                    data-field="{{ opt.name }}"
                    data-default-from="{{ opt.current_value_gte|default:'' }}"
@@ -77,7 +77,7 @@
         {% else %}
           <input type="text"
                  id="filter_{{ opt.name }}"
-                 class="form-control form-control-solid"
+                 class="form-control form-control-sm form-control-solid"
                  name="{{ opt.name }}__{{ opt.default_lookup }}"
                  value="{{ opt.current_value|default:'' }}"
                  placeholder="Filtrar por {{ opt.label|lower }}">

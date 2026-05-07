@@ -6,8 +6,8 @@
 <div class="d-flex flex-wrap flex-stack mb-6 gap-3">
   <h1 class="page-heading text-dark fw-bold fs-3 my-0">Dashboard de levantamiento</h1>
   <div class="d-flex gap-2">
-    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-light">Listado</a>
-    <a href="{% url 'field_surveys:map' %}" class="btn btn-light-primary"><i class="ki-outline ki-map fs-2"></i>Mapa</a>
+    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-sm btn-light">Listado</a>
+    <a href="{% url 'field_surveys:map' %}" class="btn btn-sm btn-light-primary"><i class="ki-outline ki-map fs-3"></i>Mapa</a>
   </div>
 </div>
 {% endblock %}
@@ -27,7 +27,7 @@
 <div class="card">
   <div class="card-header"><h3 class="card-title">Ranking de brigadistas</h3></div>
   <div class="card-body">
-    <table class="table align-middle">
+    <table class="table table-sm align-middle">
       <thead><tr class="text-muted fw-bold text-uppercase fs-7"><th>Brigadista</th><th>Visitas</th><th>Votantes</th></tr></thead>
       <tbody>
       {% for row in brigadier_ranking %}

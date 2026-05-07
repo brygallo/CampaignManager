@@ -7,8 +7,8 @@
 <div class="d-flex flex-wrap flex-stack mb-6 gap-3">
   <h1 class="page-heading text-dark fw-bold fs-3 my-0">Mapa territorial</h1>
   <div class="d-flex gap-2">
-    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-light">Listado</a>
-    <a href="{% url 'field_surveys:survey_create' %}" class="btn btn-primary"><i class="ki-outline ki-plus fs-2"></i>Nuevo</a>
+    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}" class="btn btn-sm btn-light">Listado</a>
+    <a href="{% url 'field_surveys:survey_create' %}" class="btn btn-sm btn-primary"><i class="ki-outline ki-plus fs-3"></i>Nuevo</a>
   </div>
 </div>
 {% endblock %}
@@ -20,7 +20,7 @@
     <form id="map-extra-filters" class="row g-3 mt-1">
       <div class="col-12 col-md-4">
         <label class="form-label">Competidor</label>
-        <select name="competitor" class="form-select">
+        <select name="competitor" class="form-select form-select-sm">
           <option value="">Todos</option>
           {% for competitor in competitors %}
             <option value="{{ competitor.id }}">{{ competitor }}</option>

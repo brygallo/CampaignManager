@@ -303,10 +303,11 @@
     var defaultLat = parseFloat(el.dataset.defaultLat) || -2.3046;
     var defaultLng = parseFloat(el.dataset.defaultLng) || -78.1175;
     var defaultZoom = parseInt(el.dataset.defaultZoom || "13", 10);
+    var isMobileViewport = window.matchMedia("(max-width: 767.98px)");
     var map = window.L.map(el, { zoomControl: false }).setView([defaultLat, defaultLng], defaultZoom);
     var pinsLayer = window.L.layerGroup().addTo(map);
     var locationLayer = window.L.layerGroup().addTo(map);
-    window.L.control.zoom({ position: "bottomleft" }).addTo(map);
+    window.L.control.zoom({ position: isMobileViewport.matches ? "bottomright" : "bottomleft" }).addTo(map);
 
     if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
       window.LeafletBasemaps.build(map, { "Pines": pinsLayer });

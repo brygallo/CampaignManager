@@ -63,12 +63,12 @@
     <form id="delete-form" method="post" class="d-flex justify-content-center gap-3">
       {% csrf_token %}
       {% if site.urls.detail %}
-        <a href="{{ site.urls.detail }}" class="btn btn-light">Cancelar</a>
+        <a href="{{ site.urls.detail }}" class="btn btn-sm btn-light">Cancelar</a>
       {% elif site.urls.list %}
-        <a href="{{ site.urls.list }}" class="btn btn-light">Cancelar</a>
+        <a href="{{ site.urls.list }}" class="btn btn-sm btn-light">Cancelar</a>
       {% endif %}
-      <button type="submit" class="btn btn-danger">
-        <i class="ki-outline ki-trash fs-2"></i>Sí, eliminar
+      <button type="submit" class="btn btn-sm btn-danger">
+        <i class="ki-outline ki-trash fs-3"></i>Sí, eliminar
       </button>
     </form>
   </div>

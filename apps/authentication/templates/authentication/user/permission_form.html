@@ -75,7 +75,7 @@
         <div class="card-toolbar d-flex align-items-center gap-3 flex-wrap">
           <div class="position-relative w-md-300px">
             <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-4"></i>
-            <input id="permissions-matrix-search" type="text" class="form-control form-control-solid ps-11"
+            <input id="permissions-matrix-search" type="text" class="form-control form-control-sm form-control-solid ps-11"
                    placeholder="Filtrar por app, modelo o permiso...">
           </div>
           <span class="fs-7 text-muted" id="permissions-matrix-count"></span>
@@ -109,7 +109,7 @@
               </button>
               <div id="permissions-app-{{ forloop.counter }}" class="collapse show">
                 <div class="table-responsive">
-                  <table class="table table-row-dashed align-middle mb-0">
+                  <table class="table table-sm table-row-dashed align-middle mb-0">
                     <thead>
                       <tr class="text-start text-muted fw-bold fs-7 text-uppercase">
                         <th style="min-width:200px">Modelo</th>
@@ -197,8 +197,8 @@
           Los cambios afectan únicamente los permisos directos. Para gestionar grupos usa la sección superior.
         </span>
         <div class="d-flex gap-3">
-          <a href="{{ target_user_urls.detail|default:target_user_urls.list|default:'/' }}" class="btn btn-light">Cancelar</a>
-          <button type="submit" class="btn btn-primary">
+          <a href="{{ target_user_urls.detail|default:target_user_urls.list|default:'/' }}" class="btn btn-sm btn-light">Cancelar</a>
+          <button type="submit" class="btn btn-sm btn-primary">
             <i class="ki-outline ki-check fs-3 me-1"></i>Guardar permisos
           </button>
         </div>

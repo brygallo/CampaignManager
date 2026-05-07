@@ -13,7 +13,7 @@
 .physical-ad-map-shell {
   --map-shell-radius: 0.875rem;
   --map-shell-pad: 0.75rem;
-  --map-shell-vh-offset: 100px; /* mobile: just below the app header */
+  --map-shell-vh-offset: 72px; /* mobile: just below the fixed app header */
   --map-topbar-h: 64px;
   --map-tools-h: 64px;
   --map-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.35);
@@ -30,7 +30,7 @@
   margin-right: calc(var(--bs-app-content-padding-x, 1.5rem) * -1);
   margin-top: calc(var(--bs-app-content-padding-y, 1rem) * -1);
   height: calc(100dvh - var(--map-shell-vh-offset));
-  min-height: 560px;
+  min-height: 520px;
 }
 
 .physical-ad-map {
@@ -75,6 +75,88 @@
   border-radius: 999px;
   box-shadow: var(--map-shadow);
   min-height: var(--map-topbar-h);
+}
+
+@media (max-width: 767.98px) {
+  .physical-ad-map-shell {
+    --map-shell-pad: 0.75rem;
+    --map-topbar-h: 56px;
+    --map-shadow: 0 10px 24px -14px rgba(15, 23, 42, 0.5);
+    height: calc(100dvh - var(--map-shell-vh-offset));
+    min-height: min(640px, calc(100dvh - var(--map-shell-vh-offset)));
+    background: #dfe5e8;
+  }
+
+  .physical-ad-map-topbar {
+    min-height: var(--map-topbar-h);
+    padding: 0.35rem 0.45rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 0;
+    box-shadow: 0 4px 16px rgba(60, 64, 67, 0.28);
+    gap: 0.35rem;
+  }
+
+  .physical-ad-map-brand {
+    gap: 0.45rem;
+  }
+
+  .physical-ad-map-brand__icon {
+    width: 40px;
+    height: 40px;
+    color: #5f6368;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .physical-ad-map-brand__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #202124;
+  }
+
+  .physical-ad-map-brand__subtitle {
+    margin-top: 0.05rem;
+  }
+
+  .physical-ad-map-count-pill {
+    padding: 0;
+    background: transparent;
+    color: #5f6368;
+    font-weight: 500;
+    font-size: 0.72rem;
+  }
+
+  .physical-ad-map-filter-trigger {
+    --bs-btn-padding-x: 0;
+    --bs-btn-padding-y: 0;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 50%;
+    background: #fff;
+    color: #1a73e8;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .physical-ad-map-filter-trigger:hover,
+  .physical-ad-map-filter-trigger:focus-visible {
+    background: #f1f3f4;
+    color: #1a73e8;
+  }
+
+  .physical-ad-map-filter-trigger__count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 17px;
+    height: 17px;
+    background: #1a73e8;
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 0.58rem;
+  }
 }
 
 .physical-ad-map-brand {
@@ -214,6 +296,62 @@
   gap: 0.85rem;
 }
 
+@media (max-width: 767.98px) {
+  .physical-ad-map-panel {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: calc(0.5rem + var(--map-safe-bottom));
+    padding: 0.45rem 1rem 1rem;
+    border-radius: 1.25rem;
+    border: 0;
+    box-shadow: 0 8px 28px rgba(60, 64, 67, 0.3);
+    max-height: min(68%, 430px);
+  }
+
+  .physical-ad-map-panel__handle {
+    width: 36px;
+    height: 4px;
+    background: #dadce0;
+    margin-top: 0.15rem;
+  }
+
+  .physical-ad-map-panel__head .symbol {
+    display: none;
+  }
+
+  .physical-ad-map-panel__head .fw-bold {
+    color: #202124 !important;
+    font-size: 1rem !important;
+  }
+
+  .physical-ad-map-panel__head .text-muted {
+    color: #5f6368 !important;
+  }
+
+  .physical-ad-map-panel__close {
+    width: 38px;
+    height: 38px;
+    background: #f1f3f4;
+    color: #3c4043;
+  }
+
+  .physical-ad-map-field .form-select {
+    min-height: 46px;
+    border-radius: 0.75rem;
+    background-color: #f8fafd;
+    border: 1px solid #e0e3e7;
+    color: #202124;
+  }
+
+  .physical-ad-map-panel__actions {
+    position: sticky;
+    bottom: -1rem;
+    padding-top: 0.25rem;
+    padding-bottom: calc(0.2rem + var(--map-safe-bottom));
+    background: #fff;
+  }
+}
+
 .physical-ad-map-shell[data-panel-state="expanded"] .physical-ad-map-panel {
   transform: translateY(0);
 }
@@ -338,6 +476,40 @@
 }
 .physical-ad-map-tools > * { pointer-events: auto; }
 
+@media (max-width: 767.98px) {
+  .physical-ad-map-tools {
+    right: 0.75rem;
+    bottom: calc(1rem + var(--map-safe-bottom));
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+
+  .physical-ad-map-fab {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    padding: 0;
+    border: 0;
+    background: #fff;
+    color: #3c4043;
+    box-shadow: 0 2px 8px rgba(60, 64, 67, 0.3);
+  }
+
+  .physical-ad-map-fab:hover,
+  .physical-ad-map-fab:focus-visible {
+    background: #f1f3f4;
+    color: #202124;
+    transform: none;
+    box-shadow: 0 3px 10px rgba(60, 64, 67, 0.32);
+  }
+
+  .physical-ad-map-shell[data-panel-state="expanded"] .physical-ad-map-tools {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
 .physical-ad-map-tools__hint {
   display: inline-flex;
   align-items: center;
@@ -400,6 +572,65 @@
 .physical-ad-map-fab:disabled {
   opacity: 0.65;
   transform: none;
+}
+
+@media (max-width: 767.98px) {
+  .physical-ad-map .leaflet-control-container .leaflet-bottom.leaflet-right {
+    bottom: calc(4.65rem + var(--map-safe-bottom));
+    right: 0.75rem;
+  }
+
+  .physical-ad-map .leaflet-control-container .leaflet-bottom.leaflet-left {
+    bottom: calc(0.75rem + var(--map-safe-bottom));
+    left: 0.75rem;
+  }
+
+  .physical-ad-map .leaflet-control-container .leaflet-top.leaflet-right {
+    top: calc(var(--map-shell-pad) + var(--map-topbar-h) + 0.55rem);
+    right: 0.75rem;
+  }
+
+  .physical-ad-map .leaflet-control-zoom {
+    border: 0;
+    border-radius: 1.5rem;
+    box-shadow: 0 2px 8px rgba(60, 64, 67, 0.3);
+    overflow: hidden;
+  }
+
+  .physical-ad-map .leaflet-control-zoom a {
+    width: 48px;
+    height: 44px;
+    line-height: 44px;
+    border: 0;
+    color: #3c4043;
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  .physical-ad-map .leaflet-control-zoom a + a {
+    border-top: 1px solid #e8eaed;
+  }
+
+  .physical-ad-map .leaflet-control-layers {
+    border: 0;
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 8px rgba(60, 64, 67, 0.3);
+    overflow: hidden;
+  }
+
+  .physical-ad-map .leaflet-control-layers-toggle {
+    width: 48px;
+    height: 48px;
+    background-size: 22px 22px;
+  }
+
+  .physical-ad-map .leaflet-control-attribution {
+    border-radius: 999px;
+    padding: 0 0.4rem;
+    background: rgba(255, 255, 255, 0.86);
+    color: #5f6368;
+    font-size: 0.62rem;
+  }
 }
 
 /* ============================================================

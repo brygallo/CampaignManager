@@ -56,7 +56,7 @@
       <div class="d-flex align-items-center gap-3 flex-wrap">
         <div class="position-relative w-md-250px">
           <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-4"></i>
-          <input id="permissions-list-search" type="text" class="form-control form-control-solid ps-11" placeholder="Buscar permiso...">
+          <input id="permissions-list-search" type="text" class="form-control form-control-sm form-control-solid ps-11" placeholder="Buscar permiso...">
         </div>
         {% if request.user.is_staff %}
           <a href="{% url 'authentication:group_permissions' pk=object.pk %}"

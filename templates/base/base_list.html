@@ -96,7 +96,7 @@
           <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5 z-index-1"></i>
           <input id="id_table_search"
                  type="search"
-                 class="form-control form-control-solid w-100 ps-12"
+                 class="form-control form-control-sm form-control-solid w-100 ps-12"
                  name="search"
                  value="{{ request.GET.search|default:'' }}"
                  placeholder="Buscar en esta lista"
@@ -224,7 +224,7 @@
       </div>
     {% endif %}
 
-    <table id="datatable" class="table align-middle table-row-dashed fs-6 gy-5" style="width:100%">
+    <table id="datatable" class="table table-sm align-middle table-row-dashed fs-7 gy-3" style="width:100%">
       <thead>
         <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
           {% if site.urls.mass_delete %}
