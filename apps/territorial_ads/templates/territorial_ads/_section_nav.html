@@ -1,0 +1,19 @@
+{% comment %}
+Cross-navigation between the pages of "Publicidad territorial".
+Receives:
+  - active: one of "map", "list"
+{% endcomment %}
+<div class="btn-group btn-group-sm" role="group" aria-label="Navegación de publicidad territorial">
+  <a href="{% url 'territorial_ads:map' %}"
+     class="btn d-flex align-items-center gap-1 {% if active == 'map' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     {% if active == 'map' %}aria-current="page"{% endif %}>
+    <i class="ki-outline ki-map fs-3"></i>
+    <span class="d-none d-md-inline">Mapa</span>
+  </a>
+  <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
+     class="btn d-flex align-items-center gap-1 {% if active == 'list' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     {% if active == 'list' %}aria-current="page"{% endif %}>
+    <i class="ki-outline ki-row-horizontal fs-3"></i>
+    <span class="d-none d-md-inline">Lista</span>
+  </a>
+</div>

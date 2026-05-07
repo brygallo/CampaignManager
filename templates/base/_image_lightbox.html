@@ -1,0 +1,30 @@
+{# Global lightbox modal for image previews. Triggered by any element carrying
+   `data-image-lightbox`; the trigger's `data-image-src` (and optional
+   `data-image-name`) drive the displayed image. Initialized in
+   `assets/js/forms/image_input.js`. #}
+<div class="modal fade image-lightbox" id="image-lightbox-modal" tabindex="-1"
+     aria-labelledby="image-lightbox-title" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content image-lightbox__content">
+      <div class="modal-header image-lightbox__header">
+        <div class="d-flex flex-column min-w-0">
+          <h2 class="modal-title fw-bold mb-0 fs-5 text-truncate" id="image-lightbox-title">Vista previa</h2>
+          <span class="text-muted fs-8 text-truncate" id="image-lightbox-subtitle"></span>
+        </div>
+        <div class="d-flex align-items-center gap-2 ms-2">
+          <a id="image-lightbox-open" href="#" target="_blank" rel="noopener"
+             class="btn btn-icon btn-sm btn-active-light-primary" title="Abrir en otra pestaña" aria-label="Abrir original">
+            <i class="ki-outline ki-exit-up fs-3"></i>
+          </a>
+          <button type="button" class="btn btn-icon btn-sm btn-active-light-primary"
+                  data-bs-dismiss="modal" aria-label="Cerrar">
+            <i class="ki-outline ki-cross fs-1"></i>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body image-lightbox__body">
+        <img id="image-lightbox-image" src="" alt="Vista previa de la imagen">
+      </div>
+    </div>
+  </div>
+</div>

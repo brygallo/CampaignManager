@@ -1,0 +1,34 @@
+{# Image detail widget. Renders a clickable thumbnail when an image is present.
+   Falls back to "Sin imagen" when the field is empty so the layout stays
+   consistent with sibling fields. #}
+<label class="form-label fs-7 fw-semibold mb-1">{{ label|capfirst }}</label>
+{% if value %}
+  <div class="image-detail">
+    <a class="image-detail__thumb"
+       href="{{ value.url }}"
+       data-image-lightbox
+       data-image-src="{{ value.url }}"
+       data-image-name="{{ value.name|default:label }}"
+       aria-label="Ampliar imagen">
+      <img src="{{ value.url }}" alt="{{ label }}" loading="lazy">
+      <span class="image-detail__thumb-zoom" aria-hidden="true">
+        <i class="ki-outline ki-magnifier fs-2"></i>
+      </span>
+    </a>
+    <div class="image-detail__meta">
+      <div class="text-truncate fs-8 text-muted" title="{{ value.name }}">{{ value.name }}</div>
+      <a href="{{ value.url }}" target="_blank" rel="noopener"
+         class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-1 mt-1">
+        <i class="ki-outline ki-exit-up fs-5"></i>
+        <span>Abrir original</span>
+      </a>
+    </div>
+  </div>
+{% else %}
+  <div class="image-detail image-detail--empty">
+    <span class="image-detail__placeholder">
+      <i class="ki-outline ki-picture fs-2x text-muted" aria-hidden="true"></i>
+    </span>
+    <span class="text-muted fs-8">Sin imagen</span>
+  </div>
+{% endif %}
