@@ -8,7 +8,7 @@ from core.widgets import LeafletMapWidget
 from apps.campaigns.models import Campaign
 from apps.field_surveys.models import AdvertisingType
 
-from .models import AdvertisingCostType, PhysicalAdvertisement
+from .models import AdvertisingCostType, AdvertisingRefusal, PhysicalAdvertisement
 
 
 class CostTypeSelect2Widget(Select2Widget):
@@ -145,6 +145,77 @@ class PhysicalAdvertisementForm(ModelForm):
             self.add_error(
                 "offered_location",
                 "Marca el lugar ofrecido en el mapa o usa tu ubicación actual.",
+            )
+        return cleaned_data
+
+
+class AdvertisingRefusalForm(ModelForm):
+    """Minimal form to log a place where the owner refuses advertising.
+
+    Coordinates come from the map click (hidden inputs); the user only fills
+    the reason and an optional owner reference.
+    """
+
+    refusal_location = forms.CharField(
+        label="Ubicación en mapa",
+        required=False,
+        widget=LeafletMapWidget(
+            lat_field="latitude",
+            lng_field="longitude",
+            attrs={"column": 12},
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "campaign" in self.fields:
+            active_campaigns = Campaign.objects.filter(is_active=True).order_by(
+                "-start_date", "name"
+            )
+            self.fields["campaign"].queryset = active_campaigns
+            self.fields["campaign"].widget.queryset = active_campaigns
+
+    class Meta:
+        model = AdvertisingRefusal
+        fieldsets = {
+            "Ubicación": (
+                ("refusal_location",),
+                ("latitude", "longitude"),
+            ),
+            "Detalle del rechazo": (
+                ("campaign",),
+                ("owner_reference",),
+                ("reason",),
+            ),
+        }
+        widgets = {
+            "campaign": ModelSelect2Widget(
+                model=Campaign,
+                search_fields=[
+                    "name__icontains",
+                    "candidate__full_name__icontains",
+                    "election__name__icontains",
+                ],
+                max_results=100,
+                attrs={
+                    "data-minimum-input-length": 0,
+                    "data-app": "campaigns",
+                    "data-model": "Campaign",
+                },
+            ),
+            "reason": forms.Textarea(attrs={"rows": 3}),
+            "latitude": forms.HiddenInput(),
+            "longitude": forms.HiddenInput(),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("latitude") in (None, "") or cleaned_data.get(
+            "longitude"
+        ) in (None, ""):
+            self.add_error(
+                "refusal_location",
+                "Marca el lugar en el mapa o usa tu ubicación actual.",
             )
         return cleaned_data
 

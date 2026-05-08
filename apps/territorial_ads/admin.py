@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AdvertisingCostType, PhysicalAdvertisement
+from .models import AdvertisingCostType, AdvertisingRefusal, PhysicalAdvertisement
 
 
 @admin.register(PhysicalAdvertisement)
@@ -21,3 +21,10 @@ class AdvertisingCostTypeAdmin(admin.ModelAdmin):
     list_display = ("code", "name", "order", "requires_amount", "is_active")
     list_filter = ("requires_amount", "is_active")
     search_fields = ("code", "name")
+
+
+@admin.register(AdvertisingRefusal)
+class AdvertisingRefusalAdmin(admin.ModelAdmin):
+    list_display = ("id", "campaign", "owner_reference", "reported_by", "created_date")
+    list_filter = ("campaign", "is_active")
+    search_fields = ("owner_reference", "reason")

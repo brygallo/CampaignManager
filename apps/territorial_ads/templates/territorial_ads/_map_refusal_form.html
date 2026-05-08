@@ -1,0 +1,8 @@
+<form method="post"
+      action="{{ action_url }}"
+      class="form"
+      id="physical-ad-map-refusal-form"
+      data-map-refusal-form="true">
+  {% csrf_token %}
+  {% include "forms/form.html" with form=form %}
+</form>

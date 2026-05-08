@@ -8,4 +8,14 @@ urlpatterns = [
     path("publicidad-territorial/mapa/", views.PhysicalAdMapView.as_view(), name="map"),
     path("publicidad-territorial/mapa/datos/", views.PhysicalAdMapDataView.as_view(), name="map_data"),
     path("publicidad-territorial/mapa/popup/<int:pk>/", views.PhysicalAdMapPopupView.as_view(), name="map_popup"),
+    path(
+        "publicidad-territorial/mapa/rechazo/crear/",
+        views.AdvertisingRefusalCreateView.as_view(),
+        name="refusal_create",
+    ),
+    path(
+        "publicidad-territorial/mapa/rechazo/popup/<int:pk>/",
+        views.AdvertisingRefusalPopupView.as_view(),
+        name="refusal_popup",
+    ),
 ]

@@ -1,11 +1,34 @@
 from superadmin.decorators import register
 
 from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin
+from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import DropdownFilterMixin, WorkflowStateFilterMixin
 from core.map_mixins import MapInitialLocationMixin
 
 from .forms import PoliticalAgendaEventForm, PoliticalAgendaRequestForm
 from .models import PoliticalAgendaRequest
+
+VIEW_PRIVATE_AGENDA_EVENT_PERM = "political_agenda.view_private_politicalagendaevent"
+
+
+def _user_can_view_private_events(user):
+    """Centralized check used by list/detail mixins for the agenda visibility gate."""
+    return bool(user and user.is_active and (user.is_superuser or user.has_perm(VIEW_PRIVATE_AGENDA_EVENT_PERM)))
+
+
+class AgendaEventVisibilityQuerysetMixin:
+    """Hide private events from users that lack the explicit permission.
+
+    Plugged into both ``list_mixins`` and ``detail_mixins`` so a user without
+    ``view_private_politicalagendaevent`` cannot see private events in the
+    list, nor open their detail page by URL guessing.
+    """
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not _user_can_view_private_events(self.request.user):
+            queryset = queryset.filter(is_public=True)
+        return queryset
 
 
 class AgendaMapInitialLocationMixin(MapInitialLocationMixin):
@@ -82,8 +105,14 @@ class PoliticalAgendaRequestSite(BaseSite):
     list_template_name = "political_agenda/politicalagendarequest_list.html"
     detail_template_name = "political_agenda/politicalagendarequest_detail.html"
     list_mixins = (WorkflowStateFilterMixin, DropdownFilterMixin)
-    create_mixins = (AgendaMapInitialLocationMixin,)
+    create_mixins = (AgendaMapInitialLocationMixin, SaveOptionsMixin)
     detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+    always_visible_fieldsets = (
+        "Solicitud",
+        "Solicitante",
+        "Fecha tentativa",
+        "Ubicación tentativa",
+    )
     list_fields = (
         "title",
         "campaign",
@@ -154,14 +183,28 @@ class PoliticalAgendaRequestSite(BaseSite):
 class PoliticalAgendaEventSite(BaseSite):
     form_class = PoliticalAgendaEventForm
     list_template_name = "political_agenda/politicalagendaevent_list.html"
-    list_mixins = (WorkflowStateFilterMixin, DropdownFilterMixin)
-    create_mixins = (PrefillEventFromRequestMixin, AgendaMapInitialLocationMixin)
-    detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+    list_mixins = (
+        AgendaEventVisibilityQuerysetMixin,
+        WorkflowStateFilterMixin,
+        DropdownFilterMixin,
+    )
+    create_mixins = (PrefillEventFromRequestMixin, AgendaMapInitialLocationMixin, SaveOptionsMixin)
+    detail_mixins = (
+        AgendaEventVisibilityQuerysetMixin,
+        HideEmptyFieldsetsMixin,
+        DetailMapsMixin,
+    )
+    always_visible_fieldsets = (
+        "Evento",
+        "Ubicación",
+        "Organización",
+    )
     list_fields = (
         "title",
         "campaign",
         "event_type",
         "get_state_display:Estado",
+        "is_public:Visibilidad",
         "start_at",
         "end_at",
         "responsible",
@@ -171,6 +214,7 @@ class PoliticalAgendaEventSite(BaseSite):
             ("campaign", "source_request"),
             ("title", "event_type"),
             ("start_at", "end_at"),
+            ("is_public",),
         ),
         "Ubicación": (
             ("address",),
@@ -197,6 +241,7 @@ class PoliticalAgendaEventSite(BaseSite):
         "campaign:Campaña",
         "event_type:Tipo",
         "state:Estado",
+        "is_public:Visible al público",
         "start_at:Fecha inicio",
         "responsible:Responsable",
     )

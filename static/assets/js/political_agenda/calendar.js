@@ -81,6 +81,25 @@
           || popupUrlTemplate.replace(/\/0\/?$/, "/" + info.event.id + "/");
         openEventModal(popupUrl, info.event);
       },
+      eventClassNames: function (arg) {
+        var props = arg.event.extendedProps || {};
+        return props.is_public === false ? ["agenda-calendar__event--private"] : [];
+      },
+      eventDidMount: function (arg) {
+        var props = arg.event.extendedProps || {};
+        if (props.is_public !== false) return;
+        var titleNode = arg.el.querySelector(".fc-event-title, .fc-list-event-title");
+        if (!titleNode || titleNode.querySelector(".agenda-calendar__lock")) return;
+        var icon = document.createElement("i");
+        icon.className = "ki-outline ki-lock fs-8 me-1 agenda-calendar__lock";
+        icon.setAttribute("aria-hidden", "true");
+        var label = document.createElement("span");
+        label.className = "visually-hidden";
+        label.textContent = "Evento privado: ";
+        titleNode.prepend(icon);
+        titleNode.prepend(label);
+        arg.el.setAttribute("title", "Evento privado");
+      },
     });
 
     calendar.render();

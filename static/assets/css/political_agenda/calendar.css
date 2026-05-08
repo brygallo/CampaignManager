@@ -66,3 +66,14 @@
 .agenda-popup__meta {
   border-top: 1px dashed var(--bs-gray-300);
 }
+
+/* Visual cue for events whose visibility is restricted (is_public=False).
+ * The lock icon is injected by calendar.js; here we only add a dashed border
+ * so the tile reads as "different" even when the icon is clipped. */
+.fc .agenda-calendar__event--private {
+  border-style: dashed !important;
+}
+
+.fc .agenda-calendar__event--private .agenda-calendar__lock {
+  opacity: .85;
+}

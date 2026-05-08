@@ -54,6 +54,9 @@ Publicidad territorial:
   Publicidad:
     app: territorial_ads
     model: physicaladvertisement
+  Rechazos:
+    app: territorial_ads
+    model: advertisingrefusal
 
 Geografía:
   icon: map
@@ -72,9 +75,12 @@ Geografía:
 
 Catálogos:
   icon: setting-2
-  Resultados de levantamiento:
+  Niveles de apoyo:
     app: field_surveys
-    model: surveyresultoption
+    model: surveysupportlevel
+  Respuestas a publicidad:
+    app: field_surveys
+    model: surveyadvertisingresponse
   Tipos de publicidad:
     app: field_surveys
     model: advertisingtype

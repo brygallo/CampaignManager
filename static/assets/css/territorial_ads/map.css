@@ -664,6 +664,14 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
 }
 
+/* Refusal pin: same shape, dashed white ring so it reads as "do not approach". */
+.map-type-pin--refusal .map-type-pin__inner {
+  border-style: dashed;
+  border-color: #ffffff;
+  outline: 1.5px solid rgba(15, 23, 42, 0.18);
+  outline-offset: 1px;
+}
+
 /* ----- Leaflet built-ins (scale + attribution) compact, Google-like ----- */
 .physical-ad-map .leaflet-control-attribution {
   border-radius: 999px;

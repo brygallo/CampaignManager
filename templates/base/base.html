@@ -1,4 +1,4 @@
-{% load static %}{% load breadcrumbs %}<!doctype html>
+{% load static %}{% load breadcrumbs %}{% load l10n %}<!doctype html>
 <html lang="es">
 <head>
   <base href="{{ request.scheme }}://{{ request.get_host }}/">
@@ -36,10 +36,12 @@
 
     // Tenant-configured default for every Leaflet map in the system. Used as
     // fallback when neither the widget nor the page sets explicit coordinates.
+    // |stringformat fuerza formato C con punto decimal y bypasea la
+    // localización de LANGUAGE_CODE="es" (que rompía el JS con coma decimal).
     window.TENANT_MAP_CENTER = {
-      lat: {{ tenant_map_center.lat|default:-2.3046 }},
-      lng: {{ tenant_map_center.lng|default:-78.1175 }},
-      zoom: {{ tenant_map_center.zoom|default:13 }}
+      lat: {{ tenant_map_center.lat|default:-2.3046|stringformat:"f" }},
+      lng: {{ tenant_map_center.lng|default:-78.1175|stringformat:"f" }},
+      zoom: {{ tenant_map_center.zoom|default:13|stringformat:"d" }}
     };
   </script>
 
@@ -143,7 +145,7 @@
               </div>
             </div>
 
-            {% include "base/footer.html" %}
+            {% block footer %}{% include "base/footer.html" %}{% endblock %}
           </div>
         </div>
 
@@ -154,7 +156,10 @@
   {% block modals %}{% endblock %}
   {% include "base/_image_lightbox.html" %}
 
-  {% if user.is_authenticated %}{% include "base/_command_palette.html" %}{% endif %}
+  {% if user.is_authenticated %}
+    {% include "base/_command_palette.html" %}
+    {% include "components/_geolocation_gate.html" %}
+  {% endif %}
 
   {% block js %}{% include "base/js.html" %}{% endblock %}
   {% block extra_js %}{% endblock %}

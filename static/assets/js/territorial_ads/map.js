@@ -17,11 +17,12 @@
     return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "element-12";
   }
 
-  function pinIcon(color, icon) {
+  function pinIcon(color, icon, markerKind) {
     var iconName = safeIconName(icon);
     var safeColor = /^#[0-9a-f]{3,8}$/i.test(color || "") ? color : "#3388ff";
+    var extraClass = markerKind === "refusal" ? " map-type-pin--refusal" : "";
     return window.L.divIcon({
-      className: "map-type-pin",
+      className: "map-type-pin" + extraClass,
       html:
         '<span class="map-type-pin__inner" style="background:' + safeColor + ';color:#fff">' +
           '<i class="ki-solid ki-' + iconName + '" style="color:#fff"></i>' +
@@ -291,6 +292,120 @@
     }
   }
 
+  function openRefusalPopup(modalEl, ad) {
+    if (!modalEl || !window.bootstrap) {
+      return;
+    }
+    var titleEl = modalEl.querySelector("[data-modal-title]");
+    var bodyEl = modalEl.querySelector("[data-modal-body]");
+    var detailLink = modalEl.querySelector("[data-detail-link]");
+    if (titleEl) {
+      titleEl.textContent = ad.label || "Rechazo";
+    }
+    if (detailLink) {
+      detailLink.style.display = "none";
+    }
+    setHtml(bodyEl, loadingHtml("Cargando..."));
+
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    fetch(ad.url, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin"
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        setHtml(bodyEl, data.html || "");
+      })
+      .catch(function () {
+        setHtml(
+          bodyEl,
+          '<div class="alert alert-danger">No se pudo cargar la información del rechazo.</div>'
+        );
+      });
+  }
+
+  function openRefusalCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
+    if (!modalEl || !window.bootstrap || !createUrl) {
+      return;
+    }
+
+    var bodyEl = modalEl.querySelector("[data-refusal-modal-body]");
+    var submitButton = modalEl.querySelector("[data-refusal-submit]");
+    var url = buildCreateUrl(createUrl, latlng, mapState);
+    setHtml(bodyEl, loadingHtml("Cargando formulario..."));
+
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    function bindForm() {
+      var form = modalEl.querySelector("[data-map-refusal-form]");
+      if (!form) {
+        return;
+      }
+      initDynamicForm(form);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+        fetch(url, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Map-Create": "1"
+          },
+          credentials: "same-origin"
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.ok) {
+              modal.hide();
+              if (onSaved) {
+                onSaved(result.data);
+              }
+              return;
+            }
+            setHtml(bodyEl, result.data.html || "");
+            bindForm();
+          })
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("territorial-ads refusal create failed", error);
+            }
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar el rechazo.</div>');
+          })
+          .finally(function () {
+            if (submitButton) {
+              submitButton.disabled = false;
+            }
+          });
+      });
+    }
+
+    fetch(url, {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Map-Create": "1"
+      },
+      credentials: "same-origin"
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        setHtml(bodyEl, data.html || "");
+        bindForm();
+      })
+      .catch(function () {
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
+      });
+  }
+
   function openCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
     if (!modalEl || !window.bootstrap || !createUrl) {
       window.location.href = buildCreateUrl(createUrl, latlng, mapState);
@@ -383,6 +498,8 @@
     var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
     var modalEl = document.getElementById("physical-ad-modal");
     var createModalEl = document.getElementById("physical-ad-create-modal");
+    var refusalModalEl = document.getElementById("physical-ad-refusal-modal");
+    var choiceModalEl = document.getElementById("physical-ad-choice-modal");
     var counterEl = document.getElementById("physical-ad-map-count");
     var filterCounterEl = document.getElementById("physical-ad-filter-count");
     var filterTriggerEls = document.querySelectorAll(".physical-ad-map-filter-trigger");
@@ -390,6 +507,7 @@
     var myLocationButton = document.getElementById("physical-ad-my-location");
     var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
+    var refusalCreateUrl = el.dataset.refusalCreateUrl || "";
 
     // Default view: tenant settings, then Macas (Morona Santiago) as fallback.
     var tenantCenter = window.TENANT_MAP_CENTER || {};
@@ -563,13 +681,17 @@
           updateCount(counterEl, ads.length);
           ads.forEach(function (ad) {
             var marker = window.L.marker([ad.lat, ad.lng], {
-              icon: pinIcon(ad.color, ad.type_icon),
+              icon: pinIcon(ad.color, ad.type_icon, ad.marker_kind),
               bubblingMouseEvents: false
             })
               .bindTooltip(ad.label, { direction: "top", offset: [0, -34] })
               .addTo(pinsLayer);
             marker.on("click", function () {
-              openModal(modalEl, ad);
+              if (ad.marker_kind === "refusal") {
+                openRefusalPopup(modalEl, ad);
+              } else {
+                openModal(modalEl, ad);
+              }
             });
             bounds.push([ad.lat, ad.lng]);
           });
@@ -603,7 +725,61 @@
       });
     }
     if (myLocationButton) {
+      var renderUserLocation = function (position) {
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+        var accuracy = position.coords.accuracy || 0;
+
+        locationLayer.clearLayers();
+        window.L.circle([lat, lng], {
+          radius: accuracy,
+          stroke: false,
+          fillColor: "#3e97ff",
+          fillOpacity: 0.12,
+          bubblingMouseEvents: false
+        }).addTo(locationLayer);
+        window.L.circleMarker([lat, lng], {
+          radius: 9,
+          color: "#ffffff",
+          fillColor: "#3e97ff",
+          fillOpacity: 1,
+          weight: 3,
+          bubblingMouseEvents: false
+        }).bindTooltip("Mi ubicación", {
+          direction: "top",
+          offset: [0, -10],
+          permanent: false
+        }).addTo(locationLayer);
+
+        map.setView([lat, lng], Math.max(map.getZoom(), 16));
+        setLocationButton(myLocationButton, "Mi ubicación", false);
+        showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
+      };
+
+      var renderLocationError = function (error) {
+        var message = geolocationErrorMessage(error);
+        setLocationButton(myLocationButton, message, false);
+        showLocationStatus(locationStatusEl, message, "danger", 7000);
+      };
+
       myLocationButton.addEventListener("click", function () {
+        setLocationButton(myLocationButton, "Ubicando...", true);
+        showLocationStatus(locationStatusEl, "Buscando tu ubicación...", "info");
+
+        if (window.GeolocationGate) {
+          window.GeolocationGate.require({
+            mode: "soft",
+            reason: "Para mostrar tu posición actual en el mapa.",
+            onGranted: renderUserLocation,
+            onDenied: renderLocationError,
+            onSkipped: function () {
+              setLocationButton(myLocationButton, "Mi ubicación", false);
+              showLocationStatus(locationStatusEl, "Sin ubicación.", "info", 3000);
+            }
+          });
+          return;
+        }
+
         if (!window.isSecureContext || !navigator.geolocation) {
           setLocationButton(myLocationButton, "Ubicación no disponible", false);
           showLocationStatus(
@@ -616,56 +792,51 @@
           );
           return;
         }
-
-        setLocationButton(myLocationButton, "Ubicando...", true);
-        showLocationStatus(locationStatusEl, "Buscando tu ubicación...", "info");
         navigator.geolocation.getCurrentPosition(
-          function (position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var accuracy = position.coords.accuracy || 0;
-
-            locationLayer.clearLayers();
-            window.L.circle([lat, lng], {
-              radius: accuracy,
-              stroke: false,
-              fillColor: "#3e97ff",
-              fillOpacity: 0.12,
-              bubblingMouseEvents: false
-            }).addTo(locationLayer);
-            window.L.circleMarker([lat, lng], {
-              radius: 9,
-              color: "#ffffff",
-              fillColor: "#3e97ff",
-              fillOpacity: 1,
-              weight: 3,
-              bubblingMouseEvents: false
-            }).bindTooltip("Mi ubicación", {
-              direction: "top",
-              offset: [0, -10],
-              permanent: false
-            }).addTo(locationLayer);
-
-            map.setView([lat, lng], Math.max(map.getZoom(), 16));
-            setLocationButton(myLocationButton, "Mi ubicación", false);
-            showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
-          },
-          function (error) {
-            var message = geolocationErrorMessage(error);
-            setLocationButton(myLocationButton, message, false);
-            showLocationStatus(locationStatusEl, message, "danger", 7000);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 30000
-          }
+          renderUserLocation,
+          renderLocationError,
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
         );
       });
     }
 
+    function openChoiceModal(latlng) {
+      var mapState = { zoom: map.getZoom(), layer: activeBasemap };
+      // Without a Bootstrap runtime we can't show the choice modal, so fall
+      // back to the original behavior of opening the publicidad form directly.
+      if (!choiceModalEl || !window.bootstrap) {
+        if (createUrl) {
+          openCreateModal(createModalEl, createUrl, latlng, mapState, load);
+        }
+        return;
+      }
+      var modal = window.bootstrap.Modal.getOrCreateInstance(choiceModalEl);
+      var buttons = choiceModalEl.querySelectorAll("[data-choice]");
+      function pickHandler(event) {
+        var choice = event.currentTarget.getAttribute("data-choice");
+        modal.hide();
+        // Wait for the dismiss animation so the next modal opens cleanly.
+        window.setTimeout(function () {
+          if (choice === "ad" && createUrl) {
+            openCreateModal(createModalEl, createUrl, latlng, mapState, load);
+          } else if (choice === "refusal" && refusalCreateUrl) {
+            openRefusalCreateModal(refusalModalEl, refusalCreateUrl, latlng, mapState, load);
+          }
+        }, 200);
+      }
+      Array.prototype.forEach.call(buttons, function (btn) {
+        // Re-bind on every open so we don't leak listeners across clicks.
+        btn.replaceWith(btn.cloneNode(true));
+      });
+      var fresh = choiceModalEl.querySelectorAll("[data-choice]");
+      Array.prototype.forEach.call(fresh, function (btn) {
+        btn.addEventListener("click", pickHandler);
+      });
+      modal.show();
+    }
+
     map.on("click", function (event) {
-      if (!createUrl) {
+      if (!createUrl && !refusalCreateUrl) {
         return;
       }
       // On phones the bottom-sheet may overlay part of the map — close it
@@ -678,16 +849,7 @@
         panelApi.close();
         return;
       }
-      openCreateModal(
-        createModalEl,
-        createUrl,
-        event.latlng,
-        {
-          zoom: map.getZoom(),
-          layer: activeBasemap
-        },
-        load
-      );
+      openChoiceModal(event.latlng);
     });
 
     // Keep the Leaflet canvas accurate across viewport / orientation changes.

@@ -5,7 +5,7 @@ from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import WorkflowStateFilterMixin
 from core.map_mixins import MapAjaxCreateMixin, MapInitialLocationMixin
 
-from .forms import PhysicalAdvertisementForm
+from .forms import AdvertisingRefusalForm, PhysicalAdvertisementForm
 
 
 class PhysicalAdMapInitialLocationMixin(MapInitialLocationMixin):
@@ -18,6 +18,52 @@ class PhysicalAdMapInitialLocationMixin(MapInitialLocationMixin):
 class PhysicalAdMapAjaxCreateMixin(MapAjaxCreateMixin):
     map_form_template_name = "territorial_ads/_map_create_form.html"
     map_detail_url_name = "site:territorial_ads_physicaladvertisement_"
+
+
+@register("territorial_ads.AdvertisingRefusal")
+class AdvertisingRefusalSite(BaseSite):
+    form_class = AdvertisingRefusalForm
+    detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+
+    list_fields = (
+        "id",
+        "campaign",
+        "owner_reference",
+        "reason",
+        "reported_by",
+        "created_date",
+    )
+    detail_fields = {
+        "Rechazo": (
+            ("campaign",),
+            ("owner_reference",),
+            ("reason",),
+        ),
+        "Ubicación": (
+            ("latitude", "longitude"),
+        ),
+        "Registro": (
+            ("reported_by", "created_date"),
+        ),
+    }
+    search_params = (
+        "owner_reference__icontains",
+        "reason__icontains",
+    )
+    filter_fields = ("campaign", "is_active")
+    detail_maps = (
+        {
+            "title": "Ubicación",
+            "points": [
+                {
+                    "label": "Rechazo",
+                    "lat": "latitude",
+                    "lng": "longitude",
+                    "color": "#7e8299",
+                },
+            ],
+        },
+    )
 
 
 @register("territorial_ads.AdvertisingCostType")

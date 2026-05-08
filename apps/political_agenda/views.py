@@ -8,6 +8,7 @@ from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -30,6 +31,13 @@ STATE_BORDERS = {
     3: "#ffc700",   # RESCHEDULED
     4: "#7e8299",   # DONE
 }
+
+VIEW_PRIVATE_PERM = "political_agenda.view_private_politicalagendaevent"
+
+
+def _can_view_private_events(user):
+    """User can see private events if staff or holds the explicit permission."""
+    return bool(user and user.is_active and (user.is_superuser or user.has_perm(VIEW_PRIVATE_PERM)))
 
 
 def event_detail_url(pk):
@@ -78,6 +86,8 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
         queryset = PoliticalAgendaEvent.objects.select_related(
             "campaign", "event_type", "responsible"
         )
+        if not _can_view_private_events(request.user):
+            queryset = queryset.filter(is_public=True)
 
         start = _parse_iso(request.GET.get("start"))
         end = _parse_iso(request.GET.get("end"))
@@ -126,6 +136,7 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
                         "latitude": float(event.latitude) if event.latitude is not None else None,
                         "longitude": float(event.longitude) if event.longitude is not None else None,
                         "responsible": str(event.responsible) if event.responsible_id else "",
+                        "is_public": event.is_public,
                         "popup_url": reverse(
                             "political_agenda:calendar_popup", kwargs={"pk": event.id}
                         ),
@@ -150,6 +161,8 @@ class PoliticalAgendaEventPopupView(LoginRequiredMixin, PermissionRequiredMixin,
             ),
             pk=pk,
         )
+        if not event.is_public and not _can_view_private_events(request.user):
+            raise PermissionDenied("Este evento es privado.")
         color = event.event_type.color if event.event_type_id else "#3e97ff"
         border = STATE_BORDERS.get(event.state, color)
         html = render_to_string(

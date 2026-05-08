@@ -1,7 +1,9 @@
 """Map view for physical advertisements.
 
 Single-page Leaflet map showing one pin per ``PhysicalAdvertisement``: the
-installed coordinates when present, otherwise the offered coordinates.
+installed coordinates when present, otherwise the offered coordinates. The
+same map also surfaces ``AdvertisingRefusal`` pins so canvassers can see
+spots where owners have already declined.
 """
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Q
@@ -14,7 +16,8 @@ from django.views.generic import TemplateView
 
 from apps.campaigns.models import Campaign
 
-from .models import PhysicalAdvertisement
+from .forms import AdvertisingRefusalForm
+from .models import AdvertisingRefusal, PhysicalAdvertisement
 
 
 STATE_COLORS = {
@@ -26,6 +29,9 @@ STATE_COLORS = {
     5: "#fd7e14",  # DAÑADA
     6: "#7e8299",  # RETIRADA
 }
+
+REFUSAL_COLOR = "#7e8299"
+REFUSAL_ICON = "cross-square"
 
 # Forward-path stepper. RECHAZADA (0) is rendered separately as a terminal state
 # alert so it does not pollute the linear progress display.
@@ -92,8 +98,39 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     "url": physicalad_detail_url(ad.id),
                     "campaign": ad.campaign.name if ad.campaign_id else "",
                     "address": ad.address or "",
+                    "marker_kind": "ad",
                 }
             )
+
+        # Refusals are not filtered by ``state`` because they don't take part
+        # in the PhysicalAdvertisement workflow. They are hidden when a state
+        # filter is set so the user gets only the matching workflow pins.
+        if not state:
+            refusal_qs = AdvertisingRefusal.objects.select_related("campaign").filter(
+                latitude__isnull=False, longitude__isnull=False, is_active=True
+            )
+            if campaign_id:
+                refusal_qs = refusal_qs.filter(campaign_id=campaign_id)
+            for refusal in refusal_qs:
+                ads.append(
+                    {
+                        "id": refusal.id,
+                        "lat": float(refusal.latitude),
+                        "lng": float(refusal.longitude),
+                        "kind": "rechazo",
+                        "label": refusal.owner_reference or f"Rechazo #{refusal.id}",
+                        "state_code": None,
+                        "state_label": "No quiere publicidad",
+                        "color": REFUSAL_COLOR,
+                        "type_icon": REFUSAL_ICON,
+                        "type_label": "Rechazo",
+                        "url": reverse("territorial_ads:refusal_popup", kwargs={"pk": refusal.id}),
+                        "campaign": refusal.campaign.name if refusal.campaign_id else "",
+                        "address": refusal.owner_reference or "",
+                        "marker_kind": "refusal",
+                    }
+                )
+
         return JsonResponse({"ads": ads})
 
 
@@ -153,5 +190,80 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "html": html,
                 "title": ad.code or str(ad),
                 "url": physicalad_detail_url(ad.id),
+            }
+        )
+
+
+class AdvertisingRefusalCreateView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """AJAX-only create endpoint for refusal pins, opened from the map."""
+
+    permission_required = "territorial_ads.add_advertisingrefusal"
+    template_name = "territorial_ads/_map_refusal_form.html"
+
+    def _initial_from_query(self, request):
+        initial = {}
+        for source, target in (
+            ("offered_latitude", "latitude"),
+            ("offered_longitude", "longitude"),
+            ("latitude", "latitude"),
+            ("longitude", "longitude"),
+        ):
+            value = request.GET.get(source)
+            if value and target not in initial:
+                initial[target] = value
+        return initial
+
+    def _render_form(self, request, form):
+        return render_to_string(
+            self.template_name,
+            {"form": form, "action_url": request.get_full_path()},
+            request=request,
+        )
+
+    def get(self, request, *args, **kwargs):
+        form = AdvertisingRefusalForm(initial=self._initial_from_query(request))
+        return JsonResponse({"html": self._render_form(request, form)})
+
+    def post(self, request, *args, **kwargs):
+        form = AdvertisingRefusalForm(request.POST)
+        if not form.is_valid():
+            return JsonResponse(
+                {"ok": False, "html": self._render_form(request, form)},
+                status=400,
+            )
+        refusal = form.save(commit=False)
+        if request.user.is_authenticated:
+            refusal.reported_by = request.user
+        refusal.save()
+        return JsonResponse(
+            {
+                "ok": True,
+                "id": refusal.pk,
+                "label": refusal.owner_reference or f"Rechazo #{refusal.pk}",
+                "url": reverse("territorial_ads:refusal_popup", kwargs={"pk": refusal.pk}),
+            }
+        )
+
+
+class AdvertisingRefusalPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """HTML card for a refusal pin, rendered inside the map modal."""
+
+    permission_required = "territorial_ads.view_advertisingrefusal"
+
+    def get(self, request, pk, *args, **kwargs):
+        refusal = get_object_or_404(
+            AdvertisingRefusal.objects.select_related("campaign", "reported_by"),
+            pk=pk,
+        )
+        html = render_to_string(
+            "territorial_ads/_map_refusal_popup.html",
+            {"refusal": refusal, "state_color": REFUSAL_COLOR},
+            request=request,
+        )
+        return JsonResponse(
+            {
+                "html": html,
+                "title": refusal.owner_reference or f"Rechazo #{refusal.pk}",
+                "url": "",
             }
         )

@@ -236,3 +236,57 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         if not self.code:
             self.code = f"PF-{self.pk:06d}"
             super().save(update_fields=["code"])
+
+
+class AdvertisingRefusal(BaseModel):
+    """A reported spot where the owner did NOT want to host advertising.
+
+    Visible on the territorial-ads map so canvassers don't re-approach the
+    same place. Stays out of the PhysicalAdvertisement workflow on purpose:
+    it's a lightweight refusal log, not a piece of inventory.
+    """
+
+    campaign = models.ForeignKey(
+        Campaign,
+        on_delete=models.PROTECT,
+        related_name="advertising_refusals",
+        verbose_name="Campaña",
+    )
+    reason = models.TextField(
+        "Motivo",
+        help_text="Razón por la cual el propietario no acepta publicidad.",
+    )
+    owner_reference = models.CharField(
+        "Referencia del propietario",
+        max_length=180,
+        blank=True,
+        help_text="Opcional: nombre o referencia para identificar de quién es la casa.",
+    )
+    latitude = models.DecimalField(
+        "Latitud",
+        max_digits=9,
+        decimal_places=6,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        "Longitud",
+        max_digits=9,
+        decimal_places=6,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="reported_advertising_refusals",
+        verbose_name="Reportado por",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Rechazo de publicidad"
+        verbose_name_plural = "Rechazos de publicidad"
+        ordering = ["-created_date"]
+
+    def __str__(self):
+        return f"Rechazo #{self.pk}" if self.pk else "Rechazo"

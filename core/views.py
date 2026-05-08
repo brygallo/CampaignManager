@@ -91,10 +91,53 @@ class AutoResponseView(BaseAutoResponseView):
 @login_required
 def inicio(request):
     """Mobile-first quick-access landing for any authenticated user."""
+    from django.utils import timezone
+
+    from apps.field_surveys.models import FieldSurvey
+    from apps.political_agenda.models import PoliticalAgendaEvent
+    from apps.territorial_ads.models import PhysicalAdvertisement
+
+    now = timezone.localtime()
+    today = now.date()
+    week_ago = today - timedelta(days=7)
+    week_ahead = now + timedelta(days=7)
+
+    ads_total = PhysicalAdvertisement.objects.count()
+    ads_week = PhysicalAdvertisement.objects.filter(created_date__date__gte=week_ago).count()
+
+    visits_total = FieldSurvey.objects.count()
+    visits_today = FieldSurvey.objects.filter(created_date__date=today).count()
+
+    upcoming_events_qs = (
+        PoliticalAgendaEvent.objects.filter(start_at__gte=now)
+        .select_related("event_type", "campaign")
+        .order_by("start_at")
+    )
+    upcoming_events = list(upcoming_events_qs[:3])
+    upcoming_count = upcoming_events_qs.filter(start_at__lt=week_ahead).count()
+
+    hour = now.hour
+    if hour < 12:
+        greeting = "Buenos días"
+    elif hour < 19:
+        greeting = "Buenas tardes"
+    else:
+        greeting = "Buenas noches"
+
     return render(
         request,
         "inicio.html",
         {
+            "stats": {
+                "ads_total": ads_total,
+                "ads_week": ads_week,
+                "visits_total": visits_total,
+                "visits_today": visits_today,
+                "upcoming_count": upcoming_count,
+            },
+            "upcoming_events": upcoming_events,
+            "greeting": greeting,
+            "now": now,
             "breadcrumbs": [("Inicio", None)],
         },
     )

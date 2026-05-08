@@ -133,25 +133,43 @@
     var locationButton = container.querySelector("[data-leaflet-current-location]");
     if (locationButton) {
       locationButton.addEventListener("click", function () {
+        var onGranted = function (position) {
+          var current = window.L.latLng(position.coords.latitude, position.coords.longitude);
+          map.setView(current, 17);
+          setPoint(container, marker, latField, lngField, current, map, {
+            manualField: manualField,
+            manual: false,
+            accuracyField: accuracyField,
+            accuracy: position.coords.accuracy
+          });
+        };
+        var onDenied = function () {
+          setStatus(container, "No se pudo obtener la ubicación actual.");
+        };
+
+        // Pasamos por el gate global: muestra pre-aviso, instrucciones por
+        // plataforma cuando está bloqueado, y aviso de HTTPS si aplica.
+        if (window.GeolocationGate) {
+          setStatus(container, "Obteniendo ubicación actual...");
+          window.GeolocationGate.require({
+            mode: "soft",
+            reason: "Para precargar tu ubicación actual en el mapa.",
+            onGranted: onGranted,
+            onDenied: onDenied,
+            onSkipped: onDenied
+          });
+          return;
+        }
+
+        // Fallback si el gate no está disponible (no debería pasar).
         if (!navigator.geolocation) {
           setStatus(container, "El navegador no soporta geolocalización.");
           return;
         }
         setStatus(container, "Obteniendo ubicación actual...");
         navigator.geolocation.getCurrentPosition(
-          function (position) {
-            var current = window.L.latLng(position.coords.latitude, position.coords.longitude);
-            map.setView(current, 17);
-            setPoint(container, marker, latField, lngField, current, map, {
-              manualField: manualField,
-              manual: false,
-              accuracyField: accuracyField,
-              accuracy: position.coords.accuracy
-            });
-          },
-          function () {
-            setStatus(container, "No se pudo obtener la ubicación actual.");
-          },
+          onGranted,
+          onDenied,
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
       });

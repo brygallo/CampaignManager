@@ -1,9 +1,12 @@
 {% extends "base/base.html" %}
 {% load static %}
+{% load l10n %}
 
 {% block title %}Mapa publicidad | {{ block.super }}{% endblock %}
 
 {% block toolbar %}{% endblock %}
+
+{% block footer %}{% endblock %}
 
 {% block content %}
 <div class="physical-ad-map-shell" data-panel-state="collapsed" role="region" aria-label="Mapa de publicidad territorial">
@@ -12,9 +15,11 @@
        data-url="{% url 'territorial_ads:map_data' %}"
        data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"
        data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"
-       data-default-lat="{{ tenant_map_center.lat }}"
-       data-default-lng="{{ tenant_map_center.lng }}"
-       data-default-zoom="{{ tenant_map_center.zoom }}"></div>
+       data-refusal-create-url="{% url 'territorial_ads:refusal_create' %}"
+       data-refusal-popup-url="{% url 'territorial_ads:refusal_popup' 0 %}"
+       data-default-lat="{{ tenant_map_center.lat|stringformat:"f" }}"
+       data-default-lng="{{ tenant_map_center.lng|stringformat:"f" }}"
+       data-default-zoom="{{ tenant_map_center.zoom|stringformat:"d" }}"></div>
 
 
   {# ===== Pin counter (top-left, minimal pill) ===== #}
@@ -150,8 +155,64 @@
 
 </div>
 
+{% comment %}
+  Modal shown first when an empty map spot is clicked: choose between
+  registering advertising or logging a refusal.
+{% endcomment %}
+<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-choice-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
+    <div class="modal-content">
+      <div class="physical-ad-map-modal__handle d-md-none" aria-hidden="true"></div>
+      <div class="modal-header py-4">
+        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
+            <span class="symbol-label bg-light-primary text-primary">
+              <i class="ki-outline ki-question-2 fs-2"></i>
+            </span>
+          </span>
+          <div class="min-w-0">
+            <h5 class="modal-title fw-bolder mb-0 text-truncate">¿Qué quieres registrar?</h5>
+            <span class="text-muted fs-8">Elige una opción para este lugar</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-grid gap-3">
+          <button type="button"
+                  class="btn btn-light-primary text-start d-flex align-items-center gap-3 py-4"
+                  data-choice="ad">
+            <span class="symbol symbol-45px symbol-circle">
+              <span class="symbol-label bg-primary text-white">
+                <i class="ki-outline ki-flag fs-2 text-white"></i>
+              </span>
+            </span>
+            <span class="d-flex flex-column text-start">
+              <span class="fw-bolder fs-6 text-gray-900">Registrar publicidad</span>
+              <span class="text-muted fs-8">Una persona ofreció el lugar para colocar publicidad.</span>
+            </span>
+          </button>
+          <button type="button"
+                  class="btn btn-light text-start d-flex align-items-center gap-3 py-4"
+                  data-choice="refusal">
+            <span class="symbol symbol-45px symbol-circle">
+              <span class="symbol-label bg-secondary text-white">
+                <i class="ki-outline ki-cross-square fs-2 text-white"></i>
+              </span>
+            </span>
+            <span class="d-flex flex-column text-start">
+              <span class="fw-bolder fs-6 text-gray-900">No quiere publicidad</span>
+              <span class="text-muted fs-8">El propietario rechazó. Solo se pide el motivo.</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# Modal shown when an empty map spot is clicked. Body receives the create form. #}
-<div class="modal fade physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-create-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-create-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
     <div class="modal-content">
       <div class="physical-ad-map-modal__handle d-md-none" aria-hidden="true"></div>
@@ -190,8 +251,51 @@
   </div>
 </div>
 
+{% comment %}
+  Modal shown when the user picked "No quiere publicidad". Body receives a
+  minimal refusal form.
+{% endcomment %}
+<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-refusal-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
+    <div class="modal-content">
+      <div class="physical-ad-map-modal__handle d-md-none" aria-hidden="true"></div>
+      <div class="modal-header py-4">
+        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
+            <span class="symbol-label bg-secondary text-white">
+              <i class="ki-outline ki-cross-square fs-2 text-white"></i>
+            </span>
+          </span>
+          <div class="min-w-0">
+            <h5 class="modal-title fw-bolder mb-0 text-truncate">No quiere publicidad</h5>
+            <span class="text-muted fs-8">Indica el motivo del rechazo</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" data-refusal-modal-body>
+        <div class="text-center text-muted py-10">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Cargando…</span>
+          </div>
+          <div class="mt-3">Cargando formulario…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit"
+                form="physical-ad-map-refusal-form"
+                class="btn btn-sm btn-primary d-flex align-items-center gap-2"
+                data-refusal-submit>
+          <i class="ki-outline ki-check fs-3"></i>Guardar rechazo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# Modal shown when a pin is clicked. Body is filled via fetch. #}
-<div class="modal fade physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
     <div class="modal-content">
       <div class="physical-ad-map-modal__handle d-md-none" aria-hidden="true"></div>
@@ -227,5 +331,22 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260507-forms"></script>
+<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260508-gate"></script>
+<script>
+  // Gate suave: a veces se planifica desde la oficina. Solo pedimos ubicación
+  // una vez por sesión; si la ignoran, queda el banner persistente.
+  document.addEventListener("DOMContentLoaded", function () {
+    if (!window.GeolocationGate) return;
+    var triggerLocate = function () {
+      var btn = document.getElementById("physical-ad-my-location");
+      if (btn) btn.click();
+    };
+    window.GeolocationGate.require({
+      mode: "soft",
+      reason: "Para ubicar la publicidad en el sitio actual.",
+      onGranted: triggerLocate,
+      onSkipped: function () { /* mapa queda en centro del tenant */ }
+    });
+  });
+</script>
 {% endblock %}

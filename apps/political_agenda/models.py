@@ -202,6 +202,15 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
         validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
 
+    is_public = models.BooleanField(
+        "Visible al público",
+        default=True,
+        help_text=(
+            "Si está marcado, cualquier usuario con acceso al módulo verá el evento. "
+            "Si se desmarca, solo los usuarios con el permiso «Puede ver eventos privados» "
+            "podrán verlo en el listado y el calendario."
+        ),
+    )
     organizer_name = models.CharField("Organizador / contacto", max_length=180, blank=True)
     organizer_phone = models.CharField("Teléfono contacto", max_length=32, blank=True)
     responsible = models.ForeignKey(
@@ -231,6 +240,7 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
         ordering = ["start_at", "title"]
         permissions = (
             ("schedule_politicalagendaevent", "Puede agendar eventos políticos"),
+            ("view_private_politicalagendaevent", "Puede ver eventos privados"),
         )
 
     def __str__(self):

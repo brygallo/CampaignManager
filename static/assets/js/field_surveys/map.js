@@ -740,7 +740,65 @@
       });
     }
     if (myLocationButton) {
+      var renderUserLocation = function (position) {
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+        var accuracy = position.coords.accuracy || 0;
+
+        locationLayer.clearLayers();
+        window.L.circle([lat, lng], {
+          radius: accuracy,
+          stroke: false,
+          fillColor: "#3e97ff",
+          fillOpacity: 0.12,
+          bubblingMouseEvents: false
+        }).addTo(locationLayer);
+        window.L.circleMarker([lat, lng], {
+          radius: 9,
+          color: "#ffffff",
+          fillColor: "#3e97ff",
+          fillOpacity: 1,
+          weight: 3,
+          bubblingMouseEvents: false
+        }).bindTooltip("Mi ubicación", {
+          direction: "top",
+          offset: [0, -10],
+          permanent: false
+        }).addTo(locationLayer);
+
+        map.setView([lat, lng], Math.max(map.getZoom(), 16));
+        setLocationButton(myLocationButton, "Mi ubicación", false);
+        showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
+      };
+
+      var renderLocationError = function (error) {
+        var message = geolocationErrorMessage(error);
+        setLocationButton(myLocationButton, message, false);
+        showLocationStatus(locationStatusEl, message, "danger", 7000);
+      };
+
       myLocationButton.addEventListener("click", function () {
+        setLocationButton(myLocationButton, "Ubicando...", true);
+        showLocationStatus(locationStatusEl, "Buscando tu ubicación...", "info");
+
+        // Pasamos por el gate: muestra pre-aviso si está en "prompt",
+        // panel de instrucciones si está "denied", aviso de HTTPS si aplica.
+        // Si ya está concedido, va directo al fetch sin abrir modal.
+        if (window.GeolocationGate) {
+          window.GeolocationGate.require({
+            mode: "soft",
+            reason: "Para mostrar tu posición actual en el mapa.",
+            onGranted: renderUserLocation,
+            onDenied: renderLocationError,
+            onSkipped: function () {
+              setLocationButton(myLocationButton, "Mi ubicación", false);
+              showLocationStatus(locationStatusEl, "Sin ubicación.", "info", 3000);
+            }
+          });
+          return;
+        }
+
+        // Fallback si el gate no está disponible.
         if (!window.isSecureContext || !navigator.geolocation) {
           setLocationButton(myLocationButton, "Ubicación no disponible", false);
           showLocationStatus(
@@ -753,50 +811,10 @@
           );
           return;
         }
-
-        setLocationButton(myLocationButton, "Ubicando...", true);
-        showLocationStatus(locationStatusEl, "Buscando tu ubicación...", "info");
         navigator.geolocation.getCurrentPosition(
-          function (position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var accuracy = position.coords.accuracy || 0;
-
-            locationLayer.clearLayers();
-            window.L.circle([lat, lng], {
-              radius: accuracy,
-              stroke: false,
-              fillColor: "#3e97ff",
-              fillOpacity: 0.12,
-              bubblingMouseEvents: false
-            }).addTo(locationLayer);
-            window.L.circleMarker([lat, lng], {
-              radius: 9,
-              color: "#ffffff",
-              fillColor: "#3e97ff",
-              fillOpacity: 1,
-              weight: 3,
-              bubblingMouseEvents: false
-            }).bindTooltip("Mi ubicación", {
-              direction: "top",
-              offset: [0, -10],
-              permanent: false
-            }).addTo(locationLayer);
-
-            map.setView([lat, lng], Math.max(map.getZoom(), 16));
-            setLocationButton(myLocationButton, "Mi ubicación", false);
-            showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
-          },
-          function (error) {
-            var message = geolocationErrorMessage(error);
-            setLocationButton(myLocationButton, message, false);
-            showLocationStatus(locationStatusEl, message, "danger", 7000);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 30000
-          }
+          renderUserLocation,
+          renderLocationError,
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
         );
       });
     }

@@ -1,9 +1,12 @@
 {% extends "base/base.html" %}
 {% load static %}
+{% load l10n %}
 
 {% block title %}Mapa levantamiento | {{ block.super }}{% endblock %}
 
 {% block toolbar %}{% endblock %}
+
+{% block footer %}{% endblock %}
 
 {% block content %}
 <div class="field-survey-map-shell" data-panel-state="collapsed" role="region" aria-label="Mapa de levantamientos">
@@ -12,9 +15,9 @@
        data-url="{% url 'field_surveys:map_data' %}"
        data-create-url="{% url 'site:field_surveys_fieldsurvey_crear' %}"
        data-create-competitor-url="{% url 'site:field_surveys_competitoradvertisingdetection_crear' %}"
-       data-default-lat="{{ tenant_map_center.lat }}"
-       data-default-lng="{{ tenant_map_center.lng }}"
-       data-default-zoom="{{ tenant_map_center.zoom }}"></div>
+       data-default-lat="{{ tenant_map_center.lat|stringformat:"f" }}"
+       data-default-lng="{{ tenant_map_center.lng|stringformat:"f" }}"
+       data-default-zoom="{{ tenant_map_center.zoom|stringformat:"d" }}"></div>
 
   <div id="field-survey-map-count" class="map-pin-count" aria-live="polite">
     <span class="map-pin-count__number" data-pin-count-number>0</span>
@@ -256,7 +259,7 @@
 </div>
 
 {# Modal: choose what to create when an empty map spot is clicked. #}
-<div class="modal fade field-survey-map-modal" id="field-survey-choose-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade cm-sheet-modal field-survey-map-modal" id="field-survey-choose-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header py-4 border-0">
@@ -308,7 +311,7 @@
 </div>
 
 {# Modal: empty map click → quick create form #}
-<div class="modal fade field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-create-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade cm-sheet-modal field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-create-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable field-survey-map-sheet-dialog">
     <div class="modal-content">
       <div class="field-survey-map-modal__handle d-md-none" aria-hidden="true"></div>
@@ -348,7 +351,7 @@
 </div>
 
 {# Modal shown when a visit or competitor pin is clicked. Body is filled with the Superadmin detail page. #}
-<div class="modal fade field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-detail-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade cm-sheet-modal field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-detail-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable field-survey-map-sheet-dialog">
     <div class="modal-content">
       <div class="field-survey-map-modal__handle d-md-none" aria-hidden="true"></div>
@@ -384,5 +387,23 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'assets/js/field_surveys/map.js' %}?v=20260507-pins5"></script>
+<script src="{% static 'assets/js/field_surveys/map.js' %}?v=20260508-gate"></script>
+<script>
+  // Gate duro: brigadistas en terreno necesitan su ubicación para registrar
+  // visitas. Pre-aviso → pedido nativo → centrar en su ubicación reusando el
+  // botón "Mi ubicación" que ya monta el mapa.
+  document.addEventListener("DOMContentLoaded", function () {
+    if (!window.GeolocationGate) return;
+    var triggerLocate = function () {
+      var btn = document.getElementById("field-survey-my-location");
+      if (btn) btn.click();
+    };
+    window.GeolocationGate.require({
+      mode: "hard",
+      reason: "Para registrar visitas en tu posición actual.",
+      onGranted: triggerLocate,
+      onSkipped: function () { /* mapa queda en centro del tenant */ }
+    });
+  });
+</script>
 {% endblock %}

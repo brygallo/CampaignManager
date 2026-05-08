@@ -1,0 +1,85 @@
+<div class="map-popup">
+
+  <header class="map-popup__hero d-flex flex-wrap gap-4 mb-5">
+    <div class="symbol symbol-60px symbol-circle flex-shrink-0">
+      <span class="symbol-label fw-bolder text-white"
+            style="background:{{ state_color }};"
+            aria-hidden="true">
+        <i class="ki-outline ki-cross-square fs-1 text-white"></i>
+      </span>
+    </div>
+    <div class="flex-grow-1 min-w-0">
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <h3 class="m-0 fs-2 fw-bolder text-dark text-truncate">
+          {% if refusal.owner_reference %}{{ refusal.owner_reference }}{% else %}Rechazo #{{ refusal.id }}{% endif %}
+        </h3>
+        <span class="map-popup__state-badge"
+              style="--state-color:{{ state_color }};"
+              aria-label="Estado: No quiere publicidad">
+          <span class="map-popup__state-dot" aria-hidden="true"></span>
+          No quiere publicidad
+        </span>
+      </div>
+      {% if refusal.campaign %}
+        <p class="m-0 mt-2 d-flex align-items-center gap-2 flex-wrap">
+          <i class="ki-outline ki-rocket fs-6 text-primary" aria-hidden="true"></i>
+          <span class="text-dark fw-semibold fs-7">{{ refusal.campaign.name }}</span>
+        </p>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="alert alert-secondary d-flex align-items-center gap-3 py-3 px-4 mb-5" role="status">
+    <i class="ki-outline ki-information-5 fs-2x text-gray-700" aria-hidden="true"></i>
+    <div>
+      <div class="fw-bolder text-gray-900">Lugar marcado como rechazo</div>
+      <div class="text-muted fs-7">El propietario manifestó que no acepta publicidad en este lugar.</div>
+    </div>
+  </div>
+
+  <blockquote class="map-popup__quote" aria-label="Motivo del rechazo">
+    <i class="ki-outline ki-message-text-2 fs-2 text-muted" aria-hidden="true"></i>
+    <div>
+      <div class="text-muted fw-bold fs-8 text-uppercase mb-1">Motivo</div>
+      <div class="text-gray-700 fs-7">{{ refusal.reason|linebreaksbr }}</div>
+    </div>
+  </blockquote>
+
+  <section class="row g-4 mb-2 mt-4" aria-label="Datos del rechazo">
+    {% if refusal.owner_reference %}
+      <div class="col-12 col-sm-6">
+        <div class="map-popup__fact">
+          <span class="symbol symbol-40px symbol-circle">
+            <span class="symbol-label bg-light-info"><i class="ki-outline ki-profile-user fs-3 text-info" aria-hidden="true"></i></span>
+          </span>
+          <div class="map-popup__fact-body">
+            <div class="map-popup__fact-label">Referencia</div>
+            <div class="fw-bold text-dark">{{ refusal.owner_reference }}</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    <div class="col-12 col-sm-6">
+      <div class="map-popup__fact">
+        <span class="symbol symbol-40px symbol-circle">
+          <span class="symbol-label bg-light-primary"><i class="ki-outline ki-geolocation fs-3 text-primary" aria-hidden="true"></i></span>
+        </span>
+        <div class="map-popup__fact-body">
+          <div class="map-popup__fact-label">Ubicación</div>
+          <div class="text-muted fs-8 font-monospace">{{ refusal.latitude }} / {{ refusal.longitude }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="map-popup__meta d-flex flex-wrap gap-3 text-muted fs-8 mt-5 pt-3">
+    {% if refusal.created_date %}
+      <span class="d-inline-flex align-items-center gap-1">
+        <i class="ki-outline ki-add-files fs-8" aria-hidden="true"></i>
+        Registrado {{ refusal.created_date|date:"d M Y · H:i" }}
+        {% if refusal.reported_by %}<span class="text-gray-400">·</span><span>{{ refusal.reported_by }}</span>{% endif %}
+      </span>
+    {% endif %}
+  </footer>
+
+</div>
