@@ -3,7 +3,6 @@ from django_select2.forms import ModelSelect2Widget, Select2Widget
 from superadmin.forms import ModelForm
 
 from apps.campaigns.models import Campaign
-from apps.locations.models import Canton, Parish, Province, Sector
 from core.widgets import LeafletMapWidget
 
 from .models import AgendaEventType, PoliticalAgendaEvent, PoliticalAgendaRequest
@@ -45,15 +44,13 @@ class PoliticalAgendaRequestForm(ModelForm):
             ),
             "Solicitante": (
                 ("requester_name", "requester_phone"),
-                ("requester_email", "organization"),
+                ("organization",),
             ),
             "Fecha tentativa": (
                 ("proposed_start_at", "proposed_end_at"),
                 ("alternative_dates",),
             ),
             "Ubicación tentativa": (
-                ("province", "canton"),
-                ("parish", "sector"),
                 ("address",),
                 ("reference",),
                 ("location",),
@@ -63,10 +60,6 @@ class PoliticalAgendaRequestForm(ModelForm):
                 ("objective",),
                 ("expected_attendees",),
                 ("notes",),
-            ),
-            "Revisión": (
-                ("reviewed_by", "reviewed_at"),
-                ("rejection_reason",),
             ),
         }
         widgets = {
@@ -82,37 +75,9 @@ class PoliticalAgendaRequestForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "AgendaEventType"},
             ),
-            "province": ModelSelect2Widget(
-                model=Province,
-                search_fields=["name__icontains", "code__icontains"],
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Province"},
-            ),
-            "canton": ModelSelect2Widget(
-                model=Canton,
-                search_fields=["name__icontains", "province__name__icontains"],
-                dependent_fields={"province": "province"},
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
-            ),
-            "parish": ModelSelect2Widget(
-                model=Parish,
-                search_fields=["name__icontains", "canton__name__icontains"],
-                dependent_fields={"canton": "canton"},
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
-            ),
-            "sector": ModelSelect2Widget(
-                model=Sector,
-                search_fields=["name__icontains", "parish__name__icontains"],
-                dependent_fields={"parish": "parish"},
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
-            ),
             "priority": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "proposed_start_at": forms.DateTimeInput(),
             "proposed_end_at": forms.DateTimeInput(),
-            "reviewed_at": forms.DateTimeInput(),
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),
         }
@@ -145,8 +110,6 @@ class PoliticalAgendaEventForm(ModelForm):
                 ("start_at", "end_at"),
             ),
             "Ubicación": (
-                ("province", "canton"),
-                ("parish", "sector"),
                 ("address",),
                 ("reference",),
                 ("location",),
@@ -181,33 +144,6 @@ class PoliticalAgendaEventForm(ModelForm):
                 dependent_fields={"campaign": "campaign"},
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "PoliticalAgendaRequest"},
-            ),
-            "province": ModelSelect2Widget(
-                model=Province,
-                search_fields=["name__icontains", "code__icontains"],
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Province"},
-            ),
-            "canton": ModelSelect2Widget(
-                model=Canton,
-                search_fields=["name__icontains", "province__name__icontains"],
-                dependent_fields={"province": "province"},
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Canton"},
-            ),
-            "parish": ModelSelect2Widget(
-                model=Parish,
-                search_fields=["name__icontains", "canton__name__icontains"],
-                dependent_fields={"canton": "canton"},
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Parish"},
-            ),
-            "sector": ModelSelect2Widget(
-                model=Sector,
-                search_fields=["name__icontains", "parish__name__icontains"],
-                dependent_fields={"parish": "parish"},
-                max_results=100,
-                attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
             ),
             "start_at": forms.DateTimeInput(),
             "end_at": forms.DateTimeInput(),

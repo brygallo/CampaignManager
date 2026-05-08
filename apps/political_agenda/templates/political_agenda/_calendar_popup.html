@@ -64,17 +64,12 @@
   </div>
 
   {# ===== Location ===== #}
-  {% if event.address or event.latitude or event.parish %}
+  {% if event.address or event.latitude %}
     <div class="agenda-popup__pin-hint mb-4" role="note">
       <i class="ki-outline ki-geolocation fs-3" aria-hidden="true"></i>
       <div class="flex-grow-1">
         {% if event.address %}<div class="fw-bold text-dark fs-7">{{ event.address }}</div>{% endif %}
         {% if event.reference %}<div class="text-muted fs-8">{{ event.reference }}</div>{% endif %}
-        {% if event.parish %}
-          <div class="text-muted fs-8">
-            {% if event.sector %}{{ event.sector }} · {% endif %}{{ event.parish }}{% if event.canton %}, {{ event.canton }}{% endif %}
-          </div>
-        {% endif %}
         {% if event.latitude and event.longitude %}
           <div class="text-muted fs-8 font-monospace mt-1">
             <i class="ki-outline ki-pin fs-8 me-1" aria-hidden="true"></i>{{ event.latitude }} / {{ event.longitude }}

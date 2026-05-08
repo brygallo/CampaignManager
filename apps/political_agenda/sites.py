@@ -51,7 +51,35 @@ class PoliticalAgendaRequestSite(BaseSite):
         "priority",
         "proposed_start_at",
     )
-    detail_fields = PoliticalAgendaRequestForm.Meta.fieldsets
+    detail_fields = {
+        "Solicitud": (
+            ("campaign", "title"),
+            ("event_type",),
+            ("priority",),
+        ),
+        "Solicitante": (
+            ("requester_name", "requester_phone"),
+            ("organization",),
+        ),
+        "Fecha tentativa": (
+            ("proposed_start_at", "proposed_end_at"),
+            ("alternative_dates",),
+        ),
+        "Ubicación tentativa": (
+            ("address",),
+            ("reference",),
+            ("latitude", "longitude"),
+        ),
+        "Detalle": (
+            ("objective",),
+            ("expected_attendees",),
+            ("notes",),
+        ),
+        "Revisión": (
+            ("reviewed_by", "reviewed_at"),
+            ("rejection_reason",),
+        ),
+    }
     search_params = (
         "title__icontains",
         "requester_name__icontains",
@@ -96,7 +124,27 @@ class PoliticalAgendaEventSite(BaseSite):
         "end_at",
         "responsible",
     )
-    detail_fields = PoliticalAgendaEventForm.Meta.fieldsets
+    detail_fields = {
+        "Evento": (
+            ("campaign", "source_request"),
+            ("title", "event_type"),
+            ("start_at", "end_at"),
+        ),
+        "Ubicación": (
+            ("address",),
+            ("reference",),
+            ("latitude", "longitude"),
+        ),
+        "Organización": (
+            ("organizer_name", "organizer_phone"),
+            ("responsible", "expected_attendees"),
+        ),
+        "Detalle": (
+            ("objective",),
+            ("logistics_notes",),
+            ("result_notes",),
+        ),
+    }
     search_params = (
         "title__icontains",
         "organizer_name__icontains",

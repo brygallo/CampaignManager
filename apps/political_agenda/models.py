@@ -6,7 +6,6 @@ from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
-from apps.locations.models import Canton, Parish, Province, Sector
 from apps.political_agenda.transitions import (
     PoliticalAgendaEventTransitions,
     PoliticalAgendaRequestTransitions,
@@ -79,17 +78,12 @@ class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions, Trans
 
     requester_name = models.CharField("Solicitante", max_length=180)
     requester_phone = models.CharField("Teléfono solicitante", max_length=32, blank=True)
-    requester_email = models.EmailField("Correo solicitante", blank=True)
     organization = models.CharField("Organización / sector", max_length=180, blank=True)
 
     proposed_start_at = models.DateTimeField("Inicio tentativo", null=True, blank=True)
     proposed_end_at = models.DateTimeField("Fin tentativo", null=True, blank=True)
     alternative_dates = models.TextField("Fechas alternativas", blank=True)
 
-    province = models.ForeignKey(Province, on_delete=models.PROTECT, related_name="agenda_requests", verbose_name="Provincia", null=True, blank=True)
-    canton = models.ForeignKey(Canton, on_delete=models.PROTECT, related_name="agenda_requests", verbose_name="Cantón", null=True, blank=True)
-    parish = models.ForeignKey(Parish, on_delete=models.PROTECT, related_name="agenda_requests", verbose_name="Parroquia", null=True, blank=True)
-    sector = models.ForeignKey(Sector, on_delete=models.PROTECT, related_name="agenda_requests", verbose_name="Sector / barrio", null=True, blank=True)
     address = models.CharField("Dirección", max_length=255, blank=True)
     reference = models.CharField("Referencia", max_length=255, blank=True)
     latitude = models.DecimalField(
@@ -220,10 +214,6 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, Transitio
     start_at = models.DateTimeField("Inicio")
     end_at = models.DateTimeField("Fin")
 
-    province = models.ForeignKey(Province, on_delete=models.PROTECT, related_name="agenda_events", verbose_name="Provincia", null=True, blank=True)
-    canton = models.ForeignKey(Canton, on_delete=models.PROTECT, related_name="agenda_events", verbose_name="Cantón", null=True, blank=True)
-    parish = models.ForeignKey(Parish, on_delete=models.PROTECT, related_name="agenda_events", verbose_name="Parroquia", null=True, blank=True)
-    sector = models.ForeignKey(Sector, on_delete=models.PROTECT, related_name="agenda_events", verbose_name="Sector / barrio", null=True, blank=True)
     address = models.CharField("Dirección", max_length=255, blank=True)
     reference = models.CharField("Referencia", max_length=255, blank=True)
     latitude = models.DecimalField(
@@ -323,10 +313,6 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, Transitio
             "event_type": agenda_request.event_type,
             "start_at": agenda_request.proposed_start_at,
             "end_at": agenda_request.proposed_end_at,
-            "province": agenda_request.province,
-            "canton": agenda_request.canton,
-            "parish": agenda_request.parish,
-            "sector": agenda_request.sector,
             "address": agenda_request.address,
             "reference": agenda_request.reference,
             "latitude": agenda_request.latitude,

@@ -8,7 +8,7 @@ Uso:
     python manage.py tenant_command seed_political_agenda --schema=<tenant>
 
 Requiere previamente:
-    seed_campaigns, seed_sectors, seed_political_agenda_catalog
+    seed_campaigns, seed_political_agenda_catalog
 """
 
 import random
@@ -22,7 +22,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.campaigns.models import Campaign
-from apps.locations.models import Canton, Parish, Province, Sector
 from apps.political_agenda.models import (
     AgendaEventType,
     PoliticalAgendaEvent,
@@ -181,20 +180,12 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No hay usuarios."))
             return
 
-        province = Province.objects.filter(code="14").first()
-        canton = Canton.objects.filter(code="1401").first()
-        parishes = list(Parish.objects.filter(canton=canton)) if canton else []
-        sectors_by_parish = {p.id: list(Sector.objects.filter(parish=p)) for p in parishes}
-
         rng = random.Random(42)
 
         # solicitudes
         wf_req = PoliticalAgendaRequest.workflow
         approved_requests = []
         for i, (title, etype_code, priority, requester, org, state) in enumerate(REQUESTS):
-            parish = parishes[i % len(parishes)] if parishes else None
-            sectors = sectors_by_parish.get(parish.id, []) if parish else []
-            sector = sectors[i % len(sectors)] if sectors else None
             lat, lng = _jitter_coords(rng)
 
             req, created = PoliticalAgendaRequest.objects.get_or_create(
@@ -205,14 +196,9 @@ class Command(BaseCommand):
                     "priority": priority,
                     "requester_name": requester,
                     "requester_phone": f"09{60000000 + i * 11111}",
-                    "requester_email": f"{requester.split()[0].lower()}@example.ec",
                     "organization": org,
                     "proposed_start_at": _at(7 + i, hour=9 + (i % 6), minute=0),
                     "proposed_end_at": _at(7 + i, hour=11 + (i % 6), minute=0),
-                    "province": province,
-                    "canton": canton,
-                    "parish": parish,
-                    "sector": sector,
                     "address": "Por confirmar",
                     "latitude": lat,
                     "longitude": lng,
@@ -252,10 +238,6 @@ class Command(BaseCommand):
                     "event_type": req.event_type,
                     "start_at": req.proposed_start_at or _at(10 + i, 9),
                     "end_at": req.proposed_end_at or _at(10 + i, 11),
-                    "province": req.province,
-                    "canton": req.canton,
-                    "parish": req.parish,
-                    "sector": req.sector,
                     "address": req.address or "Centro Macas",
                     "latitude": req.latitude,
                     "longitude": req.longitude,
@@ -284,9 +266,6 @@ class Command(BaseCommand):
                     "event_type": types_by_code["RECORRIDO"],
                     "start_at": start,
                     "end_at": end,
-                    "province": province,
-                    "canton": canton,
-                    "parish": parishes[i] if parishes else None,
                     "address": "Centro de la parroquia",
                     "latitude": lat,
                     "longitude": lng,
@@ -319,9 +298,6 @@ class Command(BaseCommand):
                     "event_type": types_by_code["MITIN"],
                     "start_at": start,
                     "end_at": end,
-                    "province": province,
-                    "canton": canton,
-                    "parish": parishes[(i + 2) % len(parishes)] if parishes else None,
                     "address": "Cancha barrial",
                     "latitude": lat,
                     "longitude": lng,

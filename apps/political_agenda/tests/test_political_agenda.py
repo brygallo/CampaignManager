@@ -118,38 +118,10 @@ class PoliticalAgendaRulesTests(TestCase):
         with self.assertRaises(ValidationError):
             event.validate_agenda_rules()
 
-    def test_request_location_selects_are_dependent(self):
-        form = PoliticalAgendaRequestForm()
-
-        self.assertEqual(
-            form.fields["canton"].widget.dependent_fields,
-            {"province": "province"},
-        )
-        self.assertEqual(
-            form.fields["parish"].widget.dependent_fields,
-            {"canton": "canton"},
-        )
-        self.assertEqual(
-            form.fields["sector"].widget.dependent_fields,
-            {"parish": "parish"},
-        )
-
-    def test_event_selects_are_dependent(self):
+    def test_event_source_request_select_is_dependent_on_campaign(self):
         form = PoliticalAgendaEventForm()
 
         self.assertEqual(
             form.fields["source_request"].widget.dependent_fields,
             {"campaign": "campaign"},
-        )
-        self.assertEqual(
-            form.fields["canton"].widget.dependent_fields,
-            {"province": "province"},
-        )
-        self.assertEqual(
-            form.fields["parish"].widget.dependent_fields,
-            {"canton": "canton"},
-        )
-        self.assertEqual(
-            form.fields["sector"].widget.dependent_fields,
-            {"parish": "parish"},
         )
