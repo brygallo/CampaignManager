@@ -155,6 +155,9 @@
 
   {% block modals %}{% endblock %}
   {% include "base/_image_lightbox.html" %}
+  {% if user.is_authenticated %}
+    {% include "base/_delete_modal.html" %}
+  {% endif %}
 
   {% if user.is_authenticated %}
     {% include "base/_command_palette.html" %}

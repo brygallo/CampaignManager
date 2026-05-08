@@ -70,62 +70,22 @@
     table#datatable thead th.sorting_asc,
     table#datatable thead th.sorting_desc { cursor: pointer; user-select: none; }
 
-    /* Avoid FOUC: hide the raw table until DataTables Responsive has set up. */
-    table#datatable { opacity: 0; transition: opacity 120ms ease; }
-    table#datatable.dt-ready { opacity: 1; }
-
-    /* Discrete +/- expand control: plain icon, no button chrome. Override DataTables Responsive defaults. */
-    table#datatable td.dtr-control,
-    table#datatable th.dtr-control {
-      vertical-align: middle;
-      padding-left: .75rem !important; /* reset Responsive's 30px reservation */
-      cursor: pointer;
-    }
-    table#datatable td.dtr-control > * { vertical-align: middle; }
-
-    table#datatable td.dtr-control::before,
-    table#datatable th.dtr-control::before {
-      content: "+" !important;
-      position: static !important;       /* override default position:absolute */
-      display: inline-block !important;
-      width: auto !important;
-      height: auto !important;
-      margin: 0 .4rem 0 0 !important;
-      padding: 0 !important;
-      background: transparent !important;
-      background-color: transparent !important;
-      color: var(--bs-primary) !important;
-      font-family: inherit !important;
-      font-size: 1rem !important;
-      font-weight: 700 !important;
-      line-height: 1 !important;
-      text-align: center !important;
-      text-indent: 0 !important;
-      vertical-align: middle !important;
-      box-shadow: none !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      top: auto !important;
-      left: auto !important;
-      transition: color .15s ease;
-    }
-    table#datatable td.dtr-control:hover::before { color: var(--bs-primary-active) !important; }
-    table#datatable tr.parent > td.dtr-control::before {
-      content: "−" !important;
-      color: var(--bs-primary) !important;
+    /* Horizontal scroll wrapper. Keeps the actions column reachable on narrow
+       viewports without resorting to the DataTables Responsive plugin. */
+    .cm-table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
-    /* Hide the expand control entirely when responsive has no hidden columns (desktop). */
-    table#datatable.cm-no-hidden-cols td.dtr-control::before,
-    table#datatable.cm-no-hidden-cols th.dtr-control::before { display: none !important; }
-
-    /* Child row container: subtle gray panel separated from parent row. */
-    table#datatable > tbody > tr.child > td.child {
-      background: var(--bs-gray-100);
-      padding: .5rem .75rem;
-      border-top: 1px solid var(--bs-gray-200);
+    /* On very narrow phones, hide low-priority columns so the user sees the
+       essentials without horizontal scroll. The first column (record name) +
+       actions column stay visible at every breakpoint. */
+    @media (max-width: 575.98px) {
+      table#datatable thead th:not(:first-child):not(:last-child),
+      table#datatable tbody td:not(:first-child):not(:last-child) {
+        display: none;
+      }
     }
-    table#datatable > tbody > tr.child > td.child > div > div:last-child { border-bottom: 0 !important; }
   </style>
 {% endblock %}
 
@@ -269,6 +229,7 @@
   <div class="card-body py-4">
     {% with rows=site.rows %}
     {% if rows %}
+      <div class="cm-table-scroll">
       <table id="datatable" class="table table-sm align-middle table-row-dashed fs-7 gy-3" style="width:100%">
         <caption class="visually-hidden">{% firstof site.title site.model_name|title "Listado" %}</caption>
         <thead>
@@ -309,15 +270,23 @@
                   </a>
                 {% endif %}
                 {% if row.urls.delete %}
-                  <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
+                  <button type="button"
+                          class="btn btn-icon btn-sm btn-light-danger"
+                          data-bs-toggle="modal"
+                          data-bs-target="#cm-delete-modal"
+                          data-cm-delete-url="{{ row.urls.delete }}"
+                          data-cm-delete-label="{{ row.values.0|striptags }}"
+                          title="Eliminar"
+                          aria-label="Eliminar registro">
                     <i class="ki-outline ki-trash fs-4"></i>
-                  </a>
+                  </button>
                 {% endif %}
               </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
+      </div>{# /.cm-table-scroll #}
     {% else %}
       <div class="text-center py-10">
         <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
@@ -432,35 +401,11 @@
     if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
       const $tbl = jQuery("#datatable");
       if ($tbl.length) {
-        const metronicDetailRenderer = function (api, rowIdx, columns) {
-          const items = columns
-            .filter(c => c.hidden)
-            .map(c => {
-              const value = (c.data == null || c.data === "") ? '<span class="text-gray-500">—</span>' : c.data;
-              return (
-                '<div class="d-flex align-items-baseline justify-content-between gap-3 py-2 border-bottom border-gray-200">' +
-                  '<span class="text-gray-500 fs-8 fw-semibold text-uppercase flex-shrink-0">' + c.title + '</span>' +
-                  '<span class="text-gray-900 fs-7 fw-bold text-end">' + value + '</span>' +
-                '</div>'
-              );
-            })
-            .join('');
-          return items
-            ? jQuery('<div class="bg-white rounded px-3"/>').html(items)
-            : false;
-        };
-        // Toggle a class on the table whenever responsive recalculates: the +/-
-        // expand control is only meaningful when at least one column is hidden.
-        $tbl.on('responsive-resize.dt', function (e, datatable, columns) {
-          const anyHidden = Array.isArray(columns) && columns.some(visible => !visible);
-          $tbl[0].classList.toggle('cm-no-hidden-cols', !anyHidden);
-        });
+        // No `responsive: true` here — we replaced the Responsive plugin with
+        // a CSS-only horizontal scroll wrapper (`.cm-table-scroll`) plus a
+        // narrow-viewport rule that hides low-priority columns. This removes
+        // the "ghost row" recalc bug we saw when the viewport changed mid-render.
         $tbl.DataTable({
-          responsive: {
-            details: {
-              renderer: metronicDetailRenderer,
-            },
-          },
           paging: false,
           info: false,
           ordering: true,
@@ -473,7 +418,6 @@
           order: [],
           columnDefs: [{ orderable: false, targets: [-1] }],
         });
-        document.getElementById("datatable").classList.add("dt-ready");
       }
     }
   });

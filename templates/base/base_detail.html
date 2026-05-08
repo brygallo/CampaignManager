@@ -61,9 +61,16 @@
         </a>
       {% endif %}
       {% if site.urls.delete %}
-        <a href="{{ site.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
+        <button type="button"
+                class="btn btn-icon btn-sm btn-light-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#cm-delete-modal"
+                data-cm-delete-url="{{ site.urls.delete }}"
+                data-cm-delete-label="{{ object }}"
+                title="Eliminar"
+                aria-label="Eliminar registro">
           <i class="ki-outline ki-trash fs-3"></i>
-        </a>
+        </button>
       {% endif %}
     </div>
   </div>
@@ -116,8 +123,12 @@
                   {% for label, value, field_type, field_name in row.fields %}
                     <div class="col-md-{{ row.bs_cols }}">
                       <div class="fv-row" data-field="{{ field_name }}">
-                        {% detail_widget label value field_type as template %}
-                        {% include template with label=label value=value widget=field_type field=field_name %}
+                        {% if field_name == "color" %}
+                          {% include "detail_widgets/color.html" with label=label value=value widget=field_type field=field_name %}
+                        {% else %}
+                          {% detail_widget label value field_type as template %}
+                          {% include template with label=label value=value widget=field_type field=field_name %}
+                        {% endif %}
                       </div>
                     </div>
                   {% endfor %}
@@ -177,8 +188,12 @@
             {% for label, value, field_type, field_name in site.flatten_results %}
               <div class="col-md-6">
                 <div class="fv-row" data-field="{{ field_name }}">
-                  {% detail_widget label value field_type as template %}
-                  {% include template with label=label value=value widget=field_type field=field_name %}
+                  {% if field_name == "color" %}
+                    {% include "detail_widgets/color.html" with label=label value=value widget=field_type field=field_name %}
+                  {% else %}
+                    {% detail_widget label value field_type as template %}
+                    {% include template with label=label value=value widget=field_type field=field_name %}
+                  {% endif %}
                 </div>
               </div>
             {% endfor %}
@@ -231,9 +246,10 @@
 
 {% block modals %}
   {{ block.super }}
-  <div class="modal fade" id="pdf-preview-modal" tabindex="-1" aria-labelledby="pdfPreviewLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal fade cm-sheet-modal cm-sheet-modal-pdf" id="pdf-preview-modal" tabindex="-1" aria-labelledby="pdfPreviewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
+        <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
         <div class="modal-header">
           <div class="d-flex flex-column">
             <h2 class="modal-title fw-bold mb-1" id="pdfPreviewLabel">Previsualización PDF</h2>

@@ -53,9 +53,16 @@
         </a>
       {% endif %}
       {% if object and site.urls.delete %}
-        <a href="{{ site.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
+        <button type="button"
+                class="btn btn-icon btn-sm btn-light-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#cm-delete-modal"
+                data-cm-delete-url="{{ site.urls.delete }}"
+                data-cm-delete-label="{{ object }}"
+                title="Eliminar"
+                aria-label="Eliminar registro">
           <i class="ki-outline ki-trash fs-3"></i>
-        </a>
+        </button>
       {% endif %}
       <div class="btn-group">
         <button type="submit" form="main-form" name="_save" value="1" class="btn btn-primary btn-sm" data-kt-form-submit="true">

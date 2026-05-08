@@ -16,17 +16,6 @@
 }
 
 /* --------------------------------------------------------------------------
-   List view: hide the responsive "+" expand button when no columns are
-   actually collapsed.  DataTables' Responsive plugin renders the control
-   even at desktop widths; we hide it unless the row carries `.collapsed`.
-   The `.cm-no-hidden-cols` class is toggled from JS on responsive-resize.
-   -------------------------------------------------------------------------- */
-table#datatable.cm-no-hidden-cols td.dtr-control,
-table#datatable.cm-no-hidden-cols th.dtr-control {
-  cursor: default;
-}
-
-/* --------------------------------------------------------------------------
    List view: ACCIONES column header
    The text "ACCIONES" looks like a sortable header but isn't. Drop the
    visible label; the icons themselves communicate the affordance.

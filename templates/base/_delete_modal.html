@@ -1,0 +1,46 @@
+{# Reusable confirm-delete modal. Triggered by buttons that carry:
+   - data-bs-toggle="modal" data-bs-target="#cm-delete-modal"
+   - data-cm-delete-url   = endpoint that will receive the POST
+   - data-cm-delete-label = name of the record (shown in the body)
+   The form posts to the same `/eliminar/` endpoint that already exists; the
+   full-page version still works for direct URL access. #}
+<div class="modal fade"
+     id="cm-delete-modal"
+     tabindex="-1"
+     aria-hidden="true"
+     aria-labelledby="cm-delete-modal-title">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body p-8 text-center">
+        <span class="symbol symbol-80px symbol-circle bg-light-danger mx-auto mb-4">
+          <span class="symbol-label">
+            <i class="ki-outline ki-shield-cross text-danger fs-2x"></i>
+          </span>
+        </span>
+        <h2 class="mb-2 fw-bolder" id="cm-delete-modal-title">¿Eliminar este registro?</h2>
+        <p class="text-gray-600 fs-6 mb-1">Vas a eliminar:</p>
+        <p class="fs-4 fw-bold text-dark mb-5" data-cm-delete-label-target>—</p>
+        <div class="alert alert-danger d-inline-flex align-items-center gap-2 mb-5 px-4 py-2">
+          <i class="ki-outline ki-shield-cross fs-3 text-danger"></i>
+          <span class="fw-semibold">Esta acción no se puede deshacer.</span>
+        </div>
+        <form method="post"
+              action=""
+              class="d-flex justify-content-center gap-3"
+              data-cm-delete-form>
+          {% csrf_token %}
+          <button type="button"
+                  class="btn btn-sm btn-light"
+                  data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1"
+                  data-cm-delete-confirm>
+            <i class="ki-outline ki-trash fs-3"></i>Sí, eliminar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
