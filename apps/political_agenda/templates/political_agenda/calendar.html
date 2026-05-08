@@ -8,12 +8,29 @@
   <div class="card-header align-items-center gap-3 flex-wrap">
     <h2 class="card-title fw-bold m-0">Calendario de agenda</h2>
     <div class="card-toolbar gap-2 flex-wrap">
+      <button type="button"
+              class="btn btn-sm btn-light-danger fw-semibold d-none d-inline-flex align-items-center gap-2"
+              id="agenda-calendar-reset-inline"
+              aria-label="Limpiar filtros aplicados">
+        <i class="ki-outline ki-eraser fs-4"></i>
+        <span>Limpiar filtros</span>
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-light fw-semibold d-inline-flex align-items-center gap-2"
+              data-bs-toggle="collapse"
+              data-bs-target="#agenda-calendar-filters"
+              aria-expanded="true"
+              aria-controls="agenda-calendar-filters"
+              aria-label="Mostrar u ocultar filtros">
+        <i class="ki-outline ki-filter fs-3"></i>
+        <span>Filtros</span>
+      </button>
       {% include "political_agenda/_section_nav.html" with active="calendar" %}
     </div>
   </div>
 
   <div class="card-body">
-    <form id="agenda-calendar-filters" class="row g-3 mb-5">
+    <form id="agenda-calendar-filters" class="row g-3 mb-5 collapse show">
       <div class="col-12 col-md-3">
         <label for="ag-cal-campaign" class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
         <select id="ag-cal-campaign" name="campaign" class="form-select form-select-sm form-select-solid">
@@ -35,7 +52,7 @@
       <div class="col-12 col-md-3">
         <label for="ag-cal-state" class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
         <select id="ag-cal-state" name="state" class="form-select form-select-sm form-select-solid">
-          <option value="">Todos los estados (sin cancelados)</option>
+          <option value="">Todos excepto cancelados</option>
           {% for value, label in states %}
             <option value="{{ value }}">{{ label }}</option>
           {% endfor %}
@@ -49,12 +66,6 @@
             <option value="{{ u.id }}">{{ u }}</option>
           {% endfor %}
         </select>
-      </div>
-      <div class="col-12 d-flex justify-content-end">
-        <button type="button" class="btn btn-sm btn-light fw-semibold" id="agenda-calendar-reset">
-          <i class="ki-outline ki-eraser fs-3"></i>
-          <span>Limpiar filtros</span>
-        </button>
       </div>
     </form>
 
@@ -78,9 +89,10 @@
 </div>
 
 {# Modal abierto al hacer click en un evento. Cuerpo se rellena vía AJAX. #}
-<div class="modal fade" id="agenda-event-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade cm-sheet-modal" id="agenda-event-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
+      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
       <div class="modal-header py-4">
         <h2 class="modal-title fw-bold m-0 text-truncate" data-modal-title>Evento</h2>
         <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal" aria-label="Cerrar">

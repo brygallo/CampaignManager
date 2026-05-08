@@ -39,16 +39,18 @@
     var filterTrigger = document.querySelector(".agenda-calendar-filter-trigger");
     var filterCount = document.getElementById("agenda-calendar-filter-count");
     var resetBtn = document.getElementById("agenda-calendar-reset");
+    var resetBtnInline = document.getElementById("agenda-calendar-reset-inline");
 
+    // Mobile screens cannot fit the month grid; the day cells get so narrow
+    // that event titles render as 1-2 chars. Default to the list view there.
+    var isMobile = window.matchMedia && window.matchMedia("(max-width: 767.98px)").matches;
     var calendar = new FullCalendar.Calendar(el, {
       locale: locale,
-      initialView: "dayGridMonth",
+      initialView: isMobile ? "listMonth" : "dayGridMonth",
       firstDay: 1,
-      headerToolbar: {
-        left: "prev,next today",
-        center: "title",
-        right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth",
-      },
+      headerToolbar: isMobile
+        ? { left: "prev,next today", center: "title", right: "listMonth,dayGridMonth" }
+        : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay,listMonth" },
       buttonText: {
         today: "Hoy",
         month: "Mes",
@@ -114,32 +116,45 @@
 
     function refetchAndUpdateCount() {
       calendar.refetchEvents();
-      if (!filterCount || !filterForm) return;
+      if (!filterForm) return;
       var active = 0;
       Array.prototype.forEach.call(filterForm.elements, function (input) {
         if (input.name && input.value) active += 1;
       });
-      if (active) {
-        filterCount.textContent = String(active);
-        filterCount.hidden = false;
-      } else {
-        filterCount.hidden = true;
+      if (filterCount) {
+        if (active) {
+          filterCount.textContent = String(active);
+          filterCount.hidden = false;
+        } else {
+          filterCount.hidden = true;
+        }
+      }
+      if (resetBtnInline) {
+        // Hide entirely when no filters are applied to keep the toolbar clean.
+        resetBtnInline.classList.toggle("d-none", active === 0);
       }
     }
 
     if (filterForm) {
       filterForm.addEventListener("change", refetchAndUpdateCount);
     }
-    if (resetBtn && filterForm) {
-      resetBtn.addEventListener("click", function () {
-        Array.prototype.forEach.call(filterForm.elements, function (input) {
-          if (input.tagName === "SELECT" || input.tagName === "INPUT") {
-            input.value = "";
-          }
-        });
-        refetchAndUpdateCount();
+    function clearFilters() {
+      if (!filterForm) return;
+      Array.prototype.forEach.call(filterForm.elements, function (input) {
+        if (input.tagName === "SELECT" || input.tagName === "INPUT") {
+          input.value = "";
+        }
       });
+      refetchAndUpdateCount();
     }
+    if (resetBtn && filterForm) {
+      resetBtn.addEventListener("click", clearFilters);
+    }
+    if (resetBtnInline && filterForm) {
+      resetBtnInline.addEventListener("click", clearFilters);
+    }
+    // Initial sync — make sure inline reset starts hidden when no filters set.
+    refetchAndUpdateCount();
     if (filterTrigger && filterPanel) {
       filterTrigger.addEventListener("click", function () {
         var isHidden = filterPanel.hasAttribute("hidden");

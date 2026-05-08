@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.safestring import mark_safe
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
@@ -205,10 +206,14 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
     is_public = models.BooleanField(
         "Visible al público",
         default=True,
-        help_text=(
-            "Si está marcado, cualquier usuario con acceso al módulo verá el evento. "
-            "Si se desmarca, solo los usuarios con el permiso «Puede ver eventos privados» "
-            "podrán verlo en el listado y el calendario."
+        help_text=mark_safe(
+            "Activado: visible para todo el equipo del partido."
+            '<details class="cm-help-disclosure">'
+            "<summary></summary>"
+            "<p>Si lo desactivas, solo los usuarios con el permiso "
+            "«Puede ver eventos privados» podrán verlo en el listado y "
+            "el calendario.</p>"
+            "</details>"
         ),
     )
     organizer_name = models.CharField("Organizador / contacto", max_length=180, blank=True)

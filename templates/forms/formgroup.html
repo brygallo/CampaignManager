@@ -13,7 +13,7 @@
       </label>
     </div>
     {% if field.help_text %}
-      <div id="{{ field.id_for_label }}-help" class="form-text text-muted small">{{ field.help_text }}</div>
+      <div id="{{ field.id_for_label }}-help" class="form-text text-muted small">{{ field.help_text|safe }}</div>
     {% endif %}
     {% if field.errors %}
       <div id="{{ field.id_for_label }}-errors" class="invalid-feedback d-block" role="alert">

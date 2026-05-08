@@ -61,6 +61,7 @@
         {{ now|date:"l, d \d\e F" }}
       </span>
       <span class="text-dark fw-bolder fs-3 lh-1 mt-1 text-truncate">
+        <span aria-hidden="true">{{ greeting_emoji }}</span>
         {{ greeting }}, {{ user.first_name|default:user.get_full_name|default:user.username }}
       </span>
     </div>
@@ -84,17 +85,18 @@
           <span class="bullet bullet-vertical h-12px bg-white opacity-50 me-2"></span>
           {{ now|date:"l, d \d\e F" }}
         </span>
-        <h1 class="text-white fw-bolder fs-2qx lh-1 mb-3">
+        <p class="text-white fw-bolder fs-2qx lh-1 mb-3" role="doc-subtitle">
+          <span aria-hidden="true">{{ greeting_emoji }}</span>
           {{ greeting }}, {{ user.first_name|default:user.get_full_name|default:user.username }}
-        </h1>
+        </p>
         <span class="d-block text-white opacity-75 fw-semibold fs-5 mb-5">
-          Tu jornada al alcance de un toque.
+          Resumen de hoy
         </span>
         {% if user.is_staff %}
           <div class="d-flex flex-wrap align-items-center gap-2">
             <a href="{% url 'superadmin_home' %}"
-               class="btn btn-sm fw-bold text-white d-inline-flex align-items-center gap-2"
-               style="background: rgba(255, 255, 255, 0.2);">
+               class="btn btn-sm fw-bold cm-hero-cta d-inline-flex align-items-center gap-2"
+               style="background:#ffffff;color:var(--bs-primary);border:0;">
               <i class="ki-outline ki-element-11 fs-3"></i>
               Panel administrativo
             </a>

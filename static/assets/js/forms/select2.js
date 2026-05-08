@@ -4,6 +4,28 @@
   var DEFAULT_PLACEHOLDER = "Seleccione un elemento";
   var INIT_FLAG = "campaign-select2-initialized";
 
+  // Build a per-field placeholder ("Selecciona <label>...") by inspecting the
+  // nearest visible <label>. Falls back to DEFAULT_PLACEHOLDER if we can't
+  // find a meaningful label.
+  function buildContextualPlaceholder($field) {
+    var fieldId = $field.attr("id");
+    var labelText = "";
+    if (fieldId) {
+      var $label = $('label[for="' + fieldId + '"]').first();
+      if ($label.length) labelText = $label.clone().children().remove().end().text().trim();
+    }
+    if (!labelText) {
+      var $closeLabel = $field.closest(".fv-row, .form-group, .mb-3").find("label").first();
+      if ($closeLabel.length) labelText = $closeLabel.clone().children().remove().end().text().trim();
+    }
+    if (!labelText) return DEFAULT_PLACEHOLDER;
+    labelText = labelText.replace(/[*:]+\s*$/, "").trim();
+    if (!labelText) return DEFAULT_PLACEHOLDER;
+    var lower = labelText.toLowerCase();
+    var multiple = $field.prop("multiple");
+    return (multiple ? "Selecciona " : "Selecciona ") + lower;
+  }
+
   function getScope(selector) {
     if (!selector) {
       return $(document);
@@ -20,7 +42,11 @@
 
   function getPlaceholder($field) {
     var placeholder = $field.attr("data-placeholder") || $field.data("placeholder");
-    placeholder = placeholder || DEFAULT_PLACEHOLDER;
+    // Replace the generic Django Select2 default with a per-field contextual hint
+    // ("Selecciona elección" instead of "Seleccione un elemento").
+    if (!placeholder || placeholder === DEFAULT_PLACEHOLDER) {
+      placeholder = buildContextualPlaceholder($field);
+    }
     $field.attr("data-placeholder", placeholder);
     return placeholder;
   }

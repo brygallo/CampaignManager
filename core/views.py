@@ -119,10 +119,13 @@ def inicio(request):
     hour = now.hour
     if hour < 12:
         greeting = "Buenos días"
+        greeting_emoji = "☀️"
     elif hour < 19:
         greeting = "Buenas tardes"
+        greeting_emoji = "👋"
     else:
         greeting = "Buenas noches"
+        greeting_emoji = "🌙"
 
     return render(
         request,
@@ -137,6 +140,7 @@ def inicio(request):
             },
             "upcoming_events": upcoming_events,
             "greeting": greeting,
+            "greeting_emoji": greeting_emoji,
             "now": now,
             "breadcrumbs": [("Inicio", None)],
         },

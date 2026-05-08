@@ -1,6 +1,7 @@
 {% extends "base/base.html" %}
 {% load static %}
 {% load model_meta %}
+{% load list_format %}
 
 {% block title %}{% firstof site.title site|verbose_name_plural site.model_name|title %} | {{ block.super }}{% endblock %}
 
@@ -281,7 +282,9 @@
                 <th data-priority="{{ forloop.counter|add:5 }}">{{ label }}</th>
               {% endif %}
             {% endfor %}
-            <th class="text-end min-w-125px all" data-priority="1">Acciones</th>
+            <th class="text-end min-w-125px all cm-actions-col" data-priority="1" aria-label="Acciones">
+              <span class="visually-hidden">Acciones</span>
+            </th>
           </tr>
         </thead>
         <tbody class="text-gray-700 fw-semibold">
@@ -289,9 +292,9 @@
             <tr>
               {% for value in row.values %}
                 {% if forloop.first %}
-                  <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:"" }}</span></td>
+                  <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:""|list_cell }}</span></td>
                 {% else %}
-                  <td>{{ value|default_if_none:"" }}</td>
+                  <td>{{ value|default_if_none:""|list_cell }}</td>
                 {% endif %}
               {% endfor %}
               <td class="text-end text-nowrap">
@@ -327,8 +330,9 @@
         {% else %}
           <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
           <p class="text-muted fs-6 mb-4">
-            Comienza creando el primer registro de
-            {% firstof site|verbose_name_plural site.model_name|title %}.
+            Cuando registres el primer
+            {% firstof site|verbose_name site.model_name|lower %}
+            aparecerá aquí.
           </p>
           {% if site.urls.create %}
             <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">

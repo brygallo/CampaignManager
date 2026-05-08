@@ -28,7 +28,7 @@ class UserSite(BaseSite):
     detail_template_name = "authentication/user_detail.html"
     slug_field = "username"
     list_fields = (
-        "get_full_name:Nombre completo",
+        "display_name:Nombre completo",
         "username",
         "email",
         "is_active:Activo",
@@ -69,6 +69,11 @@ class GroupSite(BaseSite):
 
 @register("auth.Permission")
 class PermissionSite(BaseSite):
+    # Permission rows are created by Django's ``create_permissions`` signal at
+    # post_migrate, never by hand. Exposing create/edit/delete in the panel
+    # is a privilege-escalation vector with no upside, so we limit the site
+    # to read-only views — same pattern used by ``TraceSite``.
+    allow_views = ("list", "detail")
     form_class = PermissionForm
     queryset = Permission.objects.select_related("content_type").order_by(
         "content_type__app_label",

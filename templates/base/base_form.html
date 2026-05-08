@@ -69,6 +69,8 @@
         <button type="button"
                 class="btn btn-primary btn-sm dropdown-toggle dropdown-toggle-split"
                 data-bs-toggle="dropdown"
+                data-bs-auto-close="true"
+                title="Más opciones de guardado"
                 aria-expanded="false"
                 aria-label="Más opciones de guardado">
           <span class="visually-hidden">Más opciones</span>
@@ -249,9 +251,10 @@
 
 {% block modals %}
   {{ block.super }}
-  <div class="modal fade" id="insoles-forms" tabindex="-1" aria-labelledby="insolesFormsLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal fade cm-sheet-modal" id="insoles-forms" tabindex="-1" aria-labelledby="insolesFormsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
+        <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
         <div class="modal-header">
           <h2 class="modal-title fw-bold" id="insolesFormsLabel">Crear nuevo</h2>
           <button type="button" class="btn btn-icon btn-sm btn-active-light-primary ms-2" data-bs-dismiss="modal" aria-label="Cerrar">

@@ -26,6 +26,9 @@
                 data-kt-menu-trigger="click"
                 data-kt-menu-attach="parent"
                 data-kt-menu-placement="bottom-end"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                title="Crear rápido"
                 aria-label="Crear rápido"
                 aria-haspopup="menu">
           <i class="ki-outline ki-plus-square fs-1"></i>
@@ -33,37 +36,37 @@
         <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg menu-state-primary fw-semibold py-4 fs-base w-275px"
              data-kt-menu="true">
           <div class="menu-item px-3 my-0">
-            <div class="menu-content text-muted text-uppercase fs-8 ls-1 fw-bolder pt-3 pb-2 px-3">
+            <div class="menu-content text-muted fs-7 fw-bold pt-3 pb-2 px-3">
               Crear rápido
             </div>
           </div>
           <div class="menu-item px-3 my-0">
-            <a href="/campaigns/campaign/agregar/" class="menu-link px-3 py-2">
+            <a href="{% url 'site:campaigns_campaign_crear' %}" class="menu-link px-3 py-2">
               <span class="menu-icon"><i class="ki-outline ki-flag fs-3 text-primary"></i></span>
               <span class="menu-title">Nueva campaña</span>
             </a>
           </div>
           <div class="menu-item px-3 my-0">
-            <a href="/campaigns/candidate/agregar/" class="menu-link px-3 py-2">
+            <a href="{% url 'site:campaigns_candidate_crear' %}" class="menu-link px-3 py-2">
               <span class="menu-icon"><i class="ki-outline ki-user-tick fs-3 text-success"></i></span>
               <span class="menu-title">Nuevo candidato</span>
             </a>
           </div>
           <div class="menu-item px-3 my-0">
-            <a href="/territorial_ads/physicaladvertisement/agregar/" class="menu-link px-3 py-2">
-              <span class="menu-icon"><i class="ki-outline ki-billboard fs-3 text-warning"></i></span>
+            <a href="{% url 'site:territorial_ads_physicaladvertisement_crear' %}" class="menu-link px-3 py-2">
+              <span class="menu-icon"><i class="ki-outline ki-picture fs-3 text-warning"></i></span>
               <span class="menu-title">Nueva publicidad</span>
             </a>
           </div>
           <div class="separator my-2"></div>
           <div class="menu-item px-3 my-0">
-            <a href="/campaigns/election/agregar/" class="menu-link px-3 py-2">
+            <a href="{% url 'site:campaigns_election_crear' %}" class="menu-link px-3 py-2">
               <span class="menu-icon"><i class="ki-outline ki-calendar-tick fs-3 text-info"></i></span>
               <span class="menu-title">Nueva elección</span>
             </a>
           </div>
           <div class="menu-item px-3 my-0">
-            <a href="/campaigns/politicalmovement/agregar/" class="menu-link px-3 py-2">
+            <a href="{% url 'site:campaigns_politicalmovement_crear' %}" class="menu-link px-3 py-2">
               <span class="menu-icon"><i class="ki-outline ki-abstract-26 fs-3 text-warning"></i></span>
               <span class="menu-title">Nuevo movimiento político</span>
             </a>
@@ -79,6 +82,9 @@
                 data-kt-menu-trigger="click"
                 data-kt-menu-attach="parent"
                 data-kt-menu-placement="bottom-end"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                title="Notificaciones"
                 aria-label="Notificaciones{% if pending_notifications_count %} ({{ pending_notifications_count }} pendientes){% endif %}"
                 aria-haspopup="menu">
           <i class="ki-outline ki-notification-status fs-1"></i>
@@ -125,7 +131,7 @@
           </div>
           <div class="separator border-gray-200"></div>
           <div class="py-3 text-center">
-            <a href="/tracing/trace/listar/" class="btn btn-sm btn-light-primary">
+            <a href="{% url 'site:tracing_trace_listar' %}" class="btn btn-sm btn-light-primary">
               <i class="ki-outline ki-time fs-3"></i>Ver auditoría
             </a>
           </div>
@@ -139,6 +145,9 @@
              id="kt_theme_mode_menu_toggle"
              data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
              data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end"
+             data-bs-toggle="tooltip"
+             data-bs-placement="bottom"
+             title="Cambiar tema"
              aria-label="Cambiar tema de la interfaz"
              aria-haspopup="menu">
           <i class="ki-outline ki-night-day theme-light-show fs-1"></i>
@@ -173,6 +182,9 @@
              data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end"
              role="button"
              tabindex="0"
+             data-bs-toggle="tooltip"
+             data-bs-placement="bottom"
+             title="Tu cuenta"
              aria-haspopup="menu"
              aria-label="Menú de usuario {{ user.get_full_name|default:user.username }}">
           {% if user.profile.avatar %}

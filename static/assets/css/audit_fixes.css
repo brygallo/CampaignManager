@@ -1,0 +1,175 @@
+/* ==========================================================================
+   audit_fixes.css — UI/UX audit follow-ups (2026-05-08)
+   Loaded after style.bundle.css so selectors win without !important when
+   specificity matches.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Form section divider: replace the heavy 3px blue bar with a subtle line.
+   Keeps the existing markup (`.h-3px.bg-primary`) working so we don't have
+   to touch every template — just override the visual.
+   -------------------------------------------------------------------------- */
+.h-3px.w-100.bg-primary {
+  height: 1px !important;
+  background: var(--bs-border-color, #e5e7eb) !important;
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   List view: hide the responsive "+" expand button when no columns are
+   actually collapsed.  DataTables' Responsive plugin renders the control
+   even at desktop widths; we hide it unless the row carries `.collapsed`.
+   The `.cm-no-hidden-cols` class is toggled from JS on responsive-resize.
+   -------------------------------------------------------------------------- */
+table#datatable.cm-no-hidden-cols td.dtr-control,
+table#datatable.cm-no-hidden-cols th.dtr-control {
+  cursor: default;
+}
+
+/* --------------------------------------------------------------------------
+   List view: ACCIONES column header
+   The text "ACCIONES" looks like a sortable header but isn't. Drop the
+   visible label; the icons themselves communicate the affordance.
+   -------------------------------------------------------------------------- */
+table thead th.cm-actions-col {
+  font-size: 0;
+  color: transparent;
+}
+table thead th.cm-actions-col .visually-hidden { font-size: initial; }
+
+/* --------------------------------------------------------------------------
+   Color swatch helper for catalog list columns (Niveles de apoyo, tipos, etc.)
+   -------------------------------------------------------------------------- */
+.cm-color-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.8125rem;
+}
+.cm-color-swatch__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--bs-border-color-translucent);
+  flex-shrink: 0;
+  display: inline-block;
+}
+[data-bs-theme="dark"] .cm-color-swatch__dot {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* --------------------------------------------------------------------------
+   Sidebar submenu contrast bump (was failing WCAG AA at #9CA3AF on white)
+   -------------------------------------------------------------------------- */
+.app-sidebar .menu-sub .menu-link,
+.app-sidebar .menu-sub .menu-title {
+  color: var(--bs-gray-700, #475569) !important;
+}
+.app-sidebar .menu-sub .menu-link:hover,
+.app-sidebar .menu-sub .menu-link.active {
+  color: var(--bs-primary) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Hero card "Panel administrativo" button: was translucent on a blue
+   gradient → contrast was poor. Solid white pill with primary text.
+   -------------------------------------------------------------------------- */
+.cm-hero-cta,
+.cm-hero-cta:focus,
+.cm-hero-cta:visited {
+  background: #ffffff !important;
+  color: var(--bs-primary) !important;
+  border: 0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.cm-hero-cta:hover {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: var(--bs-primary-active, var(--bs-primary)) !important;
+}
+
+/* --------------------------------------------------------------------------
+   On-blur invalid styling for inputs (works without depending on JS for
+   server-side errors but supports them via .is-invalid)
+   -------------------------------------------------------------------------- */
+.form-control.cm-invalid,
+.form-control.is-invalid {
+  border-color: var(--bs-danger, #d9334b);
+}
+.cm-field-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--bs-danger, #d9334b);
+}
+
+/* --------------------------------------------------------------------------
+   Filter chip groups: scroll-snap + edge fade hints when the chip strip
+   overflows horizontally on small screens. Targets the .nav.flex-nowrap
+   used for state filter chips at the top of list pages.
+   -------------------------------------------------------------------------- */
+.cm-chip-strip,
+.card-body .nav.flex-nowrap.gap-2.overflow-auto {
+  position: relative;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.25rem),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.25rem),
+    transparent 100%
+  );
+}
+.cm-chip-strip > *,
+.card-body .nav.flex-nowrap.gap-2.overflow-auto > * {
+  scroll-snap-align: start;
+}
+@media (min-width: 992px) {
+  /* On desktop everything fits — drop the fade and snap. */
+  .cm-chip-strip,
+  .card-body .nav.flex-nowrap.gap-2.overflow-auto {
+    mask-image: none;
+    -webkit-mask-image: none;
+    scroll-snap-type: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Compact help-text disclosure: <details class="cm-help-disclosure"> shows
+   a one-line summary that expands inline. Used for verbose toggles like
+   "Visible al público".
+   -------------------------------------------------------------------------- */
+.cm-help-disclosure {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--bs-gray-600);
+}
+.cm-help-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--bs-gray-700);
+}
+.cm-help-disclosure > summary::-webkit-details-marker { display: none; }
+.cm-help-disclosure > summary::after {
+  content: "Más información";
+  color: var(--bs-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cm-help-disclosure[open] > summary::after { content: "Menos"; }
+.cm-help-disclosure > p {
+  margin-top: 0.4rem;
+  margin-bottom: 0;
+}

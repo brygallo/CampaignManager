@@ -23,7 +23,12 @@
           <div class="d-flex flex-column">
             <div class="d-flex align-items-center mb-2">
               <span class="text-gray-900 text-hover-primary fs-2 fw-bold me-1">{{ user.get_full_name|default:user.username }}</span>
-              <i class="ki-outline ki-verify fs-1 text-primary"></i>
+              <i class="ki-outline ki-verify fs-1 text-primary"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="top"
+                 title="Cuenta verificada por el administrador del partido."
+                 aria-label="Cuenta verificada por el administrador del partido"
+                 tabindex="0"></i>
             </div>
 
             <div class="d-flex flex-wrap fw-semibold fs-6 mb-4 pe-2">
@@ -39,6 +44,11 @@
               </span>
               {% endif %}
             </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <a href="{% url 'authentication:password_change' %}" class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-2">
+              <i class="ki-outline ki-lock fs-3"></i>Cambiar contraseña
+            </a>
           </div>
         </div>
 
