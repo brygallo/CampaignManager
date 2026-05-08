@@ -133,6 +133,38 @@ table thead th.cm-actions-col .visually-hidden { font-size: initial; }
 }
 
 /* --------------------------------------------------------------------------
+   Inicio KPI trend chip: shared visual treatment for the three "what's new"
+   indicators (Publicidad / Visitas / Agenda). Three semantic variants:
+   - --up: positive delta over a window (green)
+   - --window: time-window indicator, no delta (warning amber)
+   - --flat: empty / no data (muted)
+   -------------------------------------------------------------------------- */
+.cm-kpi-trend {
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.cm-kpi-trend i { font-size: 0.85em; }
+.cm-kpi-trend--up {
+  background: var(--bs-success-bg-subtle, #e8faf2);
+  color: var(--bs-success-text, #14b87a);
+}
+.cm-kpi-trend--window {
+  background: var(--bs-warning-bg-subtle, #fff7da);
+  color: var(--bs-warning-text, #c79503);
+}
+.cm-kpi-trend--flat {
+  background: var(--bs-gray-100, #f1f3f6);
+  color: var(--bs-gray-600, #5d6378);
+}
+[data-bs-theme="dark"] .cm-kpi-trend--flat {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--bs-gray-400, #9ca3af);
+}
+
+/* --------------------------------------------------------------------------
    Compact help-text disclosure: <details class="cm-help-disclosure"> shows
    a one-line summary that expands inline. Used for verbose toggles like
    "Visible al público".
