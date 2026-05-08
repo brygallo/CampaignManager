@@ -308,16 +308,16 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             visits.append(
                 {
                     "id": survey.id,
+                    "kind": "visit",
                     "lat": float(survey.latitude),
                     "lng": float(survey.longitude),
                     "label": str(survey),
-                    "result": level.code if level else "",
-                    "result_label": level.name if level else "",
-                    "advertising": response.code if response else "",
+                    "support_code": level.code if level else "",
+                    "support_label": level.name if level else "",
+                    "advertising_code": response.code if response else "",
                     "advertising_label": response.name if response else "",
                     "voters": survey.voters_count,
                     "color": support_color(level),
-                    "type_icon": "geolocation",
                     "url": fieldsurvey_detail_url(survey.pk),
                 }
             )
@@ -327,6 +327,7 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             competitor_data.append(
                 {
                     "id": ad.id,
+                    "kind": "competitor",
                     "lat": float(ad.latitude),
                     "lng": float(ad.longitude),
                     "label": str(ad.competitor),

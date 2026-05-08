@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
@@ -13,14 +14,35 @@ from apps.political_agenda.transitions import (
 from apps.workflows.mixins import TransitionRequirementsMixin
 
 
-class AgendaEventType(models.TextChoices):
-    REUNION = "REUNION", "Reunión"
-    VISITA = "VISITA", "Visita"
-    RECORRIDO = "RECORRIDO", "Recorrido"
-    MITIN = "MITIN", "Mitin"
-    ENTREVISTA = "ENTREVISTA", "Entrevista"
-    RUEDA_PRENSA = "RUEDA_PRENSA", "Rueda de prensa"
-    OTRO = "OTRO", "Otro"
+class AgendaEventType(BaseModel):
+    """Catálogo de tipos de evento (reunión, visita, mitin, ...).
+
+    Color e ícono se usan al pintar los eventos en el calendario y en badges.
+    """
+
+    code = models.CharField("Código", max_length=40, unique=True)
+    name = models.CharField("Nombre", max_length=120)
+    order = models.PositiveSmallIntegerField("Orden", default=0)
+    color = models.CharField(
+        "Color",
+        max_length=9,
+        default="#3e97ff",
+        help_text="Hex #RRGGBB usado en el calendario y badges.",
+    )
+    icon = models.CharField(
+        "Ícono",
+        max_length=60,
+        default="calendar-tick",
+        help_text="Nombre del ícono Keenicons (sin el prefijo ki-).",
+    )
+
+    class Meta:
+        verbose_name = "Tipo de evento"
+        verbose_name_plural = "Tipos de evento"
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
 
 
 class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions, TransitionRequirementsMixin):
@@ -39,8 +61,11 @@ class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions, Trans
         verbose_name="Campaña",
     )
     title = models.CharField("Título", max_length=180)
-    event_type = models.CharField(
-        "Tipo", max_length=20, choices=AgendaEventType.choices, default=AgendaEventType.REUNION
+    event_type = models.ForeignKey(
+        AgendaEventType,
+        on_delete=models.PROTECT,
+        related_name="requests",
+        verbose_name="Tipo",
     )
     state = FSMIntegerField(
         "Estado",
@@ -67,6 +92,22 @@ class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions, Trans
     sector = models.ForeignKey(Sector, on_delete=models.PROTECT, related_name="agenda_requests", verbose_name="Sector / barrio", null=True, blank=True)
     address = models.CharField("Dirección", max_length=255, blank=True)
     reference = models.CharField("Referencia", max_length=255, blank=True)
+    latitude = models.DecimalField(
+        "Latitud tentativa",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        "Longitud tentativa",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
 
     objective = models.TextField("Objetivo", blank=True)
     expected_attendees = models.PositiveIntegerField("Asistentes esperados", default=0)
@@ -164,8 +205,11 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, Transitio
         blank=True,
     )
     title = models.CharField("Título", max_length=180)
-    event_type = models.CharField(
-        "Tipo", max_length=20, choices=AgendaEventType.choices, default=AgendaEventType.REUNION
+    event_type = models.ForeignKey(
+        AgendaEventType,
+        on_delete=models.PROTECT,
+        related_name="events",
+        verbose_name="Tipo",
     )
     state = FSMIntegerField(
         "Estado",
@@ -182,6 +226,22 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, Transitio
     sector = models.ForeignKey(Sector, on_delete=models.PROTECT, related_name="agenda_events", verbose_name="Sector / barrio", null=True, blank=True)
     address = models.CharField("Dirección", max_length=255, blank=True)
     reference = models.CharField("Referencia", max_length=255, blank=True)
+    latitude = models.DecimalField(
+        "Latitud",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        "Longitud",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
 
     organizer_name = models.CharField("Organizador / contacto", max_length=180, blank=True)
     organizer_phone = models.CharField("Teléfono contacto", max_length=32, blank=True)
@@ -269,6 +329,8 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, Transitio
             "sector": agenda_request.sector,
             "address": agenda_request.address,
             "reference": agenda_request.reference,
+            "latitude": agenda_request.latitude,
+            "longitude": agenda_request.longitude,
             "organizer_name": agenda_request.requester_name,
             "organizer_phone": agenda_request.requester_phone,
             "expected_attendees": agenda_request.expected_attendees,

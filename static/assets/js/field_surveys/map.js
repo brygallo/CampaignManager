@@ -6,6 +6,21 @@
     "sticker": "tag"
   };
 
+  // Visual config per support state. Drives icon, color, semantic class.
+  // The fallback ("") is used when a survey has not been classified yet.
+  var SUPPORT_STATES = {
+    "APOYA":      { icon: "like",       color: "#50cd89", cls: "is-apoya",      label: "Apoya" },
+    "INDECISO":   { icon: "question-2", color: "#ffc700", cls: "is-indeciso",   label: "Indeciso" },
+    "NO_APOYA":   { icon: "dislike",    color: "#f1416c", cls: "is-noapoya",    label: "No apoya" },
+    "NO_ATENDIO": { icon: "home-2",     color: "#7e8299", cls: "is-noatendio",  label: "No atendió" },
+    "":           { icon: "geolocation",color: "#3e97ff", cls: "is-pending",    label: "Sin clasificar" }
+  };
+
+  var ADVERTISING_BADGES = {
+    "ACEPTA":  { icon: "check", cls: "fs-pin__badge--accept", label: "Acepta publicidad" },
+    "RECHAZA": { icon: "cross", cls: "fs-pin__badge--reject", label: "Rechaza publicidad" }
+  };
+
   function safeIconName(icon) {
     var raw = (icon || "").toLowerCase();
     if (ICON_ALIASES[raw]) {
@@ -14,18 +29,56 @@
     return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "element-12";
   }
 
-  function pinIcon(color, icon) {
-    var iconName = safeIconName(icon);
-    var safeColor = /^#[0-9a-f]{3,8}$/i.test(color || "") ? color : "#3388ff";
+  function safeColor(color, fallback) {
+    return /^#[0-9a-f]{3,8}$/i.test(color || "") ? color : (fallback || "#3388ff");
+  }
+
+  function visitPin(item) {
+    var state = SUPPORT_STATES[item.support_code || ""] || SUPPORT_STATES[""];
+    var color = safeColor(item.color, state.color);
+    var iconName = safeIconName(state.icon);
+
+    var badgeHtml = "";
+    var badge = ADVERTISING_BADGES[item.advertising_code || ""];
+    if (badge) {
+      badgeHtml =
+        '<span class="fs-pin__badge ' + badge.cls + '" title="' + badge.label + '">' +
+          '<i class="ki-solid ki-' + badge.icon + '"></i>' +
+        '</span>';
+    }
+
     return window.L.divIcon({
-      className: "map-type-pin",
+      className: "fs-pin fs-pin--visit " + state.cls,
       html:
-        '<span class="map-type-pin__inner" style="background:' + safeColor + ';color:#fff">' +
-          '<i class="ki-solid ki-' + iconName + '" style="color:#fff"></i>' +
+        '<span class="fs-pin__shape" style="background:' + color + '">' +
+          '<i class="ki-solid ki-' + iconName + '"></i>' +
+        '</span>' +
+        '<span class="fs-pin__tail" style="border-top-color:' + color + '"></span>' +
+        badgeHtml,
+      iconSize: [40, 50],
+      iconAnchor: [20, 46],
+      popupAnchor: [0, -44]
+    });
+  }
+
+  // Competitor pins always use the same icon: kind matters more than the
+  // specific advertising type (banner vs. sticker vs. lona) for at-a-glance
+  // map reading.
+  var COMPETITOR_ICON = "flag";
+
+  function competitorPin(item) {
+    var color = safeColor(item.color, "#d9214e");
+    return window.L.divIcon({
+      className: "fs-pin fs-pin--competitor",
+      html:
+        '<span class="fs-pin__diamond" style="border-color:' + color + '">' +
+          '<span class="fs-pin__diamond-icon" style="color:' + color + '">' +
+            '<i class="ki-solid ki-' + COMPETITOR_ICON + '"></i>' +
+          '</span>' +
         '</span>',
-      iconSize: [38, 38],
-      iconAnchor: [19, 19],
-      popupAnchor: [0, -18]
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -22]
     });
   }
 
@@ -136,12 +189,65 @@
     return "No se pudo obtener tu ubicación.";
   }
 
+  // Order matters: drives the visual sequence of donut segments.
+  var CLUSTER_SEGMENTS = ["APOYA", "INDECISO", "NO_APOYA", "NO_ATENDIO", ""];
+
   function buildClusterIcon(cluster) {
-    var n = cluster.getChildCount();
-    var size = n < 10 ? 36 : n < 50 ? 44 : 52;
+    var leaves = cluster.getAllChildMarkers();
+    var counts = { "APOYA": 0, "INDECISO": 0, "NO_APOYA": 0, "NO_ATENDIO": 0, "": 0 };
+    leaves.forEach(function (marker) {
+      var code = marker.options.fsSupportCode;
+      if (code === undefined || counts[code] === undefined) {
+        counts[""] += 1;
+      } else {
+        counts[code] += 1;
+      }
+    });
+
+    var total = leaves.length;
+    var size = total < 10 ? 40 : total < 50 ? 48 : 56;
+
+    var stops = [];
+    var degSoFar = 0;
+    CLUSTER_SEGMENTS.forEach(function (code) {
+      var count = counts[code];
+      if (!count) {
+        return;
+      }
+      var degSpan = (count / total) * 360;
+      var color = SUPPORT_STATES[code].color;
+      stops.push(color + " " + degSoFar.toFixed(2) + "deg " + (degSoFar + degSpan).toFixed(2) + "deg");
+      degSoFar += degSpan;
+    });
+
+    var background = stops.length
+      ? "conic-gradient(" + stops.join(", ") + ")"
+      : SUPPORT_STATES[""].color;
+
     return window.L.divIcon({
-      html: '<span class="map-cluster-bubble">' + n + '</span>',
-      className: "map-cluster",
+      html:
+        '<span class="fs-cluster" style="background:' + background + '">' +
+          '<span class="fs-cluster__inner">' + total + '</span>' +
+        '</span>',
+      className: "fs-cluster-wrap",
+      iconSize: [size, size]
+    });
+  }
+
+  // Competitor cluster: solid red bubble with a flag, kept visually distinct
+  // from the visit donut so the two layers don't get confused at low zoom.
+  function buildCompetitorClusterIcon(cluster) {
+    var total = cluster.getChildCount();
+    var size = total < 10 ? 40 : total < 50 ? 48 : 56;
+    return window.L.divIcon({
+      html:
+        '<span class="fs-cluster fs-cluster--competitor">' +
+          '<span class="fs-cluster__inner fs-cluster__inner--competitor">' +
+            '<i class="ki-solid ki-flag"></i>' +
+            '<span class="fs-cluster__count">' + total + '</span>' +
+          '</span>' +
+        '</span>',
+      className: "fs-cluster-wrap",
       iconSize: [size, size]
     });
   }
@@ -387,6 +493,8 @@
     var resetButton = document.getElementById("field-survey-map-reset");
     var myLocationButton = document.getElementById("field-survey-my-location");
     var locationStatusEl = document.querySelector("[data-location-status]");
+    var legendEl = document.getElementById("field-survey-map-legend");
+    var legendToggleEl = document.getElementById("field-survey-map-legend-toggle");
     var createUrl = el.dataset.createUrl || "";
     var createCompetitorUrl = el.dataset.createCompetitorUrl || "";
 
@@ -425,7 +533,16 @@
         })
       : window.L.layerGroup();
     pinsLayer.addTo(map);
-    var competitorLayer = window.L.layerGroup().addTo(map);
+    var competitorLayer = window.L.markerClusterGroup
+      ? window.L.markerClusterGroup({
+          showCoverageOnHover: false,
+          spiderfyOnMaxZoom: true,
+          disableClusteringAtZoom: 15,
+          maxClusterRadius: 22,
+          iconCreateFunction: buildCompetitorClusterIcon
+        })
+      : window.L.layerGroup();
+    competitorLayer.addTo(map);
     var locationLayer = window.L.layerGroup().addTo(map);
 
     window.L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
@@ -563,11 +680,17 @@
           updateCount(counterEl, visits.length);
 
           visits.forEach(function (item) {
+            var state = SUPPORT_STATES[item.support_code || ""] || SUPPORT_STATES[""];
+            var tooltipParts = [item.label, state.label];
+            if (item.advertising_label) {
+              tooltipParts.push(item.advertising_label);
+            }
             var marker = window.L.marker([item.lat, item.lng], {
-              icon: pinIcon(item.color, item.type_icon),
-              bubblingMouseEvents: false
+              icon: visitPin(item),
+              bubblingMouseEvents: false,
+              fsSupportCode: item.support_code || ""
             })
-              .bindTooltip(item.label, { direction: "top", offset: [0, -34] })
+              .bindTooltip(tooltipParts.join(" · "), { direction: "top", offset: [0, -44] })
               .addTo(pinsLayer);
             marker.on("click", function () {
               openDetailModal(detailModalEl, item, "Levantamiento");
@@ -577,10 +700,10 @@
 
           competitorAds.forEach(function (item) {
             var marker = window.L.marker([item.lat, item.lng], {
-              icon: pinIcon(item.color, item.type_icon),
+              icon: competitorPin(item),
               bubblingMouseEvents: false
             })
-              .bindTooltip(item.label + " · " + item.type_label, { direction: "top", offset: [0, -34] })
+              .bindTooltip(item.label + " · " + item.type_label, { direction: "top", offset: [0, -22] })
               .addTo(competitorLayer);
             marker.on("click", function () {
               openDetailModal(detailModalEl, item, "Detección de competencia");
@@ -763,6 +886,36 @@
       );
 
       modal.show();
+    }
+
+    if (legendEl && legendToggleEl) {
+      var LEGEND_KEY = "fs:map:legendOpen";
+      var initialOpen = false;
+      try {
+        initialOpen = window.localStorage.getItem(LEGEND_KEY) === "1";
+      } catch (e) { /* localStorage unavailable */ }
+
+      function applyLegendState(open) {
+        legendEl.classList.toggle("is-open", open);
+        legendToggleEl.classList.toggle("is-active", open);
+        legendToggleEl.setAttribute("aria-expanded", open ? "true" : "false");
+        legendEl.setAttribute("aria-hidden", open ? "false" : "true");
+      }
+      applyLegendState(initialOpen);
+
+      legendToggleEl.addEventListener("click", function () {
+        var next = !legendEl.classList.contains("is-open");
+        applyLegendState(next);
+        try { window.localStorage.setItem(LEGEND_KEY, next ? "1" : "0"); } catch (e) {}
+      });
+
+      var legendCloseEl = legendEl.querySelector("[data-legend-close]");
+      if (legendCloseEl) {
+        legendCloseEl.addEventListener("click", function () {
+          applyLegendState(false);
+          try { window.localStorage.setItem(LEGEND_KEY, "0"); } catch (e) {}
+        });
+      }
     }
 
     map.on("click", function (event) {

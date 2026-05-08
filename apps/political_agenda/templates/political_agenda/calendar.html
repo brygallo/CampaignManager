@@ -1,0 +1,120 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Calendario de agenda | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header align-items-center gap-3 flex-wrap">
+    <h2 class="card-title fw-bold m-0">Calendario de agenda</h2>
+    <div class="card-toolbar gap-2 flex-wrap">
+      {% include "political_agenda/_section_nav.html" with active="calendar" %}
+    </div>
+  </div>
+
+  <div class="card-body">
+    <form id="agenda-calendar-filters" class="row g-3 mb-5">
+      <div class="col-12 col-md-3">
+        <label for="ag-cal-campaign" class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
+        <select id="ag-cal-campaign" name="campaign" class="form-select form-select-sm form-select-solid">
+          <option value="">Todas</option>
+          {% for campaign in campaigns %}
+            <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label for="ag-cal-event-type" class="form-label fs-7 fw-semibold text-gray-700">Tipo</label>
+        <select id="ag-cal-event-type" name="event_type" class="form-select form-select-sm form-select-solid">
+          <option value="">Todos los tipos</option>
+          {% for et in event_types %}
+            <option value="{{ et.id }}">{{ et.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label for="ag-cal-state" class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
+        <select id="ag-cal-state" name="state" class="form-select form-select-sm form-select-solid">
+          <option value="">Todos los estados (sin cancelados)</option>
+          {% for value, label in states %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label for="ag-cal-responsible" class="form-label fs-7 fw-semibold text-gray-700">Responsable</label>
+        <select id="ag-cal-responsible" name="responsible" class="form-select form-select-sm form-select-solid">
+          <option value="">Todos</option>
+          {% for u in responsibles %}
+            <option value="{{ u.id }}">{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 d-flex justify-content-end">
+        <button type="button" class="btn btn-sm btn-light fw-semibold" id="agenda-calendar-reset">
+          <i class="ki-outline ki-eraser fs-3"></i>
+          <span>Limpiar filtros</span>
+        </button>
+      </div>
+    </form>
+
+    <div id="agenda-calendar"
+         data-data-url="{% url 'political_agenda:calendar_data' %}"
+         data-popup-url="{% url 'political_agenda:calendar_popup' 0 %}"
+         data-locale="es"></div>
+
+    {% if event_types %}
+      <ul class="agenda-calendar-legend list-unstyled d-flex flex-wrap gap-3 mt-5 mb-0 small text-muted" aria-label="Leyenda de colores">
+        {% for et in event_types %}
+          <li class="d-inline-flex align-items-center gap-2">
+            <span class="agenda-calendar-legend__swatch" style="background:{{ et.color }};" aria-hidden="true"></span>
+            <i class="ki-outline ki-{{ et.icon }} fs-7" aria-hidden="true"></i>
+            <span>{{ et.name }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
+
+{# Modal abierto al hacer click en un evento. Cuerpo se rellena vía AJAX. #}
+<div class="modal fade" id="agenda-event-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-4">
+        <h2 class="modal-title fw-bold m-0 text-truncate" data-modal-title>Evento</h2>
+        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal" aria-label="Cerrar">
+          <i class="ki-outline ki-cross fs-1"></i>
+        </div>
+      </div>
+      <div class="modal-body py-7 px-lg-10" data-modal-body>
+        <div class="text-center text-muted py-10">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Cargando&hellip;</span>
+          </div>
+          <div class="mt-3">Cargando&hellip;</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cerrar</button>
+        <a href="#" class="btn btn-sm btn-primary d-flex align-items-center gap-2" data-detail-link>
+          Abrir página completa
+          <i class="ki-outline ki-arrow-right fs-3"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link href="{% static 'assets/plugins/custom/fullcalendar/fullcalendar.bundle.css' %}" rel="stylesheet" type="text/css" />
+<link href="{% static 'assets/css/political_agenda/calendar.css' %}" rel="stylesheet" type="text/css" />
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'assets/plugins/custom/fullcalendar/fullcalendar.bundle.js' %}"></script>
+<script src="{% static 'assets/js/political_agenda/calendar.js' %}"></script>
+{% endblock %}

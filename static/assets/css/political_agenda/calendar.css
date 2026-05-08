@@ -1,0 +1,68 @@
+/* Estilos mínimos del calendario de agenda política.
+ * El theme Metronic + fullcalendar.bundle.css ya estilizan card / fc / modal.
+ * Aquí solo añadimos el swatch de la leyenda y el popup de detalle. */
+
+.agenda-calendar-legend__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.agenda-popup__state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--state-color) 15%, transparent);
+  color: var(--state-color);
+  font-weight: 600;
+  font-size: .75rem;
+}
+
+.agenda-popup__state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--state-color);
+}
+
+.agenda-popup__fact {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+}
+
+.agenda-popup__fact-label {
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--bs-gray-500);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.agenda-popup__pin-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  background: var(--bs-gray-100);
+  border-radius: .5rem;
+}
+
+.agenda-popup__quote {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  background: var(--bs-gray-100);
+  border-left: 3px solid var(--bs-gray-300);
+  border-radius: .25rem;
+  margin: 0;
+}
+
+.agenda-popup__meta {
+  border-top: 1px dashed var(--bs-gray-300);
+}

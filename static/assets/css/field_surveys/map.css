@@ -666,6 +666,354 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
 }
 
+/* ============================================================
+   Field-survey pins — visit (teardrop) and competitor (rhombus)
+   ============================================================
+   The two shapes are distinct on purpose: visit pins drop a tail
+   onto the location, competitor pins use a rotated square with a
+   red border. This way the kind of point reads correctly even when
+   colors collide (e.g. a green competitor and a green APOYA visit).
+   ============================================================ */
+.fs-pin {
+  background: transparent;
+  border: 0;
+  position: relative;
+  pointer-events: auto;
+}
+
+/* --- Visit (teardrop) --- */
+.fs-pin--visit .fs-pin__shape {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  color: #ffffff;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.fs-pin--visit .fs-pin__shape i {
+  color: #ffffff !important;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.fs-pin--visit .fs-pin__tail {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 12px solid #3e97ff;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.18));
+  transition: transform 120ms ease;
+  pointer-events: none;
+}
+
+/* "No atendió" — empty house, dashed gray border, gray icon */
+.fs-pin--visit.is-noatendio .fs-pin__shape {
+  background: #ffffff !important;
+  border: 2px dashed #7e8299;
+  color: #7e8299;
+}
+.fs-pin--visit.is-noatendio .fs-pin__shape i {
+  color: #7e8299 !important;
+}
+.fs-pin--visit.is-noatendio .fs-pin__tail {
+  border-top-color: #b3b8c4 !important;
+  opacity: 0.85;
+}
+
+.fs-pin--visit:hover .fs-pin__shape,
+.fs-pin--visit:focus-visible .fs-pin__shape,
+.fs-pin--visit.is-active .fs-pin__shape {
+  transform: scale(1.12);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
+}
+.fs-pin--visit:hover .fs-pin__tail,
+.fs-pin--visit:focus-visible .fs-pin__tail,
+.fs-pin--visit.is-active .fs-pin__tail {
+  transform: translateX(-50%) scale(1.08);
+}
+
+/* --- Competitor (white rhombus with red alert border, party-colored flag) --- */
+.fs-pin--competitor .fs-pin__diamond {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: #ffffff;
+  /* border-color is set inline (per-party) to match the flag color */
+  border: 2.5px solid currentColor;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.22), 0 0 0 2px #ffffff;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.fs-pin--competitor .fs-pin__diamond-icon {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-45deg);
+  /* color is set inline (per-party) and inherited by the icon */
+}
+.fs-pin--competitor .fs-pin__diamond-icon i {
+  color: inherit !important;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.fs-pin--competitor:hover .fs-pin__diamond,
+.fs-pin--competitor:focus-visible .fs-pin__diamond,
+.fs-pin--competitor.is-active .fs-pin__diamond {
+  transform: rotate(45deg) scale(1.12);
+  box-shadow: 0 6px 14px rgba(217, 33, 78, 0.45), 0 0 0 2px #ffffff;
+}
+
+/* --- Mini-badge: advertising response (visit only) --- */
+.fs-pin__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+.fs-pin__badge i {
+  color: #ffffff !important;
+  font-size: 0.55rem;
+  line-height: 1;
+}
+.fs-pin__badge--accept { background: #3e97ff; }
+.fs-pin__badge--reject { background: #7e8299; }
+
+/* ============================================================
+   Visit cluster — donut with proportions by support state
+   ============================================================ */
+.fs-cluster-wrap {
+  background: transparent !important;
+  border: 0 !important;
+}
+.fs-cluster {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 4px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.3);
+}
+.fs-cluster__inner {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 50%;
+  color: #1e293b;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid #ffffff;
+}
+
+/* Competitor cluster — solid red bubble with flag + count */
+.fs-cluster--competitor {
+  background: #d9214e !important;
+  padding: 0;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(217, 33, 78, 0.45);
+}
+.fs-cluster__inner--competitor {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  flex-direction: row;
+  gap: 0.18rem;
+  font-size: 0.82rem;
+}
+.fs-cluster__inner--competitor i {
+  color: #ffffff !important;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.fs-cluster__count {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   Map legend (foldable card, bottom-right)
+   ============================================================ */
+.field-survey-map-legend-toggle {
+  position: absolute;
+  z-index: 500;
+  right: var(--map-shell-pad);
+  bottom: calc(var(--map-shell-pad) + 168px + var(--map-safe-bottom));
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--map-ctrl-bg, #ffffff);
+  color: var(--map-ctrl-fg, #3c4043);
+  border: 0;
+  box-shadow: var(--map-ctrl-shadow, 0 1px 4px -1px rgba(0,0,0,.3), 0 2px 4px rgba(0,0,0,.15));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease;
+}
+.field-survey-map-legend-toggle:hover,
+.field-survey-map-legend-toggle.is-active {
+  background: #f5f7fb;
+  transform: translateY(-1px);
+}
+.field-survey-map-legend-toggle i {
+  font-size: 1.1rem;
+}
+
+.field-survey-map-legend {
+  position: absolute;
+  z-index: 500;
+  right: var(--map-shell-pad);
+  bottom: calc(var(--map-shell-pad) + 220px + var(--map-safe-bottom));
+  width: 232px;
+  background: var(--map-ctrl-bg, #ffffff);
+  border-radius: 12px;
+  box-shadow: var(--map-ctrl-shadow, 0 1px 4px -1px rgba(0,0,0,.3), 0 2px 4px rgba(0,0,0,.15));
+  padding: 0.75rem 0.85rem 0.65rem;
+  font-size: 0.78rem;
+  color: #3c4043;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.field-survey-map-legend.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.field-survey-map-legend__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.field-survey-map-legend__title {
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.8rem;
+}
+.field-survey-map-legend__close {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+}
+.field-survey-map-legend__group {
+  border-top: 1px solid #eef0f4;
+  padding-top: 0.45rem;
+  margin-top: 0.45rem;
+}
+.field-survey-map-legend__group:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+.field-survey-map-legend__group-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+}
+.field-survey-map-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  line-height: 1.15;
+}
+.field-survey-map-legend__row:last-child {
+  margin-bottom: 0;
+}
+.field-survey-map-legend__swatch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+  font-size: 0.62rem;
+}
+.field-survey-map-legend__swatch i {
+  color: #ffffff !important;
+  font-size: 0.62rem;
+}
+.field-survey-map-legend__swatch--apoya     { background: #50cd89; }
+.field-survey-map-legend__swatch--indeciso  { background: #ffc700; }
+.field-survey-map-legend__swatch--noapoya   { background: #f1416c; }
+.field-survey-map-legend__swatch--noatendio {
+  background: #ffffff;
+  border: 1.5px dashed #7e8299;
+  color: #7e8299;
+  box-shadow: none;
+}
+.field-survey-map-legend__swatch--noatendio i { color: #7e8299 !important; }
+.field-survey-map-legend__swatch--competitor {
+  border-color: #d9214e;
+  border-width: 2px;
+  background: #ffffff;
+  color: #d9214e;
+  border-radius: 4px;
+  transform: rotate(45deg);
+  box-shadow: none;
+}
+.field-survey-map-legend__swatch--competitor i {
+  transform: rotate(-45deg);
+  color: #d9214e !important;
+}
+.field-survey-map-legend__swatch--accept { background: #3e97ff; }
+.field-survey-map-legend__swatch--reject { background: #7e8299; }
+
+@media (max-width: 767.98px) {
+  .field-survey-map-legend-toggle {
+    bottom: calc(var(--map-shell-pad) + 156px + var(--map-safe-bottom));
+  }
+  .field-survey-map-legend {
+    bottom: calc(var(--map-shell-pad) + 208px + var(--map-safe-bottom));
+    right: var(--map-shell-pad);
+    width: min(232px, calc(100vw - 2 * var(--map-shell-pad)));
+  }
+}
+
 /* ----- Leaflet built-ins (scale + attribution) compact, Google-like ----- */
 .field-survey-map .leaflet-control-attribution {
   border-radius: 999px;

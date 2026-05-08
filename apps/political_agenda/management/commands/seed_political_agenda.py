@@ -1,18 +1,22 @@
 """Siembra solicitudes de agenda política y eventos en distintos estados.
 
 Genera ~12 solicitudes (PENDING / IN_REVIEW / APPROVED / REJECTED) y ~8
-eventos (DRAFT / SCHEDULED / DONE) ligados a la campaña activa.
+eventos (DRAFT / SCHEDULED / DONE) ligados a la campaña activa, con
+coordenadas tentativas jitterizadas alrededor de Macas.
 
 Uso:
     python manage.py tenant_command seed_political_agenda --schema=<tenant>
 
 Requiere previamente:
-    seed_campaigns, seed_sectors
+    seed_campaigns, seed_sectors, seed_political_agenda_catalog
 """
 
+import random
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -30,7 +34,7 @@ User = get_user_model()
 
 
 REQUESTS = [
-    # (title, type, priority, requester, org, state)
+    # (title, type_code, priority, requester, org, state)
     (
         "Reunión con dirigentes barriales La Loma",
         "REUNION",
@@ -123,9 +127,22 @@ REQUESTS = [
 ]
 
 
+# Macas, Morona Santiago — punto base para jitter de coordenadas tentativas.
+BASE_LAT = Decimal("-2.310000")
+BASE_LNG = Decimal("-78.120000")
+
+
 def _at(days_from_now: int, hour: int = 9, minute: int = 0):
     base = timezone.localtime() + timedelta(days=days_from_now)
     return base.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
+def _jitter_coords(rng: random.Random):
+    """Pequeña dispersión (~0.04°, ~4 km) alrededor del punto base."""
+    return (
+        BASE_LAT + Decimal(str(round(rng.uniform(-0.04, 0.04), 6))),
+        BASE_LNG + Decimal(str(round(rng.uniform(-0.04, 0.04), 6))),
+    )
 
 
 class Command(BaseCommand):
@@ -142,6 +159,14 @@ class Command(BaseCommand):
             PoliticalAgendaEvent.objects.all().delete()
             PoliticalAgendaRequest.objects.all().delete()
             self.stdout.write(self.style.WARNING("Datos previos borrados."))
+
+        if not AgendaEventType.objects.exists():
+            self.stdout.write(self.style.WARNING(
+                "Catálogos vacíos. Corriendo seed_political_agenda_catalog…"
+            ))
+            call_command("seed_political_agenda_catalog")
+
+        types_by_code = {t.code: t for t in AgendaEventType.objects.all()}
 
         campaign = (
             Campaign.objects.filter(name="Macas para Todos").first()
@@ -161,19 +186,22 @@ class Command(BaseCommand):
         parishes = list(Parish.objects.filter(canton=canton)) if canton else []
         sectors_by_parish = {p.id: list(Sector.objects.filter(parish=p)) for p in parishes}
 
+        rng = random.Random(42)
+
         # solicitudes
         wf_req = PoliticalAgendaRequest.workflow
         approved_requests = []
-        for i, (title, etype, priority, requester, org, state) in enumerate(REQUESTS):
+        for i, (title, etype_code, priority, requester, org, state) in enumerate(REQUESTS):
             parish = parishes[i % len(parishes)] if parishes else None
             sectors = sectors_by_parish.get(parish.id, []) if parish else []
             sector = sectors[i % len(sectors)] if sectors else None
+            lat, lng = _jitter_coords(rng)
 
             req, created = PoliticalAgendaRequest.objects.get_or_create(
                 campaign=campaign,
                 title=title,
                 defaults={
-                    "event_type": etype,
+                    "event_type": types_by_code.get(etype_code, types_by_code["OTRO"]),
                     "priority": priority,
                     "requester_name": requester,
                     "requester_phone": f"09{60000000 + i * 11111}",
@@ -186,12 +214,13 @@ class Command(BaseCommand):
                     "parish": parish,
                     "sector": sector,
                     "address": "Por confirmar",
+                    "latitude": lat,
+                    "longitude": lng,
                     "objective": "Coordinar agenda territorial.",
                     "expected_attendees": 20 + (i * 7) % 80,
                     "created_by": user,
                 },
             )
-            # mover a estado deseado vía transiciones FSM
             if req.state == wf_req.PENDING:
                 if state == "IN_REVIEW":
                     req.send_to_review(user=user)
@@ -211,10 +240,9 @@ class Command(BaseCommand):
             self.style.SUCCESS(f"Solicitudes: {PoliticalAgendaRequest.objects.count()}")
         )
 
-        # eventos: 4 SCHEDULED desde solicitudes aprobadas, 2 DONE pasadas, 2 DRAFT futuras
+        # eventos: SCHEDULED desde solicitudes aprobadas, DONE pasadas, DRAFT futuras
         wf_evt = PoliticalAgendaEvent.workflow
         events_made = 0
-        # SCHEDULED a partir de solicitudes aprobadas
         for i, req in enumerate(approved_requests[:4]):
             evt, created = PoliticalAgendaEvent.objects.get_or_create(
                 campaign=campaign,
@@ -229,6 +257,8 @@ class Command(BaseCommand):
                     "parish": req.parish,
                     "sector": req.sector,
                     "address": req.address or "Centro Macas",
+                    "latitude": req.latitude,
+                    "longitude": req.longitude,
                     "organizer_name": req.requester_name,
                     "organizer_phone": req.requester_phone,
                     "responsible": user,
@@ -246,17 +276,20 @@ class Command(BaseCommand):
         for i in range(2):
             start = _at(-(7 + i * 3), hour=10)
             end = start + timedelta(hours=2)
+            lat, lng = _jitter_coords(rng)
             evt, _c = PoliticalAgendaEvent.objects.get_or_create(
                 campaign=campaign,
                 title=f"Evento histórico Macas #{i + 1}",
                 defaults={
-                    "event_type": AgendaEventType.RECORRIDO,
+                    "event_type": types_by_code["RECORRIDO"],
                     "start_at": start,
                     "end_at": end,
                     "province": province,
                     "canton": canton,
                     "parish": parishes[i] if parishes else None,
                     "address": "Centro de la parroquia",
+                    "latitude": lat,
+                    "longitude": lng,
                     "organizer_name": "Equipo de campaña",
                     "organizer_phone": "0999000000",
                     "responsible": user,
@@ -278,17 +311,20 @@ class Command(BaseCommand):
         for i in range(2):
             start = _at(20 + i * 4, hour=18)
             end = start + timedelta(hours=2)
+            lat, lng = _jitter_coords(rng)
             evt, _c = PoliticalAgendaEvent.objects.get_or_create(
                 campaign=campaign,
                 title=f"Borrador mitin barrial #{i + 1}",
                 defaults={
-                    "event_type": AgendaEventType.MITIN,
+                    "event_type": types_by_code["MITIN"],
                     "start_at": start,
                     "end_at": end,
                     "province": province,
                     "canton": canton,
                     "parish": parishes[(i + 2) % len(parishes)] if parishes else None,
                     "address": "Cancha barrial",
+                    "latitude": lat,
+                    "longitude": lng,
                     "organizer_name": "Coordinación territorial",
                     "organizer_phone": "0988000000",
                     "responsible": user,

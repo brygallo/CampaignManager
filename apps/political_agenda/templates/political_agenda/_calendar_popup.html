@@ -1,0 +1,173 @@
+{% load static %}
+<div class="agenda-popup">
+
+  {# ===== Hero ===== #}
+  <header class="agenda-popup__hero d-flex flex-wrap gap-4 mb-5">
+    <div class="symbol symbol-60px symbol-circle flex-shrink-0">
+      <span class="symbol-label fw-bolder text-white"
+            style="background:{{ type_color }};"
+            aria-hidden="true">
+        <i class="ki-outline ki-{{ type_icon }} fs-1 text-white"></i>
+      </span>
+    </div>
+    <div class="flex-grow-1 min-w-0">
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <h3 class="m-0 fs-2 fw-bolder text-dark text-truncate" title="{{ event.title }}">
+          {{ event.title }}
+        </h3>
+        <span class="agenda-popup__state-badge"
+              style="--state-color:{{ state_border }};"
+              aria-label="Estado: {{ event.get_state_display }}">
+          <span class="agenda-popup__state-dot" aria-hidden="true"></span>
+          {{ event.get_state_display }}
+        </span>
+      </div>
+      <p class="m-0 mt-1 text-muted fw-semibold fs-7">
+        {{ event.event_type.name }}
+        {% if event.expected_attendees %}
+          <span class="mx-2 text-gray-400">·</span>{{ event.expected_attendees }} esperados
+        {% endif %}
+      </p>
+      {% if event.campaign %}
+        <p class="m-0 mt-2 d-flex align-items-center gap-2 flex-wrap">
+          <i class="ki-outline ki-rocket fs-6 text-primary" aria-hidden="true"></i>
+          <span class="text-dark fw-semibold fs-7">{{ event.campaign.name }}</span>
+          {% if event.campaign.candidate %}
+            <span class="text-gray-400">·</span>
+            <span class="text-muted fs-7">{{ event.campaign.candidate }}</span>
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </header>
+
+  {# ===== Schedule ===== #}
+  <div class="agenda-popup__schedule d-flex flex-wrap gap-4 mb-5">
+    <div class="agenda-popup__fact flex-grow-1">
+      <span class="symbol symbol-40px symbol-circle">
+        <span class="symbol-label bg-light-primary"><i class="ki-outline ki-calendar fs-3 text-primary" aria-hidden="true"></i></span>
+      </span>
+      <div class="agenda-popup__fact-body">
+        <div class="agenda-popup__fact-label">Inicio</div>
+        <div class="fw-bold text-dark">{{ event.start_at|date:"d M Y · H:i" }}</div>
+      </div>
+    </div>
+    <div class="agenda-popup__fact flex-grow-1">
+      <span class="symbol symbol-40px symbol-circle">
+        <span class="symbol-label bg-light-info"><i class="ki-outline ki-time fs-3 text-info" aria-hidden="true"></i></span>
+      </span>
+      <div class="agenda-popup__fact-body">
+        <div class="agenda-popup__fact-label">Fin</div>
+        <div class="fw-bold text-dark">{{ event.end_at|date:"d M Y · H:i" }}</div>
+      </div>
+    </div>
+  </div>
+
+  {# ===== Location ===== #}
+  {% if event.address or event.latitude or event.parish %}
+    <div class="agenda-popup__pin-hint mb-4" role="note">
+      <i class="ki-outline ki-geolocation fs-3" aria-hidden="true"></i>
+      <div class="flex-grow-1">
+        {% if event.address %}<div class="fw-bold text-dark fs-7">{{ event.address }}</div>{% endif %}
+        {% if event.reference %}<div class="text-muted fs-8">{{ event.reference }}</div>{% endif %}
+        {% if event.parish %}
+          <div class="text-muted fs-8">
+            {% if event.sector %}{{ event.sector }} · {% endif %}{{ event.parish }}{% if event.canton %}, {{ event.canton }}{% endif %}
+          </div>
+        {% endif %}
+        {% if event.latitude and event.longitude %}
+          <div class="text-muted fs-8 font-monospace mt-1">
+            <i class="ki-outline ki-pin fs-8 me-1" aria-hidden="true"></i>{{ event.latitude }} / {{ event.longitude }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {# ===== Key facts ===== #}
+  <section class="row g-4" aria-label="Datos del evento">
+    {% if event.responsible %}
+      <div class="col-12 col-sm-6">
+        <div class="agenda-popup__fact">
+          <span class="symbol symbol-40px symbol-circle">
+            <span class="symbol-label bg-light-warning"><i class="ki-outline ki-user-tick fs-3 text-warning" aria-hidden="true"></i></span>
+          </span>
+          <div class="agenda-popup__fact-body">
+            <div class="agenda-popup__fact-label">Responsable</div>
+            <div class="fw-bold text-dark">{{ event.responsible }}</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    {% if event.organizer_name %}
+      <div class="col-12 col-sm-6">
+        <div class="agenda-popup__fact">
+          <span class="symbol symbol-40px symbol-circle">
+            <span class="symbol-label bg-light-info"><i class="ki-outline ki-profile-user fs-3 text-info" aria-hidden="true"></i></span>
+          </span>
+          <div class="agenda-popup__fact-body">
+            <div class="agenda-popup__fact-label">Organizador</div>
+            <div class="fw-bold text-dark">{{ event.organizer_name }}</div>
+            {% if event.organizer_phone %}
+              <a href="tel:{{ event.organizer_phone }}" class="text-muted fs-8 d-inline-flex align-items-center gap-1">
+                <i class="ki-outline ki-phone fs-8" aria-hidden="true"></i>{{ event.organizer_phone }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    {% if event.source_request %}
+      <div class="col-12 col-sm-6">
+        <div class="agenda-popup__fact">
+          <span class="symbol symbol-40px symbol-circle">
+            <span class="symbol-label bg-light-success"><i class="ki-outline ki-document fs-3 text-success" aria-hidden="true"></i></span>
+          </span>
+          <div class="agenda-popup__fact-body">
+            <div class="agenda-popup__fact-label">Origen</div>
+            <div class="fw-bold text-dark">{{ event.source_request.title }}</div>
+            <div class="text-muted fs-8">Solicitud {{ event.source_request.get_state_display|lower }}</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if event.objective %}
+    <blockquote class="agenda-popup__quote mt-5" aria-label="Objetivo del evento">
+      <i class="ki-outline ki-flag fs-2 text-muted" aria-hidden="true"></i>
+      <div>
+        <div class="text-muted fw-bold fs-8 text-uppercase mb-1">Objetivo</div>
+        <div class="text-gray-700 fs-7">{{ event.objective|linebreaksbr }}</div>
+      </div>
+    </blockquote>
+  {% endif %}
+
+  {% if event.result_notes %}
+    <blockquote class="agenda-popup__quote mt-3" aria-label="Resultado del evento">
+      <i class="ki-outline ki-message-text-2 fs-2 text-muted" aria-hidden="true"></i>
+      <div>
+        <div class="text-muted fw-bold fs-8 text-uppercase mb-1">Resultado / seguimiento</div>
+        <div class="text-gray-700 fs-7">{{ event.result_notes|linebreaksbr }}</div>
+      </div>
+    </blockquote>
+  {% endif %}
+
+  {# ===== Footer / metadata ===== #}
+  <footer class="agenda-popup__meta d-flex flex-wrap gap-3 text-muted fs-8 mt-5 pt-3">
+    {% if event.created_date %}
+      <span class="d-inline-flex align-items-center gap-1">
+        <i class="ki-outline ki-add-files fs-8" aria-hidden="true"></i>
+        Creado {{ event.created_date|date:"d M Y · H:i" }}
+        {% if event.creation_user %}<span class="text-gray-400">·</span><span>{{ event.creation_user }}</span>{% endif %}
+      </span>
+    {% endif %}
+    {% if event.modified_date and event.modified_date != event.created_date %}
+      <span class="d-inline-flex align-items-center gap-1">
+        <i class="ki-outline ki-pencil fs-8" aria-hidden="true"></i>
+        Última edición {{ event.modified_date|date:"d M Y · H:i" }}
+      </span>
+    {% endif %}
+  </footer>
+
+</div>

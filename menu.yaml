@@ -18,12 +18,18 @@ Campañas:
 
 Agenda política:
   icon: calendar-tick
+  Calendario:
+    url_name: political_agenda:calendar
+    icon: calendar-tick
   Solicitudes de agenda:
     app: political_agenda
     model: politicalagendarequest
   Eventos de agenda:
     app: political_agenda
     model: politicalagendaevent
+  Tipos de evento:
+    app: political_agenda
+    model: agendaeventtype
 
 Levantamientos de campo:
   icon: geolocation

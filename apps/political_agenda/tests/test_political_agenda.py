@@ -7,7 +7,11 @@ from django.utils import timezone
 
 from apps.campaigns.models import Campaign, Candidate, Election, PoliticalMovement, Position
 from apps.political_agenda.forms import PoliticalAgendaEventForm, PoliticalAgendaRequestForm
-from apps.political_agenda.models import PoliticalAgendaEvent, PoliticalAgendaRequest
+from apps.political_agenda.models import (
+    AgendaEventType,
+    PoliticalAgendaEvent,
+    PoliticalAgendaRequest,
+)
 
 
 class PoliticalAgendaRulesTests(TestCase):
@@ -29,6 +33,9 @@ class PoliticalAgendaRulesTests(TestCase):
             movement=movement,
             position=position,
         )
+        self.event_type = AgendaEventType.objects.create(
+            code="REUNION", name="Reunión", order=10, color="#3e97ff", icon="people"
+        )
         self.start = timezone.now().replace(microsecond=0) + timedelta(days=1)
         self.end = self.start + timedelta(hours=2)
 
@@ -36,6 +43,7 @@ class PoliticalAgendaRulesTests(TestCase):
         request = PoliticalAgendaRequest.objects.create(
             campaign=self.campaign,
             title="Solicitud tentativa",
+            event_type=self.event_type,
             requester_name="Dirigente barrial",
             proposed_start_at=self.start,
             proposed_end_at=self.end,
@@ -48,6 +56,7 @@ class PoliticalAgendaRulesTests(TestCase):
         event = PoliticalAgendaEvent.objects.create(
             campaign=self.campaign,
             title="Evento borrador",
+            event_type=self.event_type,
             start_at=self.start,
             end_at=self.end,
             created_by=self.user,
@@ -59,6 +68,7 @@ class PoliticalAgendaRulesTests(TestCase):
         event = PoliticalAgendaEvent(
             campaign=self.campaign,
             title="Evento agendado",
+            event_type=self.event_type,
             start_at=self.start,
             end_at=self.end,
             created_by=self.user,
@@ -72,6 +82,7 @@ class PoliticalAgendaRulesTests(TestCase):
         scheduled = PoliticalAgendaEvent(
             campaign=self.campaign,
             title="Evento agendado",
+            event_type=self.event_type,
             start_at=self.start,
             end_at=self.end,
             created_by=self.user,
@@ -81,6 +92,7 @@ class PoliticalAgendaRulesTests(TestCase):
         overlapping = PoliticalAgendaEvent(
             campaign=self.campaign,
             title="Evento cruzado",
+            event_type=self.event_type,
             start_at=self.start + timedelta(minutes=30),
             end_at=self.end + timedelta(hours=1),
             created_by=self.user,
@@ -93,6 +105,7 @@ class PoliticalAgendaRulesTests(TestCase):
         request = PoliticalAgendaRequest.objects.create(
             campaign=self.campaign,
             title="Solicitud pendiente",
+            event_type=self.event_type,
             requester_name="Dirigente",
             proposed_start_at=self.start,
             proposed_end_at=self.end,

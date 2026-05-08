@@ -4,8 +4,9 @@ from superadmin.forms import ModelForm
 
 from apps.campaigns.models import Campaign
 from apps.locations.models import Canton, Parish, Province, Sector
+from core.widgets import LeafletMapWidget
 
-from .models import PoliticalAgendaEvent, PoliticalAgendaRequest
+from .models import AgendaEventType, PoliticalAgendaEvent, PoliticalAgendaRequest
 
 
 class RejectAgendaRequestForm(forms.Form):
@@ -17,6 +18,23 @@ class RejectAgendaRequestForm(forms.Form):
 
 
 class PoliticalAgendaRequestForm(ModelForm):
+    location = forms.CharField(
+        label="Ubicación tentativa en mapa",
+        required=False,
+        widget=LeafletMapWidget(
+            lat_field="latitude",
+            lng_field="longitude",
+            attrs={"column": 12},
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "event_type" in self.fields:
+            active_types = AgendaEventType.objects.filter(is_active=True).order_by("order", "name")
+            self.fields["event_type"].queryset = active_types
+            self.fields["event_type"].widget.queryset = active_types
+
     class Meta:
         model = PoliticalAgendaRequest
         fieldsets = {
@@ -38,6 +56,8 @@ class PoliticalAgendaRequestForm(ModelForm):
                 ("parish", "sector"),
                 ("address",),
                 ("reference",),
+                ("location",),
+                ("latitude", "longitude"),
             ),
             "Detalle": (
                 ("objective",),
@@ -55,6 +75,12 @@ class PoliticalAgendaRequestForm(ModelForm):
                 search_fields=["name__icontains", "candidate__full_name__icontains"],
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "campaigns", "data-model": "Campaign"},
+            ),
+            "event_type": ModelSelect2Widget(
+                model=AgendaEventType,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "AgendaEventType"},
             ),
             "province": ModelSelect2Widget(
                 model=Province,
@@ -83,15 +109,33 @@ class PoliticalAgendaRequestForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
             ),
-            "event_type": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "priority": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "proposed_start_at": forms.DateTimeInput(),
             "proposed_end_at": forms.DateTimeInput(),
             "reviewed_at": forms.DateTimeInput(),
+            "latitude": forms.HiddenInput(),
+            "longitude": forms.HiddenInput(),
         }
 
 
 class PoliticalAgendaEventForm(ModelForm):
+    location = forms.CharField(
+        label="Ubicación en mapa",
+        required=False,
+        widget=LeafletMapWidget(
+            lat_field="latitude",
+            lng_field="longitude",
+            attrs={"column": 12},
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "event_type" in self.fields:
+            active_types = AgendaEventType.objects.filter(is_active=True).order_by("order", "name")
+            self.fields["event_type"].queryset = active_types
+            self.fields["event_type"].widget.queryset = active_types
+
     class Meta:
         model = PoliticalAgendaEvent
         fieldsets = {
@@ -105,6 +149,8 @@ class PoliticalAgendaEventForm(ModelForm):
                 ("parish", "sector"),
                 ("address",),
                 ("reference",),
+                ("location",),
+                ("latitude", "longitude"),
             ),
             "Organización": (
                 ("organizer_name", "organizer_phone"),
@@ -122,6 +168,12 @@ class PoliticalAgendaEventForm(ModelForm):
                 search_fields=["name__icontains", "candidate__full_name__icontains"],
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "campaigns", "data-model": "Campaign"},
+            ),
+            "event_type": ModelSelect2Widget(
+                model=AgendaEventType,
+                search_fields=["name__icontains", "code__icontains"],
+                max_results=100,
+                attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "AgendaEventType"},
             ),
             "source_request": ModelSelect2Widget(
                 model=PoliticalAgendaRequest,
@@ -157,7 +209,8 @@ class PoliticalAgendaEventForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "locations", "data-model": "Sector"},
             ),
-            "event_type": Select2Widget(attrs={"data-minimum-input-length": 0}),
             "start_at": forms.DateTimeInput(),
             "end_at": forms.DateTimeInput(),
+            "latitude": forms.HiddenInput(),
+            "longitude": forms.HiddenInput(),
         }
