@@ -115,7 +115,7 @@ class CompetitorSite(BaseSite):
 @register("field_surveys.FieldSurvey")
 class FieldSurveySite(BaseSite):
     form_class = FieldSurveyForm
-    list_template_name = "field_surveys/superadmin_fieldsurvey_list.html"
+    list_template_name = "field_surveys/fieldsurvey_list.html"
     list_mixins = (FieldSurveyOwnershipMixin, DropdownFilterMixin)
     create_mixins = (
         FieldSurveyMapInitialLocationMixin,
@@ -167,7 +167,7 @@ class FieldSurveySite(BaseSite):
 @register("field_surveys.CompetitorAdvertisingDetection")
 class CompetitorAdvertisingDetectionSite(BaseSite):
     form_class = CompetitorAdvertisingDetectionForm
-    list_template_name = "field_surveys/superadmin_competitordetection_list.html"
+    list_template_name = "field_surveys/competitordetection_list.html"
     list_mixins = (CompetitorDetectionOwnershipMixin, DropdownFilterMixin)
     create_mixins = (
         FieldSurveyMapInitialLocationMixin,

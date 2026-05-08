@@ -3,9 +3,17 @@ from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
 
+from core.context_processors import tenant_features
+
 
 class MapInitialLocationMixin:
-    """Prefill coordinate fields and map widget state from map-click query params."""
+    """Prefill coordinate fields and map widget state.
+
+    Server-side defaults come from the active tenant's ``TenantSettings``
+    (``map_center_*`` and ``map_default_zoom``). Map-click query params
+    (``?lat=…&lng=…&map_zoom=…&map_layer=…``) take precedence so deep links
+    keep working.
+    """
 
     coordinate_initial_fields = ()
     map_location_field = "location"
@@ -24,6 +32,14 @@ class MapInitialLocationMixin:
         field = form.fields.get(self.map_location_field)
         if not field:
             return form
+
+        tenant_center = tenant_features(self.request).get("tenant_map_center") or {}
+        if tenant_center.get("lat") is not None:
+            field.widget.attrs.setdefault("data-default-lat", tenant_center["lat"])
+        if tenant_center.get("lng") is not None:
+            field.widget.attrs.setdefault("data-default-lng", tenant_center["lng"])
+        if tenant_center.get("zoom") is not None:
+            field.widget.attrs.setdefault("data-default-zoom", tenant_center["zoom"])
 
         zoom = self.request.GET.get("map_zoom")
         if zoom:

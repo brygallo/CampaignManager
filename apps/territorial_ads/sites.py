@@ -37,7 +37,7 @@ class AdvertisingCostTypeSite(BaseSite):
 class PhysicalAdvertisementSite(BaseSite):
     form_class = PhysicalAdvertisementForm
     form_template_name = "territorial_ads/physicaladvertisement_form.html"
-    list_template_name = "territorial_ads/superadmin_physicaladvertisement_list.html"
+    list_template_name = "territorial_ads/physicaladvertisement_list.html"
     list_mixins = (WorkflowStateFilterMixin,)
     create_mixins = (
         PhysicalAdMapInitialLocationMixin,

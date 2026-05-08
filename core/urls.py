@@ -8,8 +8,8 @@ import superadmin
 from . import views as core_views
 
 urlpatterns = [
-    path("", core_views.home, name="home"),
-    path("admin-panel/", core_views.SuperAdminLandingView.as_view(), name="superadmin_home"),
+    path("", core_views.inicio, name="home"),
+    path("admin-panel/", core_views.home, name="superadmin_home"),
     # Authenticated, tenant-scoped media serving. Replaces Django's default
     # static media handler so tenant A cannot read tenant B's uploads by
     # guessing the URL.

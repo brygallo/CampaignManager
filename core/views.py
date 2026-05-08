@@ -3,8 +3,8 @@
 from datetime import date, timedelta
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core import signing
 from django.core.signing import BadSignature
 from django.db import connection
@@ -89,8 +89,21 @@ class AutoResponseView(BaseAutoResponseView):
 
 
 @login_required
+def inicio(request):
+    """Mobile-first quick-access landing for any authenticated user."""
+    return render(
+        request,
+        "inicio.html",
+        {
+            "breadcrumbs": [("Inicio", None)],
+        },
+    )
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
 def home(request):
-    """Dashboard landing page: KPI cards + upcoming elections + recent campaigns + charts."""
+    """Admin panel: KPI cards + upcoming elections + recent campaigns + charts."""
     from django.db.models import Count
     from django.db.models.functions import TruncMonth
 
@@ -173,7 +186,7 @@ def home(request):
             "ads": ad_distribution,
             "campaigns": campaign_distribution,
         },
-        "breadcrumbs": [("Inicio", None)],
+        "breadcrumbs": [("Inicio", "/"), ("Panel de administración", None)],
     }
     return render(request, "home.html", context)
 
@@ -257,18 +270,15 @@ SUPERADMIN_MODULE_META = {
 }
 
 
-class SuperAdminLandingView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+class SuperAdminLandingView(LoginRequiredMixin, TemplateView):
     """Pattern P1: card grid of registered SuperAdmin modules.
 
     Reads the global ``menu_tree`` (provided by superadmin's context processor)
     and enriches each entry with visual metadata from ``SUPERADMIN_MODULE_META``.
-    Only ``is_staff`` users may see this landing.
+    Serves as the authenticated landing page for any logged-in user.
     """
 
     template_name = "superadmin/module_list.html"
-
-    def test_func(self):
-        return self.request.user.is_staff
 
     def _decorate(self, items):
         decorated = []
@@ -294,8 +304,8 @@ class SuperAdminLandingView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
 
         raw = menu_cp(self.request).get("menu_tree", [])
         context["sections"] = self._decorate(raw)
-        context["page_title"] = "Panel de administración"
-        context["breadcrumbs"] = [("Inicio", "/"), ("Panel de administración", None)]
+        context["page_title"] = "Inicio"
+        context["breadcrumbs"] = [("Inicio", None)]
         return context
 
 

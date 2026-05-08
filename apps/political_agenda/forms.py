@@ -33,6 +33,9 @@ class PoliticalAgendaRequestForm(ModelForm):
             active_types = AgendaEventType.objects.filter(is_active=True).order_by("order", "name")
             self.fields["event_type"].queryset = active_types
             self.fields["event_type"].widget.queryset = active_types
+        for required_field in ("proposed_start_at", "proposed_end_at"):
+            if required_field in self.fields:
+                self.fields[required_field].required = True
 
     class Meta:
         model = PoliticalAgendaRequest
@@ -100,6 +103,9 @@ class PoliticalAgendaEventForm(ModelForm):
             active_types = AgendaEventType.objects.filter(is_active=True).order_by("order", "name")
             self.fields["event_type"].queryset = active_types
             self.fields["event_type"].widget.queryset = active_types
+        for required_field in ("responsible", "address", "latitude", "longitude"):
+            if required_field in self.fields:
+                self.fields[required_field].required = True
 
     class Meta:
         model = PoliticalAgendaEvent

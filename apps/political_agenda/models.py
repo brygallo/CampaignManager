@@ -10,7 +10,6 @@ from apps.political_agenda.transitions import (
     PoliticalAgendaEventTransitions,
     PoliticalAgendaRequestTransitions,
 )
-from apps.workflows.mixins import TransitionRequirementsMixin
 
 
 class AgendaEventType(BaseModel):
@@ -44,7 +43,7 @@ class AgendaEventType(BaseModel):
         return self.name
 
 
-class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions, TransitionRequirementsMixin):
+class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions):
     workflow = PoliticalAgendaRequestTransitions.workflow
 
     class Priority(models.TextChoices):
@@ -150,38 +149,8 @@ class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions, Trans
         if errors:
             raise ValidationError(errors)
 
-    @property
-    def transition_requirements(self):
-        if self.state in (self.workflow.PENDING, self.workflow.IN_REVIEW):
-            return self.build_transition_requirements(
-                "Aprobar",
-                [
-                    self.build_transition_requirement_item(
-                        "Inicio tentativo", self.proposed_start_at, bool(self.proposed_start_at)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Fin tentativo", self.proposed_end_at, bool(self.proposed_end_at)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Solicitante", self.requester_name, bool(self.requester_name)
-                    ),
-                ],
-                ready_text="Puedes aprobar o rechazar la solicitud desde el menú de acciones.",
-            )
-        if self.state == self.workflow.APPROVED:
-            return self.build_transition_requirements(
-                "Crear evento",
-                [
-                    self.build_transition_requirement_item(
-                        "Solicitud aprobada", self.get_state_display(), True
-                    )
-                ],
-                ready_text="Puedes generar el evento de agenda desde la solicitud aprobada.",
-            )
-        return None
 
-
-class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, TransitionRequirementsMixin):
+class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
     workflow = PoliticalAgendaEventTransitions.workflow
 
     campaign = models.ForeignKey(
@@ -327,44 +296,3 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions, Transitio
 
     def clean(self):
         self.validate_agenda_rules()
-
-    @property
-    def transition_requirements(self):
-        if self.state in (self.workflow.DRAFT, self.workflow.RESCHEDULED):
-            return self.build_transition_requirements(
-                "Agendar",
-                [
-                    self.build_transition_requirement_item(
-                        "Inicio", self.start_at, bool(self.start_at)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Fin", self.end_at, bool(self.end_at)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Responsable", self.responsible, bool(self.responsible_id)
-                    ),
-                    self.build_transition_requirement_item(
-                        "Dirección", self.address, bool(self.address)
-                    ),
-                ],
-                help_text=(
-                    "Completa los requisitos marcados en rojo y asegura que no haya cruces "
-                    "con otras agendas del candidato antes de agendar."
-                ),
-            )
-        if self.state == self.workflow.SCHEDULED:
-            return self.build_transition_requirements(
-                "Marcar realizado",
-                [
-                    self.build_transition_requirement_item(
-                        "Resultado / seguimiento",
-                        self.result_notes,
-                        bool(self.result_notes),
-                    )
-                ],
-                ready_text=(
-                    "El evento está agendado. Registra el resultado y márcalo como realizado "
-                    "una vez ejecutado."
-                ),
-            )
-        return None
