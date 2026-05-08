@@ -10,8 +10,8 @@
     will-change: transform;
   }
   .qa-tile:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 36px rgba(20, 25, 40, .08);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(20, 25, 40, .10);
   }
   .qa-tile:active { transform: translateY(0); }
   .qa-tile .qa-arrow { transition: transform .18s ease; }
@@ -23,6 +23,25 @@
   .qa-shortcut { transition: background-color .15s ease; border-radius: 10px; }
   .qa-shortcut:hover { background-color: #F9F9FB; }
 
+  /* Map CTA tiles: subtle map-pattern backdrop + colored gradient. */
+  .qa-map-tile {
+    position: relative;
+    overflow: hidden;
+    min-height: 124px;
+  }
+  .qa-map-tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.18) 1.2px, transparent 1.2px);
+    background-size: 14px 14px;
+    opacity: .35;
+    pointer-events: none;
+  }
+  @media (min-width: 768px) {
+    .qa-map-tile { min-height: 156px; }
+  }
+
   /* Hero illustration sits behind text on tablet/desktop, never on mobile. */
   .qa-hero-art {
     background-image: url("{% static 'assets/media/svg/illustrations/easy/3.svg' %}");
@@ -33,23 +52,42 @@
 </style>
 
 {# ============================================================ #}
-{#  HERO — Metronic "Engage Widget" pattern: gradient + illu.    #}
-{#  Compact on mobile (no illustration), full on md+.            #}
+{#  GREETING — compact strip on mobile, full hero from md+.       #}
 {# ============================================================ #}
-<div class="card border-0 mb-5 mb-xl-8 overflow-hidden"
+<div class="d-md-none mb-3">
+  <div class="d-flex align-items-center justify-content-between">
+    <div class="d-flex flex-column" style="min-width: 0;">
+      <span class="text-gray-500 fw-semibold fs-8 text-uppercase ls-1 text-truncate">
+        {{ now|date:"l, d \d\e F" }}
+      </span>
+      <span class="text-dark fw-bolder fs-3 lh-1 mt-1 text-truncate">
+        {{ greeting }}, {{ user.first_name|default:user.get_full_name|default:user.username }}
+      </span>
+    </div>
+    {% if user.is_staff %}
+      <a href="{% url 'superadmin_home' %}"
+         class="btn btn-sm btn-icon btn-light-primary flex-shrink-0 ms-2"
+         aria-label="Panel administrativo">
+        <i class="ki-outline ki-element-11 fs-3"></i>
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card border-0 mb-5 mb-xl-8 overflow-hidden d-none d-md-block"
      data-bs-theme="light"
      style="background: linear-gradient(112.14deg, #00D2FF 0%, #3A7BD5 100%);">
-  <div class="card-body p-5 p-md-8">
+  <div class="card-body p-md-8">
     <div class="row align-items-center g-0">
-      <div class="col-12 col-md-7 col-xl-8 pe-md-6">
-        <span class="d-inline-flex align-items-center text-white opacity-75 fw-bold fs-8 fs-md-7 text-uppercase ls-1 mb-2 mb-md-3">
+      <div class="col-md-7 col-xl-8 pe-md-6">
+        <span class="d-inline-flex align-items-center text-white opacity-75 fw-bold fs-7 text-uppercase ls-1 mb-3">
           <span class="bullet bullet-vertical h-12px bg-white opacity-50 me-2"></span>
           {{ now|date:"l, d \d\e F" }}
         </span>
-        <h1 class="text-white fw-bolder fs-2x fs-md-2qx lh-1 mb-2 mb-md-3">
+        <h1 class="text-white fw-bolder fs-2qx lh-1 mb-3">
           {{ greeting }}, {{ user.first_name|default:user.get_full_name|default:user.username }}
         </h1>
-        <span class="d-block text-white opacity-75 fw-semibold fs-7 fs-md-5 mb-4 mb-md-5">
+        <span class="d-block text-white opacity-75 fw-semibold fs-5 mb-5">
           Tu jornada al alcance de un toque.
         </span>
         {% if user.is_staff %}
@@ -63,7 +101,7 @@
           </div>
         {% endif %}
       </div>
-      <div class="col-md-5 col-xl-4 d-none d-md-block">
+      <div class="col-md-5 col-xl-4">
         <div class="qa-hero-art bgi-no-repeat bgi-size-contain bgi-position-x-end h-150px h-xl-200px"></div>
       </div>
     </div>
@@ -71,103 +109,116 @@
 </div>
 
 {# ============================================================ #}
-{#  PRIMARY ACTION TILES — Metronic Card Widget 7 pattern        #}
-{#  (white card-flush, big number, label, symbol-group footer).  #}
+{#  PRIMARY CTA — Map access tiles. First thing the user sees.   #}
 {# ============================================================ #}
-<div class="row g-4 g-xl-7 mb-5 mb-xl-10">
-
-  {# Publicidad #}
-  <div class="col-12 col-md-4">
-    <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
-       class="card card-flush qa-tile h-100 border border-gray-200 text-decoration-none">
-      <div class="card-header pt-5 pb-0 align-items-start">
-        <div class="card-title d-flex flex-column m-0">
-          <span class="fs-2hx fw-bolder text-dark me-2 lh-1 ls-n2">{{ stats.ads_total|default:0 }}</span>
-          <span class="text-gray-500 pt-2 fw-semibold fs-6">Publicidad territorial</span>
-        </div>
-        <div class="card-toolbar">
-          <span class="symbol symbol-40px symbol-circle">
-            <span class="symbol-label bg-light-success">
-              <i class="ki-outline ki-picture fs-2 text-success"></i>
+<div class="row g-3 g-md-4 mb-4 mb-md-7">
+  <div class="col-6">
+    <a href="{% url 'territorial_ads:map' %}"
+       class="card qa-tile qa-map-tile h-100 border-0 text-decoration-none"
+       style="background: linear-gradient(135deg, #1FCB7D 0%, #14a35d 100%);">
+      <div class="card-body p-3 p-md-5 d-flex flex-column position-relative" style="z-index: 1;">
+        <div class="d-flex align-items-start justify-content-between mb-2 mb-md-3">
+          <span class="symbol symbol-35px symbol-md-45px symbol-circle">
+            <span class="symbol-label" style="background: rgba(255,255,255,0.22);">
+              <i class="ki-outline ki-map fs-2 text-white"></i>
             </span>
           </span>
+          <i class="ki-outline ki-arrow-right fs-2 text-white opacity-75 qa-arrow"></i>
         </div>
-      </div>
-      <div class="card-body d-flex align-items-end justify-content-between pt-4">
-        <span class="text-gray-700 fw-semibold fs-7">
-          {% if stats.ads_week %}
-            <span class="badge badge-light-success fw-bold me-2">+{{ stats.ads_week }}</span>esta semana
-          {% else %}
-            Vallas, lonas y soportes
-          {% endif %}
-        </span>
-        <span class="d-inline-flex align-items-center text-success fw-bold fs-7">
-          Ver<i class="ki-outline ki-arrow-right fs-3 ms-1 qa-arrow"></i>
+        <span class="text-white fw-bolder fs-4 fs-md-2 lh-sm">Mapa publicidad</span>
+        <span class="text-white opacity-75 fw-semibold fs-8 fs-md-7 mt-1">
+          {{ stats.ads_total|default:0 }} ubicaciones
         </span>
       </div>
     </a>
   </div>
 
-  {# Visitas #}
-  <div class="col-12 col-md-4">
-    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}"
-       class="card card-flush qa-tile h-100 border border-gray-200 text-decoration-none">
-      <div class="card-header pt-5 pb-0 align-items-start">
-        <div class="card-title d-flex flex-column m-0">
-          <span class="fs-2hx fw-bolder text-dark me-2 lh-1 ls-n2">{{ stats.visits_total|default:0 }}</span>
-          <span class="text-gray-500 pt-2 fw-semibold fs-6">Levantamientos</span>
-        </div>
-        <div class="card-toolbar">
-          <span class="symbol symbol-40px symbol-circle">
-            <span class="symbol-label bg-light-primary">
-              <i class="ki-outline ki-geolocation fs-2 text-primary"></i>
+  <div class="col-6">
+    <a href="{% url 'field_surveys:map' %}"
+       class="card qa-tile qa-map-tile h-100 border-0 text-decoration-none"
+       style="background: linear-gradient(135deg, #3A7BD5 0%, #2563B8 100%);">
+      <div class="card-body p-3 p-md-5 d-flex flex-column position-relative" style="z-index: 1;">
+        <div class="d-flex align-items-start justify-content-between mb-2 mb-md-3">
+          <span class="symbol symbol-35px symbol-md-45px symbol-circle">
+            <span class="symbol-label" style="background: rgba(255,255,255,0.22);">
+              <i class="ki-outline ki-geolocation fs-2 text-white"></i>
             </span>
           </span>
+          <i class="ki-outline ki-arrow-right fs-2 text-white opacity-75 qa-arrow"></i>
         </div>
+        <span class="text-white fw-bolder fs-4 fs-md-2 lh-sm">Mapa visitas</span>
+        <span class="text-white opacity-75 fw-semibold fs-8 fs-md-7 mt-1">
+          {{ stats.visits_total|default:0 }} levantamientos
+        </span>
       </div>
-      <div class="card-body d-flex align-items-end justify-content-between pt-4">
-        <span class="text-gray-700 fw-semibold fs-7">
-          {% if stats.visits_today %}
-            <span class="badge badge-light-primary fw-bold me-2">{{ stats.visits_today }}</span>registrada{{ stats.visits_today|pluralize:"s" }} hoy
-          {% else %}
-            Visitas y resultados de campo
-          {% endif %}
+    </a>
+  </div>
+</div>
+
+{# ============================================================ #}
+{#  COMPACT KPI TILES — 3 across on every breakpoint.            #}
+{# ============================================================ #}
+<div class="row g-2 g-md-4 mb-5 mb-xl-8">
+
+  {# Publicidad #}
+  <div class="col-4">
+    <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
+       class="card card-flush qa-tile h-100 border border-gray-200 text-decoration-none">
+      <div class="card-body p-3 p-md-5 d-flex flex-column">
+        <span class="symbol symbol-30px symbol-md-40px symbol-circle mb-2 mb-md-3">
+          <span class="symbol-label bg-light-success">
+            <i class="ki-outline ki-picture fs-4 fs-md-2 text-success"></i>
+          </span>
         </span>
-        <span class="d-inline-flex align-items-center text-primary fw-bold fs-7">
-          Ver<i class="ki-outline ki-arrow-right fs-3 ms-1 qa-arrow"></i>
+        <span class="fs-2 fs-md-2hx fw-bolder text-dark lh-1 ls-n2">{{ stats.ads_total|default:0 }}</span>
+        <span class="text-gray-500 fw-semibold fs-9 fs-md-7 mt-1 lh-sm">Publicidad</span>
+        {% if stats.ads_week %}
+          <span class="badge badge-light-success fw-bold mt-2 align-self-start fs-9 fs-md-8">
+            +{{ stats.ads_week }} sem.
+          </span>
+        {% endif %}
+      </div>
+    </a>
+  </div>
+
+  {# Levantamientos #}
+  <div class="col-4">
+    <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}"
+       class="card card-flush qa-tile h-100 border border-gray-200 text-decoration-none">
+      <div class="card-body p-3 p-md-5 d-flex flex-column">
+        <span class="symbol symbol-30px symbol-md-40px symbol-circle mb-2 mb-md-3">
+          <span class="symbol-label bg-light-primary">
+            <i class="ki-outline ki-row-horizontal fs-4 fs-md-2 text-primary"></i>
+          </span>
         </span>
+        <span class="fs-2 fs-md-2hx fw-bolder text-dark lh-1 ls-n2">{{ stats.visits_total|default:0 }}</span>
+        <span class="text-gray-500 fw-semibold fs-9 fs-md-7 mt-1 lh-sm">Visitas</span>
+        {% if stats.visits_today %}
+          <span class="badge badge-light-primary fw-bold mt-2 align-self-start fs-9 fs-md-8">
+            {{ stats.visits_today }} hoy
+          </span>
+        {% endif %}
       </div>
     </a>
   </div>
 
   {# Agenda #}
-  <div class="col-12 col-md-4">
+  <div class="col-4">
     <a href="{% url 'political_agenda:calendar' %}"
        class="card card-flush qa-tile h-100 border border-gray-200 text-decoration-none">
-      <div class="card-header pt-5 pb-0 align-items-start">
-        <div class="card-title d-flex flex-column m-0">
-          <span class="fs-2hx fw-bolder text-dark me-2 lh-1 ls-n2">{{ stats.upcoming_count|default:0 }}</span>
-          <span class="text-gray-500 pt-2 fw-semibold fs-6">Agenda política</span>
-        </div>
-        <div class="card-toolbar">
-          <span class="symbol symbol-40px symbol-circle">
-            <span class="symbol-label bg-light-warning">
-              <i class="ki-outline ki-calendar-tick fs-2 text-warning"></i>
-            </span>
+      <div class="card-body p-3 p-md-5 d-flex flex-column">
+        <span class="symbol symbol-30px symbol-md-40px symbol-circle mb-2 mb-md-3">
+          <span class="symbol-label bg-light-warning">
+            <i class="ki-outline ki-calendar-tick fs-4 fs-md-2 text-warning"></i>
           </span>
-        </div>
-      </div>
-      <div class="card-body d-flex align-items-end justify-content-between pt-4">
-        <span class="text-gray-700 fw-semibold fs-7">
-          {% if stats.upcoming_count %}
-            próximos 7 días
-          {% else %}
-            Calendario y solicitudes
-          {% endif %}
         </span>
-        <span class="d-inline-flex align-items-center text-warning fw-bold fs-7">
-          Ver<i class="ki-outline ki-arrow-right fs-3 ms-1 qa-arrow"></i>
-        </span>
+        <span class="fs-2 fs-md-2hx fw-bolder text-dark lh-1 ls-n2">{{ stats.upcoming_count|default:0 }}</span>
+        <span class="text-gray-500 fw-semibold fs-9 fs-md-7 mt-1 lh-sm">Agenda</span>
+        {% if stats.upcoming_count %}
+          <span class="badge badge-light-warning fw-bold mt-2 align-self-start fs-9 fs-md-8">
+            7 días
+          </span>
+        {% endif %}
       </div>
     </a>
   </div>
@@ -177,15 +228,15 @@
 {# ============================================================ #}
 {#  Two-column: Próximos eventos + Atajos                        #}
 {# ============================================================ #}
-<div class="row g-5 g-xl-8 mb-5 mb-xl-10">
+<div class="row g-4 g-xl-7 mb-5 mb-xl-8">
 
   {# ─── Próximos eventos ──────────────────────────────────── #}
   <div class="col-12 col-xl-7">
     <div class="card card-flush h-100">
-      <div class="card-header pt-6 pb-2 align-items-start">
+      <div class="card-header pt-4 pt-md-6 pb-2 align-items-center">
         <h3 class="card-title d-flex flex-column m-0">
-          <span class="text-dark fw-bold fs-3">Próximos eventos</span>
-          <span class="text-gray-500 fw-semibold fs-7 mt-1">
+          <span class="text-dark fw-bold fs-4 fs-md-3">Próximos eventos</span>
+          <span class="text-gray-500 fw-semibold fs-8 fs-md-7 mt-1">
             {% if upcoming_events %}Lo más cercano de tu calendario{% else %}Tu calendario está despejado{% endif %}
           </span>
         </h3>
@@ -197,53 +248,53 @@
           </a>
         </div>
       </div>
-      <div class="card-body pt-4 pb-6">
+      <div class="card-body pt-3 pb-4 pb-md-6">
         {% if upcoming_events %}
           {% for event in upcoming_events %}
             <a href="{% url 'political_agenda:calendar' %}"
-               class="qa-event d-flex align-items-center text-decoration-none p-3">
+               class="qa-event d-flex align-items-center text-decoration-none p-2 p-md-3">
 
               {# Date stack #}
-              <div class="d-flex flex-column align-items-center justify-content-center text-center me-4 flex-shrink-0"
-                   style="min-width: 60px; padding: 8px 12px; background: #ffffff; border-radius: 10px;
+              <div class="d-flex flex-column align-items-center justify-content-center text-center me-3 me-md-4 flex-shrink-0"
+                   style="min-width: 48px; padding: 6px 8px; background: #ffffff; border-radius: 10px;
                           border: 1px solid #ECECF1;
                           border-left: 4px solid {{ event.event_type.color|default:'#1B84FF' }};">
-                <span class="fw-bold fs-8 text-uppercase lh-1" style="color: {{ event.event_type.color|default:'#1B84FF' }};">
+                <span class="fw-bold fs-9 fs-md-8 text-uppercase lh-1" style="color: {{ event.event_type.color|default:'#1B84FF' }};">
                   {{ event.start_at|date:"M" }}
                 </span>
-                <span class="fw-bolder fs-2 text-dark lh-1 mt-1">{{ event.start_at|date:"d" }}</span>
+                <span class="fw-bolder fs-3 fs-md-2 text-dark lh-1 mt-1">{{ event.start_at|date:"d" }}</span>
               </div>
 
               <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-                <span class="text-dark fw-bold fs-6 text-truncate">{{ event.title }}</span>
+                <span class="text-dark fw-bold fs-7 fs-md-6 text-truncate">{{ event.title }}</span>
                 <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
-                  <span class="badge fs-8 fw-bold"
+                  <span class="badge fs-9 fs-md-8 fw-bold"
                         style="background-color: {{ event.event_type.color|default:'#1B84FF' }}1F;
                                color: {{ event.event_type.color|default:'#1B84FF' }};">
                     {{ event.event_type.name }}
                   </span>
-                  <span class="text-gray-600 fw-semibold fs-7">
-                    <i class="ki-outline ki-time fs-7 me-1"></i>{{ event.start_at|date:"H:i" }}
+                  <span class="text-gray-600 fw-semibold fs-8 fs-md-7">
+                    <i class="ki-outline ki-time fs-8 me-1"></i>{{ event.start_at|date:"H:i" }}
                   </span>
                   {% if event.address %}
-                    <span class="text-gray-600 fs-7 text-truncate d-none d-sm-inline">
+                    <span class="text-gray-600 fs-7 text-truncate d-none d-md-inline">
                       <i class="ki-outline ki-geolocation fs-7 me-1"></i>{{ event.address }}
                     </span>
                   {% endif %}
                 </div>
               </div>
 
-              <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-primary w-30px h-30px flex-shrink-0 ms-3">
+              <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-primary w-30px h-30px flex-shrink-0 ms-2 ms-md-3">
                 <i class="ki-outline ki-arrow-right fs-3"></i>
               </span>
             </a>
             {% if not forloop.last %}
-              <div class="separator separator-dashed my-3"></div>
+              <div class="separator separator-dashed my-2 my-md-3"></div>
             {% endif %}
           {% endfor %}
         {% else %}
-          <div class="d-flex flex-column align-items-center justify-content-center text-center py-8">
-            <span class="symbol symbol-50px symbol-circle mb-3">
+          <div class="d-flex flex-column align-items-center justify-content-center text-center py-6 py-md-8">
+            <span class="symbol symbol-40px symbol-md-50px symbol-circle mb-3">
               <span class="symbol-label bg-light-primary">
                 <i class="ki-outline ki-calendar fs-2 text-primary"></i>
               </span>
@@ -259,73 +310,57 @@
   {# ─── Atajos ────────────────────────────────────────────── #}
   <div class="col-12 col-xl-5">
     <div class="card card-flush h-100">
-      <div class="card-header pt-6 pb-2">
+      <div class="card-header pt-4 pt-md-6 pb-2">
         <h3 class="card-title d-flex flex-column m-0">
-          <span class="text-dark fw-bold fs-3">Atajos</span>
-          <span class="text-gray-500 fw-semibold fs-7 mt-1">Vistas y herramientas frecuentes</span>
+          <span class="text-dark fw-bold fs-4 fs-md-3">Atajos</span>
+          <span class="text-gray-500 fw-semibold fs-8 fs-md-7 mt-1">Vistas y herramientas frecuentes</span>
         </h3>
       </div>
-      <div class="card-body pt-4 pb-6">
+      <div class="card-body pt-3 pb-4 pb-md-6">
 
-        <a href="{% url 'territorial_ads:map' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-3">
-          <div class="symbol symbol-40px me-4 flex-shrink-0">
-            <div class="symbol-label bg-light-success">
-              <i class="ki-outline ki-map fs-2 text-success"></i>
-            </div>
-          </div>
-          <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-            <span class="text-dark fw-bold fs-6">Mapa de publicidad</span>
-            <span class="text-gray-500 fw-semibold fs-7">Vallas y soportes geolocalizados</span>
-          </div>
-          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-success w-30px h-30px flex-shrink-0 ms-3">
-            <i class="ki-outline ki-arrow-right fs-3"></i>
-          </span>
-        </a>
-        <div class="separator separator-dashed my-3"></div>
-
-        <a href="{% url 'field_surveys:map' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-3">
-          <div class="symbol symbol-40px me-4 flex-shrink-0">
-            <div class="symbol-label bg-light-primary">
-              <i class="ki-outline ki-map fs-2 text-primary"></i>
-            </div>
-          </div>
-          <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-            <span class="text-dark fw-bold fs-6">Mapa de visitas</span>
-            <span class="text-gray-500 fw-semibold fs-7">Levantamientos sobre el territorio</span>
-          </div>
-          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-primary w-30px h-30px flex-shrink-0 ms-3">
-            <i class="ki-outline ki-arrow-right fs-3"></i>
-          </span>
-        </a>
-        <div class="separator separator-dashed my-3"></div>
-
-        <a href="{% url 'field_surveys:dashboard' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-3">
-          <div class="symbol symbol-40px me-4 flex-shrink-0">
+        <a href="{% url 'field_surveys:dashboard' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-2 p-md-3">
+          <div class="symbol symbol-35px symbol-md-40px me-3 me-md-4 flex-shrink-0">
             <div class="symbol-label bg-light-info">
-              <i class="ki-outline ki-chart-simple fs-2 text-info"></i>
+              <i class="ki-outline ki-chart-simple fs-3 fs-md-2 text-info"></i>
             </div>
           </div>
           <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-            <span class="text-dark fw-bold fs-6">Dashboard de visitas</span>
-            <span class="text-gray-500 fw-semibold fs-7">Indicadores y mapa de calor</span>
+            <span class="text-dark fw-bold fs-7 fs-md-6">Dashboard de visitas</span>
+            <span class="text-gray-500 fw-semibold fs-8 fs-md-7">Indicadores y mapa de calor</span>
           </div>
-          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-info w-30px h-30px flex-shrink-0 ms-3">
+          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-info w-30px h-30px flex-shrink-0 ms-2 ms-md-3">
             <i class="ki-outline ki-arrow-right fs-3"></i>
           </span>
         </a>
-        <div class="separator separator-dashed my-3"></div>
+        <div class="separator separator-dashed my-2 my-md-3"></div>
 
-        <a href="{% url 'site:political_agenda_politicalagendarequest_listar' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-3">
-          <div class="symbol symbol-40px me-4 flex-shrink-0">
+        <a href="{% url 'site:political_agenda_politicalagendarequest_listar' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-2 p-md-3">
+          <div class="symbol symbol-35px symbol-md-40px me-3 me-md-4 flex-shrink-0">
             <div class="symbol-label bg-light-warning">
-              <i class="ki-outline ki-notepad-edit fs-2 text-warning"></i>
+              <i class="ki-outline ki-notepad-edit fs-3 fs-md-2 text-warning"></i>
             </div>
           </div>
           <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-            <span class="text-dark fw-bold fs-6">Solicitudes de agenda</span>
-            <span class="text-gray-500 fw-semibold fs-7">Pendientes de revisión</span>
+            <span class="text-dark fw-bold fs-7 fs-md-6">Solicitudes de agenda</span>
+            <span class="text-gray-500 fw-semibold fs-8 fs-md-7">Pendientes de revisión</span>
           </div>
-          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-warning w-30px h-30px flex-shrink-0 ms-3">
+          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-warning w-30px h-30px flex-shrink-0 ms-2 ms-md-3">
+            <i class="ki-outline ki-arrow-right fs-3"></i>
+          </span>
+        </a>
+        <div class="separator separator-dashed my-2 my-md-3"></div>
+
+        <a href="{% url 'site:field_surveys_competitoradvertisingdetection_listar' %}" class="qa-shortcut d-flex align-items-center text-decoration-none p-2 p-md-3">
+          <div class="symbol symbol-35px symbol-md-40px me-3 me-md-4 flex-shrink-0">
+            <div class="symbol-label bg-light-dark">
+              <i class="ki-outline ki-flag fs-3 fs-md-2 text-dark"></i>
+            </div>
+          </div>
+          <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+            <span class="text-dark fw-bold fs-7 fs-md-6">Publicidad competencia</span>
+            <span class="text-gray-500 fw-semibold fs-8 fs-md-7">Detecciones reportadas</span>
+          </div>
+          <span class="btn btn-sm btn-icon btn-bg-light btn-active-color-dark w-30px h-30px flex-shrink-0 ms-2 ms-md-3">
             <i class="ki-outline ki-arrow-right fs-3"></i>
           </span>
         </a>
@@ -335,15 +370,5 @@
   </div>
 
 </div>
-
-{% if user.is_staff %}
-  <div class="d-flex justify-content-center d-md-none mb-4">
-    <a href="{% url 'superadmin_home' %}"
-       class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-2">
-      <i class="ki-outline ki-element-11 fs-3"></i>
-      <span>Panel administrativo</span>
-    </a>
-  </div>
-{% endif %}
 
 {% endblock %}

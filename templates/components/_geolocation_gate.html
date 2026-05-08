@@ -3,17 +3,23 @@ GeolocationGate modal — pre-aviso, estado denegado con instrucciones por
 plataforma, aviso de HTTPS y "no soportado". Lo controla
 static/assets/js/forms/geolocation_gate.js mediante data-gate-* hooks.
 
-Usa las clases compartidas .cm-sheet-modal y .cm-sheet-modal__hero
-(sheet_modal.css) para el comportamiento bottom-sheet en mobile y el
-hero con icono pulsante. Inclúyelo una sola vez en base.html.
+Mantiene su look propio (hero con gradient + icono pulsante propio) y
+agrega la clase .cm-sheet-modal para heredar la animación slide-up de
+sheet_modal.css. Inclúyelo una sola vez en base.html.
 {% endcomment %}
 <div class="modal fade cm-sheet-modal" id="cm-geo-gate-modal" tabindex="-1" aria-hidden="true" aria-labelledby="cm-geo-gate-title">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content overflow-hidden">
+
+      {# Handle clickeable: mobile bottom-sheet con snap peek/full. #}
+      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer">
+        <span class="cm-sheet-modal__grip"></span>
+      </button>
 
       {# Hero / icono #}
-      <div class="cm-sheet-modal__hero">
-        <span class="cm-sheet-modal__icon symbol symbol-65px symbol-circle">
+      <div class="d-flex flex-column align-items-center text-center px-6 pt-7 pb-3"
+           style="background:linear-gradient(135deg,#eef4ff 0%,#f3eaff 100%);">
+        <span class="symbol symbol-65px symbol-circle mb-3 cm-geo-gate-pulse">
           <span class="symbol-label bg-light-primary text-primary">
             <i class="ki-outline ki-geolocation fs-2x"></i>
           </span>

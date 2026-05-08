@@ -8,22 +8,22 @@ to preserve selected values.
 
 {% with active_filters=request.GET %}
 {% with has_filters=active_filters.campaign|default_if_none:"" %}
-<div class="card card-flush mb-5">
-  <div class="card-header pt-6 pb-4 border-0">
-    <h3 class="card-title align-items-start flex-column">
-      <span class="card-label fw-bold text-dark d-flex align-items-center gap-2">
-        <i class="ki-outline ki-filter fs-2 text-primary"></i>Filtros
+<div class="card card-flush mb-4 mb-md-5">
+  <div class="card-header pt-4 pt-md-6 pb-3 pb-md-4 border-0 align-items-center">
+    <h3 class="card-title align-items-start flex-column m-0">
+      <span class="card-label fw-bold text-dark d-flex align-items-center gap-2 fs-6 fs-md-5">
+        <i class="ki-outline ki-filter fs-3 fs-md-2 text-primary"></i>Filtros
       </span>
-      <span class="text-muted fw-semibold fs-7">Acota visitas por campaña, brigadista, apoyo, publicidad o fecha.</span>
+      <span class="text-muted fw-semibold fs-8 fs-md-7 mt-1 d-none d-md-block">Acota visitas por campaña, brigadista, apoyo, publicidad o fecha.</span>
     </h3>
     <div class="card-toolbar">
       <button type="button"
               class="btn btn-sm btn-light"
               data-bs-toggle="collapse"
               data-bs-target="#field_surveys_filters_body"
-              aria-expanded="true"
+              aria-expanded="false"
               aria-controls="field_surveys_filters_body">
-        <i class="ki-outline ki-up fs-3"></i>
+        <i class="ki-outline ki-down fs-3"></i>
         <span class="d-none d-md-inline">Mostrar / ocultar</span>
       </button>
     </div>
@@ -74,7 +74,7 @@ to preserve selected values.
     </div>
   {% endif %}
 
-  <div id="field_surveys_filters_body" class="collapse show">
+  <div id="field_surveys_filters_body" class="collapse">
     <div class="card-body pt-2">
       <form method="get" class="row g-4 align-items-end">
         <div class="col-12 col-md-6 col-lg-3">
@@ -147,3 +147,16 @@ to preserve selected values.
 </div>
 {% endwith %}
 {% endwith %}
+
+<script>
+  // Filters are collapsed by default; auto-expand on tablet/desktop where
+  // there's room for them so they don't waste prime mobile real estate.
+  (function () {
+    if (window.matchMedia('(min-width: 768px)').matches) {
+      var body = document.getElementById('field_surveys_filters_body');
+      if (body) body.classList.add('show');
+      var btn = document.querySelector('[data-bs-target="#field_surveys_filters_body"]');
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+  })();
+</script>

@@ -1,7 +1,6 @@
-/* GeolocationGate — solo lo que Bootstrap no cubre.
-   El modal usa .modal de Bootstrap; el banner se eliminó.
-   Aquí queda únicamente la animación de pulso del icono y el sheet
-   en mobile (border-radius arriba, slide-up). */
+/* GeolocationGate — animación de pulso del icono del hero.
+   El comportamiento sheet (slide-up, border-radius arriba, handle) lo
+   provee la clase .cm-sheet-modal de sheet_modal.css. */
 
 .cm-geo-gate-pulse {
   position: relative;
@@ -22,27 +21,4 @@
 @keyframes cm-geo-gate-pulse {
   0%   { transform: scale(0.7); opacity: 0.7; }
   100% { transform: scale(1.6); opacity: 0;   }
-}
-
-/* Sheet behavior en mobile — slide-up desde abajo, border-radius arriba. */
-@media (max-width: 576px) {
-  #cm-geo-gate-modal .modal-dialog {
-    margin: 0;
-    align-items: flex-end !important;
-    min-height: 100vh;
-  }
-  #cm-geo-gate-modal .modal-content {
-    border-radius: 20px 20px 0 0;
-    max-height: 92vh;
-    overflow-y: auto;
-  }
-  #cm-geo-gate-modal .modal-content::before {
-    content: "";
-    display: block;
-    width: 40px;
-    height: 4px;
-    background: rgba(0, 0, 0, 0.18);
-    border-radius: 999px;
-    margin: 8px auto 0;
-  }
 }

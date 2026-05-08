@@ -1,40 +1,20 @@
-/* Sheet modal — clase compartida para que cualquier modal de Bootstrap
-   adopte el comportamiento estilo "bottom sheet" en mobile (se desliza
-   desde abajo, esquinas redondeadas arriba, handle decorativo) y el look
-   de hero con gradient + icono pulsante.
+/* Sheet modal — bottom sheet con snap points (peek / full).
+   Inspirado en Google Maps: en mobile se abre medio abierto (peek),
+   y un click en el handle (la línea de arriba) lo expande a full.
+   En desktop es modal Bootstrap normal.
 
    Uso:
      <div class="modal fade cm-sheet-modal" ...>
        <div class="modal-dialog modal-dialog-centered ...">
          <div class="modal-content">
+           <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle
+                   aria-label="Expandir o contraer">
+             <span class="cm-sheet-modal__grip"></span>
+           </button>
            ...
-         </div>
-       </div>
-     </div>
-
-   Combinable con cualquier clase Bootstrap (modal-xl, modal-lg, etc.).
-   No interfiere con clases específicas existentes (field-survey-map-modal,
-   physical-ad-map-modal). */
-
-/* ===== Estado base (todas las pantallas) ============================ */
-
-.cm-sheet-modal .modal-content {
-  overflow: hidden;
-}
-
-/* ===== Hero opcional ================================================
-   Para usar:
-     <div class="cm-sheet-modal__hero">
-       <span class="cm-sheet-modal__icon">
-         <span class="symbol-label bg-light-primary text-primary">
-           <i class="ki-outline ki-..."></i>
-         </span>
-       </span>
-       <h2 class="modal-title">Título</h2>
-       <p class="text-muted">Subtítulo</p>
-     </div>
 */
 
+/* ===== Hero opcional (gradient + icono pulsante) =================== */
 .cm-sheet-modal__hero {
   display: flex;
   flex-direction: column;
@@ -43,18 +23,9 @@
   padding: 1.75rem 1.5rem 1rem;
   background: linear-gradient(135deg, #eef4ff 0%, #f3eaff 100%);
 }
-
-.cm-sheet-modal__hero[data-tone="warning"] {
-  background: linear-gradient(135deg, #fff4e0 0%, #ffe9e0 100%);
-}
-
-.cm-sheet-modal__hero[data-tone="danger"] {
-  background: linear-gradient(135deg, #ffe2e2 0%, #ffd3d3 100%);
-}
-
-.cm-sheet-modal__hero[data-tone="success"] {
-  background: linear-gradient(135deg, #e0f7ec 0%, #d4f4e0 100%);
-}
+.cm-sheet-modal__hero[data-tone="warning"] { background: linear-gradient(135deg, #fff4e0 0%, #ffe9e0 100%); }
+.cm-sheet-modal__hero[data-tone="danger"]  { background: linear-gradient(135deg, #ffe2e2 0%, #ffd3d3 100%); }
+.cm-sheet-modal__hero[data-tone="success"] { background: linear-gradient(135deg, #e0f7ec 0%, #d4f4e0 100%); }
 
 .cm-sheet-modal__icon {
   width: 65px;
@@ -65,7 +36,6 @@
   margin-bottom: 0.75rem;
   position: relative;
 }
-
 .cm-sheet-modal__icon::before,
 .cm-sheet-modal__icon::after {
   content: "";
@@ -77,69 +47,161 @@
   pointer-events: none;
 }
 .cm-sheet-modal__icon::after { animation-delay: 1.2s; }
-
 @keyframes cm-sheet-pulse {
   0%   { transform: scale(0.7); opacity: 0.7; }
   100% { transform: scale(1.6); opacity: 0;   }
 }
 
-/* ===== Bottom-sheet en mobile =======================================
-   Slide desde abajo, esquinas redondeadas solo arriba, handle visual. */
+/* ===== Handle (la línea arriba que se clickea) ====================== */
+.cm-sheet-modal__handle {
+  display: none; /* Solo visible en modo bottom-sheet (mobile). */
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 10px 0 6px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.cm-sheet-modal__grip {
+  display: block;
+  width: 44px;
+  height: 5px;
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 999px;
+  transition: background 200ms ease, width 200ms ease;
+}
+.cm-sheet-modal__handle:hover .cm-sheet-modal__grip,
+.cm-sheet-modal__handle:focus-visible .cm-sheet-modal__grip {
+  background: rgba(0, 0, 0, 0.45);
+  width: 56px;
+}
 
+/* ===== Bottom-sheet en mobile ======================================= */
 @media (max-width: 767.98px) {
   .cm-sheet-modal .modal-dialog {
     position: fixed;
-    left: 0.5rem;
-    right: 0.5rem;
-    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: auto;
     max-width: none;
-    max-height: min(92dvh, 760px);
     margin: 0;
     display: flex;
     align-items: flex-end;
+    pointer-events: none; /* deja pasar clicks fuera del content */
   }
 
-  /* Animación slide-up (se carga abajo y se desliza arriba). */
-  .cm-sheet-modal.fade .modal-dialog {
-    transform: translateY(100%);
+  /* Animación slide-up al abrir el modal. */
+  .cm-sheet-modal.fade .modal-dialog { transform: translateY(100%); }
+  .cm-sheet-modal.show .modal-dialog { transform: translateY(0); }
+  .cm-sheet-modal .modal-dialog {
     transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .cm-sheet-modal.show .modal-dialog {
-    transform: translateY(0);
   }
 
   .cm-sheet-modal .modal-content {
-    max-height: min(92dvh, 760px);
-    border-radius: 1.25rem;
+    pointer-events: auto;
+    width: 100%;
+    border-radius: 18px 18px 0 0;
     border: none;
     box-shadow: 0 -8px 28px rgba(60, 64, 67, 0.25);
     overflow: hidden;
+    /* Estado por defecto: peek (más escondido, estilo Google Maps). */
+    height: 40dvh;
+    max-height: 40dvh;
+    transition: height 320ms cubic-bezier(0.4, 0, 0.2, 1),
+                max-height 320ms cubic-bezier(0.4, 0, 0.2, 1);
+    padding-bottom: env(safe-area-inset-bottom);
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Handle visual arriba — sutil, indica que se puede deslizar. Si el
-     modal ya tiene su propio handle DOM (los map modals lo tienen),
-     ocultamos el pseudo para no duplicar. */
-  .cm-sheet-modal .modal-content::before {
-    content: "";
-    display: block;
-    width: 40px;
-    height: 4px;
-    background: rgba(0, 0, 0, 0.18);
-    border-radius: 999px;
-    margin: 8px auto 0;
-    flex: 0 0 auto;
+  /* Estado expandido: full screen sheet. */
+  .cm-sheet-modal.is-full .modal-content {
+    height: 95dvh;
+    max-height: 95dvh;
   }
-  .cm-sheet-modal .modal-content:has(.field-survey-map-modal__handle)::before,
-  .cm-sheet-modal .modal-content:has(.physical-ad-map-modal__handle)::before {
-    display: none;
+
+  /* ===== Estilo hero para modal-header de los map modals ============
+     Cuando un cm-sheet-modal usa modal-header (no cm-sheet-modal__hero),
+     en mobile lo transformamos para que se vea como el hero del gate:
+     gradient suave, icono grande centrado, título centrado, botón
+     cerrar en la esquina. */
+
+  .cm-sheet-modal .modal-header {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center;
+    padding: 1.25rem 1.25rem 1rem !important;
+    background: linear-gradient(135deg, #eef4ff 0%, #f3eaff 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 0 !important;
+    position: relative;
+  }
+
+  /* La fila horizontal del header se apila en columna. */
+  .cm-sheet-modal .modal-header > .d-flex.align-items-center,
+  .cm-sheet-modal .modal-header > .d-flex.flex-grow-1 {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center;
+    width: 100%;
+    gap: 0.5rem !important;
+  }
+
+  /* Texto del header centrado. */
+  .cm-sheet-modal .modal-header .min-w-0,
+  .cm-sheet-modal .modal-header .modal-title {
+    text-align: center !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+  }
+
+  /* Símbolo del header más grande, igual al hero del gate. */
+  .cm-sheet-modal .modal-header .symbol {
+    width: 56px !important;
+    height: 56px !important;
+    margin-bottom: 0.25rem;
+  }
+  .cm-sheet-modal .modal-header .symbol .symbol-label i {
+    font-size: 1.75rem !important;
+  }
+
+  /* Título un poco más grande, centrado. */
+  .cm-sheet-modal .modal-header .modal-title {
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    margin-top: 0.25rem;
+  }
+
+  /* Botón cerrar a la esquina. */
+  .cm-sheet-modal .modal-header .btn-close {
+    position: absolute !important;
+    top: 0.75rem !important;
+    right: 0.75rem !important;
+    z-index: 3;
+  }
+
+  /* Mostramos el handle clickeable solo cuando estamos en sheet mode. */
+  .cm-sheet-modal__handle {
+    display: block;
   }
 
   .cm-sheet-modal .modal-body {
+    flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Aire entre el hero/header y el contenido del body. Sobreescribe
+     pt-0 que algunos modales tenían pegado al header. */
+  .cm-sheet-modal .modal-header + .modal-body {
+    padding-top: 1.25rem !important;
+  }
+
+  /* Header / footer sticky con backdrop blur. */
   .cm-sheet-modal .modal-header {
     position: sticky;
     top: 0;
@@ -147,8 +209,8 @@
     background: color-mix(in srgb, var(--bs-body-bg, #fff) 95%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    flex: 0 0 auto;
   }
-
   .cm-sheet-modal .modal-footer {
     position: sticky;
     bottom: 0;
@@ -157,11 +219,6 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-  }
-
-  /* Si el modal usa hero, lo "sangramos" hacia arriba para que la
-     curva del border-radius del modal-content lo enmarque limpio. */
-  .cm-sheet-modal .cm-sheet-modal__hero {
-    padding-top: 1.25rem;
+    flex: 0 0 auto;
   }
 }
