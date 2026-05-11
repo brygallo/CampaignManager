@@ -1,9 +1,6 @@
 (function (window, document) {
   "use strict";
 
-  // Migrated to Lucide names (see core/templatetags/icons.py for the full map).
-  // Pin HTML uses `<i data-lucide="...">` and the global lucide.createIcons()
-  // call (kicked from cmRenderIcons) replaces them with inline SVGs.
   var ICON_ALIASES = {
     "billboard": "flag",
     "sticker":   "tag",

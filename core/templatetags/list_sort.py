@@ -54,7 +54,16 @@ def sort_url(context, field):
     # Drop pagination — switching sort lands the user back on page 1.
     params.pop("page", None)
     qs = params.urlencode()
-    return f"?{qs}" if qs else request.path
+    # Use an absolute path (not just ``?qs``) because the layout sets a
+    # ``<base href>`` that would otherwise resolve relative URLs against
+    # the tenant root. Path-routed tenants strip the ``/<schema>`` prefix
+    # from ``request.path``, so we re-attach it via ``tenant_path_prefix``
+    # the same way ``WorkflowStateFilterMixin._request_visible_path`` does.
+    path = request.path
+    prefix = getattr(request, "tenant_path_prefix", "") or ""
+    if prefix and not path.startswith(f"{prefix}/"):
+        path = f"{prefix}{path}"
+    return f"{path}?{qs}" if qs else path
 
 
 @register.simple_tag(takes_context=True)

@@ -1,15 +1,7 @@
 <!doctype html>
-{# Standalone error page — does NOT extend base.html.
-
-   Why: rendering an error through base.html runs every context processor
-   (brand, tenant_features, etc.). If the underlying 500 was caused by a
-   failing context processor (DB unreachable, public schema lookup blowing
-   up), re-running it inside the error template triggers a second 500 and
-   the user gets an empty body. This template depends only on inline
-   styles so it renders even if the CSS bundle or CDN icons are
-   unavailable.
-
-   Override `inner` for the error-specific copy. #}
+{# Does NOT extend base.html on purpose: if a context processor caused the
+   500, re-running it inside the error template triggers a second 500 and
+   the user gets a blank body. Inline styles only — no CSS bundle, no CDN. #}
 <html lang="es">
   <head>
     <meta charset="utf-8">

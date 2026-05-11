@@ -1,16 +1,11 @@
 """URL configuration for the PUBLIC schema (root domain only).
 
-This conf is used by django-tenants when the request hits a host that maps
-to the public schema (e.g. tudominio.com). It must NOT include tenant-specific
-routes — no `superadmin` package, no per-party login, no domain apps.
-
-For now this is a stub: a placeholder landing page. Fase 6 will add public
-signup; Fase 7 will mount the global super-admin panel.
+Must NOT include tenant-specific routes — no `superadmin`, no per-party login,
+no domain apps. Tenant routes belong in the tenant URLConf, not here.
 """
 import json
 
 from django.conf import settings
-from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import path, re_path
@@ -32,44 +27,28 @@ def public_landing(request):
     """Marketing landing for the platform's root domain.
 
     Renders a card grid of active tenants so users can pick their party and
-    jump straight to its login. Falls back to a free-text slug input for
-    parties that aren't listed.
+    jump straight to its login. Always uses path-based URLs (root_host/slug/)
+    so every party is reached through the same hostname; subdomain access
+    still works for tenants that have a Domain row, but the landing does not
+    advertise it.
     """
-    from apps.tenancy.models import Domain, Tenant
+    from apps.tenancy.models import Tenant
 
     root_host = request.get_host()
     scheme = request.scheme
-    # Preserve a non-standard port (e.g. dev runserver on :8000) when the
-    # tenant's stored primary domain only has a hostname. Without this the
-    # landing renders links like `http://mmorona.localhost/` that 404 in dev.
-    root_port = request.get_port()
-    default_port = "443" if scheme == "https" else "80"
-    port_suffix = f":{root_port}" if root_port and root_port != default_port else ""
 
-    primary_domains = Prefetch(
-        "domains",
-        queryset=Domain.objects.filter(is_primary=True),
-        to_attr="_primary_domains",
-    )
     tenants_qs = (
         Tenant.objects
         .filter(is_active=True)
         .exclude(schema_name=get_public_schema_name())
         .select_related("branding")
-        .prefetch_related(primary_domains)
         .order_by("name")
     )
 
     parties = []
     for i, t in enumerate(tenants_qs):
-        primary = (t._primary_domains[0].domain if t._primary_domains else None)
-        if primary:
-            primary_host = primary if ":" in primary else f"{primary}{port_suffix}"
-            login_url = f"{scheme}://{primary_host}/"
-            domain_label = primary_host
-        else:
-            login_url = f"{scheme}://{root_host}/{t.slug}/"
-            domain_label = f"{root_host}/{t.slug}"
+        login_url = f"{scheme}://{root_host}/{t.slug}/"
+        domain_label = f"{root_host}/{t.slug}"
         brand_name = (
             getattr(getattr(t, "branding", None), "brand_name", "") or t.name
         )

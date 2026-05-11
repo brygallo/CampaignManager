@@ -1005,10 +1005,10 @@
 
 @media (max-width: 767.98px) {
   .field-survey-map-legend-toggle {
-    bottom: calc(var(--map-shell-pad) + 156px + var(--map-safe-bottom));
+    bottom: calc(var(--map-shell-pad) + 215px + var(--map-safe-bottom));
   }
   .field-survey-map-legend {
-    bottom: calc(var(--map-shell-pad) + 208px + var(--map-safe-bottom));
+    bottom: calc(var(--map-shell-pad) + 267px + var(--map-safe-bottom));
     right: var(--map-shell-pad);
     width: min(232px, calc(100vw - 2 * var(--map-shell-pad)));
   }

@@ -9,4 +9,4 @@ Refactorizado al partial _sheet_modal.html (variant="gate"):
 - El subtitle queda enganchado a data-gate-reason (lo actualiza el JS)
 - Los 5 estados del body viven en _geolocation_gate_body.html
 {% endcomment %}
-{% include "base/_sheet_modal.html" with modal_id="cm-geo-gate-modal" variant="gate" tone="primary" icon="map-pin" title="Activa tu ubicación" subtitle="Necesitamos tu ubicación para llenar el mapa con precisión." size="md" scrollable=True backdrop_static=True labelledby="cm-geo-gate-title" title_id="cm-geo-gate-title" subtitle_attrs="data-gate-reason" body_class="py-5" body_template="components/_geolocation_gate_body.html" %}
+{% include "base/_sheet_modal.html" with modal_id="cm-geo-gate-modal" variant="gate" tone="primary" icon="map-pin" title="Activa tu ubicación" subtitle="Necesitamos tu ubicación para llenar el mapa con precisión." size="md" scrollable=True backdrop_static=True default_state="full" labelledby="cm-geo-gate-title" title_id="cm-geo-gate-title" subtitle_attrs="data-gate-reason" body_class="py-5" body_template="components/_geolocation_gate_body.html" %}

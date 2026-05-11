@@ -201,10 +201,15 @@
     attachKeyboardAutoFull(modal);
 
     modal.addEventListener("show.bs.modal", function () {
-      // Cada apertura empieza en peek y sin offset de drag.
-      modal.classList.remove(FULL_CLASS);
+      // Initial snap point: configurable via data-sheet-default="full"
+      // (template param `default_state`). Default is peek.
       modal.classList.remove(DRAG_CLASS);
       clearDrag(modal);
+      if (modal.getAttribute("data-sheet-default") === "full") {
+        modal.classList.add(FULL_CLASS);
+      } else {
+        modal.classList.remove(FULL_CLASS);
+      }
     });
     modal.addEventListener("hidden.bs.modal", function () {
       modal.classList.remove(FULL_CLASS);

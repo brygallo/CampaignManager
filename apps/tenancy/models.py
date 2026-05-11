@@ -139,8 +139,7 @@ class TenantSettings(models.Model):
     enable_territorial_ads = models.BooleanField("Publicidad territorial", default=True)
     enable_locations = models.BooleanField("Geografía", default=True)
 
-    # Default map view used by every Leaflet map when no GPS context is
-    # available. Macas (Morona Santiago) is a sensible local default.
+    # Macas (Morona Santiago) as fallback when no GPS context is available.
     map_center_latitude = models.DecimalField(
         "Latitud centro del mapa",
         max_digits=9,

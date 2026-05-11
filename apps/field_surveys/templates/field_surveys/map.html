@@ -271,7 +271,7 @@
 </div>
 
 {# Modal: choose what to create when an empty map spot is clicked. #}
-{% include "base/_sheet_modal.html" with modal_id="field-survey-choose-modal" variant="choice" tone="primary" icon="map-pin" title="¿Qué deseas registrar aquí?" subtitle="Selecciona una opción." subtitle_attrs="data-choose-coords" size="md" scrollable=True extra_classes="field-survey-map-modal" body_template="field_surveys/_choose_modal_body.html" %}
+{% include "base/_sheet_modal.html" with modal_id="field-survey-choose-modal" variant="choice" tone="primary" icon="map-pin" title="¿Qué deseas registrar aquí?" subtitle="Selecciona una opción." subtitle_attrs="data-choose-coords" size="md" scrollable=True default_state="full" extra_classes="field-survey-map-modal" body_template="field_surveys/_choose_modal_body.html" %}
 
 {# Modal: empty map click → quick create form #}
 {% include "base/_sheet_modal.html" with modal_id="field-survey-create-modal" variant="form" tone="primary" icon="square-plus" title="Nuevo registro" subtitle="Completa los datos de la visita" title_attrs="data-create-title" subtitle_attrs="data-create-subtitle" icon_attrs="data-create-icon" icon_bg_attrs="data-create-icon-bg" icon_wrap_attrs="data-create-icon-wrap" size="xl" scrollable=True extra_classes="field-survey-map-modal field-survey-map-sheet-modal" dialog_classes="field-survey-map-sheet-dialog" body_template="field_surveys/_create_modal_body.html" footer_template="field_surveys/_create_modal_footer.html" %}

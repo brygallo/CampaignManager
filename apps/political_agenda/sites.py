@@ -13,7 +13,6 @@ VIEW_PRIVATE_AGENDA_EVENT_PERM = "political_agenda.view_private_politicalagendae
 
 
 def _user_can_view_private_events(user):
-    """Centralized check used by list/detail mixins for the agenda visibility gate."""
     return bool(user and user.is_active and (user.is_superuser or user.has_perm(VIEW_PRIVATE_AGENDA_EVENT_PERM)))
 
 

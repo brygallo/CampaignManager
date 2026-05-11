@@ -20,6 +20,7 @@ Usage:
        icon_lib="lucide"         {# lucide | keenicons  -- default lucide #}
        scrollable=True
        backdrop_static=False
+       default_state="full"        {# peek (default) | full — controls initial snap on mobile #}
        sheet_pdf=False           {# adds .cm-sheet-modal-pdf #}
        extra_classes=""          {# extra classes on the outer .modal element #}
        dialog_classes=""         {# extra classes on .modal-dialog #}
@@ -66,6 +67,7 @@ Variant cheat-sheet:
 {% firstof header_chip_template '' as sm_chip_tpl %}
 {% firstof title '' as sm_title %}
 {% firstof subtitle '' as sm_subtitle %}
+{% firstof default_state '' as sm_default_state %}
 {% with sm_title_id_auto=modal_id|add:'-title' sm_subtitle_id_auto=modal_id|add:'-subtitle' %}
 {% with sm_title_id=sm_title_id_explicit|default:sm_title_id_auto sm_subtitle_id=sm_subtitle_id_explicit|default:sm_subtitle_id_auto %}
 <div class="modal fade cm-sheet-modal{% if sheet_pdf %} cm-sheet-modal-pdf{% endif %} cm-sheet-modal--{{ sm_v }}{% if sm_extra %} {{ sm_extra }}{% endif %}"
@@ -73,6 +75,7 @@ Variant cheat-sheet:
      tabindex="-1"
      aria-hidden="true"
      aria-labelledby="{{ sm_title_id }}"
+     {% if sm_default_state == 'full' %}data-sheet-default="full"{% endif %}
      {% if backdrop_static %}data-bs-backdrop="static" data-bs-keyboard="false"{% endif %}>
   <div class="modal-dialog modal-{{ sm_size }} modal-dialog-centered{% if scrollable %} modal-dialog-scrollable{% endif %}{% if sm_dialog_classes %} {{ sm_dialog_classes }}{% endif %}">
     <div class="modal-content">

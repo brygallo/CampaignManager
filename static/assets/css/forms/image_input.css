@@ -1,7 +1,3 @@
-/* Image lightbox modal — used by data-image-lightbox triggers in form/detail
-   image widgets. The widgets themselves rely on Metronic's .image-input
-   component (style.bundle.css) so no custom widget styles live here. */
-
 .image-lightbox .modal-content {
   background: #0f172a;
   color: #fff;

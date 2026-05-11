@@ -168,7 +168,7 @@
 </div>
 
 {# Modal: choose between registering advertising or logging a refusal. #}
-{% include "base/_sheet_modal.html" with modal_id="physical-ad-choice-modal" variant="choice" tone="primary" icon="help-circle" title="¿Qué quieres registrar?" subtitle="Elige una opción para este lugar" size="md" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_choose_modal_body.html" %}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-choice-modal" variant="choice" tone="primary" icon="help-circle" title="¿Qué quieres registrar?" subtitle="Elige una opción para este lugar" size="md" scrollable=True default_state="full" extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_choose_modal_body.html" %}
 
 {# Modal: empty map click → publicidad create form #}
 {% include "base/_sheet_modal.html" with modal_id="physical-ad-create-modal" variant="form" tone="primary" icon="square-plus" title="Nueva publicidad" subtitle="Completa los datos del lugar ofrecido" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_create_modal_body.html" footer_template="territorial_ads/_create_modal_footer.html" %}

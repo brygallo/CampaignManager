@@ -1,18 +1,10 @@
-"""Generic form widgets used throughout the project."""
 from django import forms
 from django.utils.html import format_html
 
 
 class ColorPickerWidget(forms.TextInput):
-    """Marker widget used by the project's form template loader.
-
-    The actual rendering happens in ``templates/widgets/colorpickerinput.html``,
-    which the ``superadmin`` form templatetag picks up via the
-    ``"colorpicker"`` key in ``settings.TEMPLATE_WIDGETS`` (the key matches
-    Django's ``BoundField.widget_type`` — ``ColorPickerWidget`` → ``colorpicker``).
-    The template wraps a hex text input next to a native ``<input type="color">``
-    sibling and keeps both in sync via inline JS.
-    """
+    # Rendering lives in templates/widgets/colorpickerinput.html, resolved via
+    # settings.TEMPLATE_WIDGETS["colorpicker"] (matches BoundField.widget_type).
 
     def __init__(self, attrs=None):
         defaults = {"class": "form-control form-control-sm form-control-solid cm-color-picker"}

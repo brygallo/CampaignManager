@@ -72,10 +72,8 @@ class GroupSite(BaseSite):
 
 @register("auth.Permission")
 class PermissionSite(BaseSite):
-    # Permission rows are created by Django's ``create_permissions`` signal at
-    # post_migrate, never by hand. Exposing create/edit/delete in the panel
-    # is a privilege-escalation vector with no upside, so we limit the site
-    # to read-only views — same pattern used by ``TraceSite``.
+    # Permission rows are created by post_migrate; exposing create/edit/delete
+    # would be a privilege-escalation vector with no upside.
     allow_views = ("list", "detail")
     form_class = PermissionForm
     queryset = Permission.objects.select_related("content_type").order_by(
