@@ -3,9 +3,21 @@
 The matrix groups every Permission by app_label -> model -> action so the
 same template (`components/permissions_matrix.html`) can render it as either
 editable checkboxes (form) or disabled checkboxes (detail).
+
+Performance note (audit follow-up A4): the app/model/action *skeleton* is
+the expensive part — one Permission query + a verbose_name lookup per
+permission row. The skeleton only changes when migrations run, so it is
+cached per tenant schema (via ``core.cache.tenant_cache_key``) with a
+24-hour TTL and explicit invalidation on ``post_migrate``. Each render
+just deep-copies the cached skeleton and overlays the holder-specific
+``has_direct`` / ``via_groups`` state, which is O(N) over the holder's
+own permission ids instead of every Permission row in the DB.
 """
+import copy
+
 from django.apps import apps
 from django.contrib.auth.models import Permission
+from django.core.cache import cache
 
 # Standard CRUD action codes that get a dedicated column in the matrix.
 STANDARD_PERM_ACTIONS = ("view", "add", "change", "delete")
@@ -16,21 +28,25 @@ STANDARD_PERM_LABELS = {
     "delete": "Eliminar",
 }
 
+# Cache key for the schema/app/model/action skeleton. ``tenant_cache_key``
+# already prefixes with the active schema, so the bare key is enough.
+_SKELETON_CACHE_KEY = "perm_matrix_skeleton_v1"
+# 24h is safe because the skeleton only changes when migrations run, and
+# the ``post_migrate`` receiver below invalidates explicitly. The TTL is
+# just a backstop for edge cases (manual Permission edits via the Django
+# admin, which do not fire post_migrate).
+_SKELETON_CACHE_TTL = 60 * 60 * 24
 
-def build_permission_matrix(direct_perm_ids, group_perm_map=None):
-    """Group every Permission by app/model for the matrix template.
 
-    ``direct_perm_ids``: iterable of Permission ids assigned directly to
-    the holder (a User's ``user_permissions`` or a Group's ``permissions``).
-    ``group_perm_map``: optional ``{permission_id: [group_name, ...]}`` to
-    show inheritance markers; pass ``None`` when the holder is a Group.
+def _build_skeleton():
+    """Build the immutable app/model/action structure without holder state.
 
-    Returns a list of dicts ``{app_label, app_name, models}`` where each
-    model contains ``{model_name, model_label, standard, custom}``.
+    The returned list is shaped like the final matrix output but the
+    ``has_direct``/``via_groups`` fields are placeholder values
+    (``False`` / empty list) — they get overlaid per-call in
+    ``_attach_holder_state``. This is the expensive part: one
+    ``Permission.objects.all()`` plus a few dict lookups per row.
     """
-    direct_perm_ids = set(direct_perm_ids)
-    group_perm_map = group_perm_map or {}
-
     permissions = (
         Permission.objects.select_related("content_type").order_by(
             "content_type__app_label", "content_type__model", "codename"
@@ -64,8 +80,8 @@ def build_permission_matrix(direct_perm_ids, group_perm_map=None):
             "codename": codename,
             "name": perm.name,
             "content_type_id": ct.id,
-            "has_direct": perm.id in direct_perm_ids,
-            "via_groups": group_perm_map.get(perm.id, []),
+            "has_direct": False,
+            "via_groups": [],
             "action": action,
         }
 
@@ -99,6 +115,64 @@ def build_permission_matrix(direct_perm_ids, group_perm_map=None):
             }
         )
     return apps_list
+
+
+def _get_cached_skeleton():
+    skeleton = cache.get(_SKELETON_CACHE_KEY)
+    if skeleton is None:
+        skeleton = _build_skeleton()
+        cache.set(_SKELETON_CACHE_KEY, skeleton, _SKELETON_CACHE_TTL)
+    return skeleton
+
+
+def invalidate_permission_matrix_cache():
+    """Drop the cached skeleton for the current tenant schema."""
+    cache.delete(_SKELETON_CACHE_KEY)
+
+
+def _attach_holder_state(skeleton, direct_perm_ids, group_perm_map):
+    """Deep-copy the skeleton and overlay holder-specific state.
+
+    Deep-copy is necessary because the cached skeleton is shared between
+    concurrent requests; mutating it would leak one request's
+    ``has_direct`` flags into another request's matrix.
+    """
+    direct_perm_ids = set(direct_perm_ids)
+    group_perm_map = group_perm_map or {}
+    if not direct_perm_ids and not group_perm_map:
+        # Nothing to overlay — still deep-copy so callers can't mutate
+        # the cached structure on accident.
+        return copy.deepcopy(skeleton)
+
+    out = copy.deepcopy(skeleton)
+    for app in out:
+        for model in app["models"]:
+            for action_entry in model["standard"].values():
+                if action_entry is None:
+                    continue
+                pid = action_entry["id"]
+                action_entry["has_direct"] = pid in direct_perm_ids
+                action_entry["via_groups"] = group_perm_map.get(pid, [])
+            for custom_entry in model["custom"]:
+                pid = custom_entry["id"]
+                custom_entry["has_direct"] = pid in direct_perm_ids
+                custom_entry["via_groups"] = group_perm_map.get(pid, [])
+    return out
+
+
+def build_permission_matrix(direct_perm_ids, group_perm_map=None):
+    """Group every Permission by app/model for the matrix template.
+
+    ``direct_perm_ids``: iterable of Permission ids assigned directly to
+    the holder (a User's ``user_permissions`` or a Group's ``permissions``).
+    ``group_perm_map``: optional ``{permission_id: [group_name, ...]}`` to
+    show inheritance markers; pass ``None`` when the holder is a Group.
+
+    Returns a list of dicts ``{app_label, app_name, models}`` where each
+    model contains ``{model_name, model_label, standard, custom}``.
+    """
+    skeleton = _get_cached_skeleton()
+    return _attach_holder_state(skeleton, direct_perm_ids, group_perm_map)
 
 
 def resolve_posted_permissions(post_data):
