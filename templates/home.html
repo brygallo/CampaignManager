@@ -153,22 +153,50 @@
 <div class="home-tabs">
   <ul class="nav nav-pills flex-nowrap overflow-auto mb-3" role="tablist" style="-webkit-overflow-scrolling: touch;">
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold active" data-bs-toggle="tab" data-bs-target="#home-pane-trend" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold active"
+              id="home-tab-trend"
+              data-bs-toggle="tab"
+              data-bs-target="#home-pane-trend"
+              type="button"
+              role="tab"
+              aria-controls="home-pane-trend"
+              aria-selected="true">
         <i data-lucide="trending-up" class="fs-4 me-1"></i>Tendencia
       </button>
     </li>
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold" data-bs-toggle="tab" data-bs-target="#home-pane-ads" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold"
+              id="home-tab-ads"
+              data-bs-toggle="tab"
+              data-bs-target="#home-pane-ads"
+              type="button"
+              role="tab"
+              aria-controls="home-pane-ads"
+              aria-selected="false">
         <i data-lucide="pie-chart" class="fs-4 me-1"></i>Publicidad
       </button>
     </li>
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold" data-bs-toggle="tab" data-bs-target="#home-pane-recent" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold"
+              id="home-tab-recent"
+              data-bs-toggle="tab"
+              data-bs-target="#home-pane-recent"
+              type="button"
+              role="tab"
+              aria-controls="home-pane-recent"
+              aria-selected="false">
         <i data-lucide="flag" class="fs-4 me-1"></i>Campañas
       </button>
     </li>
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold" data-bs-toggle="tab" data-bs-target="#home-pane-elections" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold"
+              id="home-tab-elections"
+              data-bs-toggle="tab"
+              data-bs-target="#home-pane-elections"
+              type="button"
+              role="tab"
+              aria-controls="home-pane-elections"
+              aria-selected="false">
         <i data-lucide="calendar-check" class="fs-4 me-1"></i>Elecciones
       </button>
     </li>
@@ -176,7 +204,11 @@
 
   <div class="tab-content">
     <div class="row g-3 g-md-5 g-xl-7 mb-4 mb-xl-10">
-      <div class="col-12 col-xl-8 tab-pane fade show active" id="home-pane-trend" role="tabpanel">
+      <div class="col-12 col-xl-8 tab-pane fade show active"
+           id="home-pane-trend"
+           role="tabpanel"
+           aria-labelledby="home-tab-trend"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2">
             <h3 class="card-title align-items-start flex-column m-0">
@@ -190,7 +222,11 @@
         </div>
       </div>
 
-      <div class="col-12 col-xl-4 tab-pane fade" id="home-pane-ads" role="tabpanel">
+      <div class="col-12 col-xl-4 tab-pane fade"
+           id="home-pane-ads"
+           role="tabpanel"
+           aria-labelledby="home-tab-ads"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2">
             <h3 class="card-title align-items-start flex-column m-0">
@@ -207,7 +243,11 @@
     </div>
 
     <div class="row g-3 g-md-5 g-xl-7">
-      <div class="col-12 col-xl-7 tab-pane fade" id="home-pane-recent" role="tabpanel">
+      <div class="col-12 col-xl-7 tab-pane fade"
+           id="home-pane-recent"
+           role="tabpanel"
+           aria-labelledby="home-tab-recent"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2 align-items-center">
             <h3 class="card-title align-items-start flex-column m-0">
@@ -253,7 +293,11 @@
         </div>
       </div>
 
-      <div class="col-12 col-xl-5 tab-pane fade" id="home-pane-elections" role="tabpanel">
+      <div class="col-12 col-xl-5 tab-pane fade"
+           id="home-pane-elections"
+           role="tabpanel"
+           aria-labelledby="home-tab-elections"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2">
             <h3 class="card-title align-items-start flex-column m-0">

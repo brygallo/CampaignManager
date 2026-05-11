@@ -25,20 +25,36 @@
 {% endblock %}
 
 {% block detail_extra_tabs %}
-  <li class="nav-item">
-    <a class="nav-link" data-bs-toggle="tab" href="#tab-permissions" role="tab">
+  <li class="nav-item" role="presentation">
+    <a class="nav-link"
+       id="tab-permissions-trigger"
+       data-bs-toggle="tab"
+       href="#tab-permissions"
+       role="tab"
+       aria-controls="tab-permissions"
+       aria-selected="false">
       <i data-lucide="shield-check" class="fs-3 me-2"></i>Permisos
     </a>
   </li>
-  <li class="nav-item">
-    <a class="nav-link" data-bs-toggle="tab" href="#tab-users" role="tab">
+  <li class="nav-item" role="presentation">
+    <a class="nav-link"
+       id="tab-users-trigger"
+       data-bs-toggle="tab"
+       href="#tab-users"
+       role="tab"
+       aria-controls="tab-users"
+       aria-selected="false">
       <i data-lucide="user" class="fs-3 me-2"></i>Usuarios
     </a>
   </li>
 {% endblock %}
 
 {% block detail_extra_panes %}
-  <div class="tab-pane fade" id="tab-permissions" role="tabpanel">
+  <div class="tab-pane fade"
+       id="tab-permissions"
+       role="tabpanel"
+       aria-labelledby="tab-permissions-trigger"
+       tabindex="0">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div>
         <h4 class="fw-bold text-gray-900 mb-1">Permisos del grupo</h4>
@@ -48,7 +64,11 @@
     {% include "authentication/components/permissions_matrix.html" with enabled=False %}
   </div>
 
-  <div class="tab-pane fade" id="tab-users" role="tabpanel">
+  <div class="tab-pane fade"
+       id="tab-users"
+       role="tabpanel"
+       aria-labelledby="tab-users-trigger"
+       tabindex="0">
     <h4 class="fw-bold text-gray-900 mb-4">{{ users_list_title }}</h4>
     {% include "authentication/components/users_list.html" %}
   </div>

@@ -28,15 +28,25 @@
 {% endblock %}
 
 {% block detail_extra_tabs %}
-  <li class="nav-item">
-    <a class="nav-link" data-bs-toggle="tab" href="#tab-users" role="tab">
+  <li class="nav-item" role="presentation">
+    <a class="nav-link"
+       id="tab-users-trigger"
+       data-bs-toggle="tab"
+       href="#tab-users"
+       role="tab"
+       aria-controls="tab-users"
+       aria-selected="false">
       <i data-lucide="user" class="fs-3 me-2"></i>Usuarios
     </a>
   </li>
 {% endblock %}
 
 {% block detail_extra_panes %}
-  <div class="tab-pane fade" id="tab-users" role="tabpanel">
+  <div class="tab-pane fade"
+       id="tab-users"
+       role="tabpanel"
+       aria-labelledby="tab-users-trigger"
+       tabindex="0">
     <h4 class="fw-bold text-gray-900 mb-4">{{ users_list_title }}</h4>
     {% include "authentication/components/users_list.html" %}
   </div>

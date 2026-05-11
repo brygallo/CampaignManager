@@ -62,15 +62,25 @@
 {% endblock %}
 
 {% block detail_extra_tabs %}
-  <li class="nav-item">
-    <a class="nav-link" data-bs-toggle="tab" href="#tab-permissions" role="tab">
+  <li class="nav-item" role="presentation">
+    <a class="nav-link"
+       id="tab-permissions-trigger"
+       data-bs-toggle="tab"
+       href="#tab-permissions"
+       role="tab"
+       aria-controls="tab-permissions"
+       aria-selected="false">
       <i data-lucide="shield-check" class="fs-3 me-2"></i>Permisos
     </a>
   </li>
 {% endblock %}
 
 {% block detail_extra_panes %}
-  <div class="tab-pane fade" id="tab-permissions" role="tabpanel">
+  <div class="tab-pane fade"
+       id="tab-permissions"
+       role="tabpanel"
+       aria-labelledby="tab-permissions-trigger"
+       tabindex="0">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <div>
         <h4 class="fw-bold text-gray-900 mb-1">Permisos del usuario</h4>

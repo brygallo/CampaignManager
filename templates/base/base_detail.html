@@ -40,24 +40,24 @@
              class="btn btn-icon btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body{% if not site.nav.previous_url %} disabled{% endif %}"
              {% if not site.nav.previous_url %}aria-disabled="true" tabindex="-1"{% endif %}
              title="Anterior" aria-label="Registro anterior">
-            <i class="ki-outline ki-arrow-left fs-3"></i>
+            <i data-lucide="arrow-left" class="fs-3"></i>
           </a>
           <a href="{{ site.nav.next_url|default:'#' }}"
              class="btn btn-icon btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body{% if not site.nav.next_url %} disabled{% endif %}"
              {% if not site.nav.next_url %}aria-disabled="true" tabindex="-1"{% endif %}
              title="Siguiente" aria-label="Siguiente registro">
-            <i class="ki-outline ki-arrow-right fs-3"></i>
+            <i data-lucide="arrow-right" class="fs-3"></i>
           </a>
         </div>
       {% endif %}
       {% if site.urls.list %}
         <a href="{{ site.urls.list }}" class="btn btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body d-flex align-items-center gap-1" aria-label="Volver al listado">
-          <i class="ki-outline ki-arrow-left fs-3"></i><span class="d-none d-md-inline">Volver</span>
+          <i data-lucide="arrow-left" class="fs-3"></i><span class="d-none d-md-inline">Volver</span>
         </a>
       {% endif %}
       {% if site.urls.update %}
         <a href="{{ site.urls.update }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1" aria-label="Editar registro">
-          <i class="ki-outline ki-pencil fs-3"></i><span class="d-none d-md-inline">Editar</span>
+          <i data-lucide="pencil" class="fs-3"></i><span class="d-none d-md-inline">Editar</span>
         </a>
       {% endif %}
       {% if site.urls.delete %}
@@ -69,7 +69,7 @@
                 data-cm-delete-label="{{ object }}"
                 title="Eliminar"
                 aria-label="Eliminar registro">
-          <i class="ki-outline ki-trash fs-3"></i>
+          <i data-lucide="trash-2" class="fs-3"></i>
         </button>
       {% endif %}
     </div>
@@ -92,15 +92,27 @@
 <div class="card">
   <div class="card-body">
     <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x mb-5 fs-6" role="tablist">
-      <li class="nav-item">
-        <a class="nav-link active" data-bs-toggle="tab" href="#tab-data" role="tab">
-          <i class="ki-outline ki-information fs-3 me-2"></i>Información
+      <li class="nav-item" role="presentation">
+        <a class="nav-link active"
+           id="tab-data-trigger"
+           data-bs-toggle="tab"
+           href="#tab-data"
+           role="tab"
+           aria-controls="tab-data"
+           aria-selected="true">
+          <i data-lucide="info" class="fs-3 me-2"></i>Información
         </a>
       </li>
       {% if processed_traces %}
-      <li class="nav-item">
-        <a class="nav-link" data-bs-toggle="tab" href="#tab-audit" role="tab">
-          <i class="ki-outline ki-time fs-3 me-2"></i>Auditoría
+      <li class="nav-item" role="presentation">
+        <a class="nav-link"
+           id="tab-audit-trigger"
+           data-bs-toggle="tab"
+           href="#tab-audit"
+           role="tab"
+           aria-controls="tab-audit"
+           aria-selected="false">
+          <i data-lucide="clock" class="fs-3 me-2"></i>Auditoría
         </a>
       </li>
       {% endif %}
@@ -108,7 +120,11 @@
     </ul>
 
     <div class="tab-content">
-      <div class="tab-pane fade show active" id="tab-data" role="tabpanel">
+      <div class="tab-pane fade show active"
+           id="tab-data"
+           role="tabpanel"
+           aria-labelledby="tab-data-trigger"
+           tabindex="0">
         {% if site.results %}
           {% for fieldset in site.results %}
             <fieldset class="mb-8">
@@ -202,7 +218,11 @@
       </div>
 
       {% if processed_traces %}
-      <div class="tab-pane fade" id="tab-audit" role="tabpanel">
+      <div class="tab-pane fade"
+           id="tab-audit"
+           role="tabpanel"
+           aria-labelledby="tab-audit-trigger"
+           tabindex="0">
         {% include "audit/timeline.html" with processed_traces=processed_traces %}
       </div>
       {% endif %}

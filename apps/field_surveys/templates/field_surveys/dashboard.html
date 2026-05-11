@@ -193,22 +193,50 @@
 <div class="fs-dash-tabs mb-4">
   <ul class="nav nav-pills flex-nowrap overflow-auto mb-3" role="tablist" style="-webkit-overflow-scrolling: touch;">
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold active" data-bs-toggle="tab" data-bs-target="#fs-pane-distribution" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold active"
+              id="fs-tab-distribution"
+              data-bs-toggle="tab"
+              data-bs-target="#fs-pane-distribution"
+              type="button"
+              role="tab"
+              aria-controls="fs-pane-distribution"
+              aria-selected="true">
         <i data-lucide="pie-chart" class="fs-4 me-1"></i>Distribución
       </button>
     </li>
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold" data-bs-toggle="tab" data-bs-target="#fs-pane-competitor" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold"
+              id="fs-tab-competitor"
+              data-bs-toggle="tab"
+              data-bs-target="#fs-pane-competitor"
+              type="button"
+              role="tab"
+              aria-controls="fs-pane-competitor"
+              aria-selected="false">
         <i data-lucide="flag" class="fs-4 me-1"></i>Competencia
       </button>
     </li>
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold" data-bs-toggle="tab" data-bs-target="#fs-pane-trend" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold"
+              id="fs-tab-trend"
+              data-bs-toggle="tab"
+              data-bs-target="#fs-pane-trend"
+              type="button"
+              role="tab"
+              aria-controls="fs-pane-trend"
+              aria-selected="false">
         <i data-lucide="trending-up" class="fs-4 me-1"></i>Tendencia
       </button>
     </li>
     <li class="nav-item flex-shrink-0" role="presentation">
-      <button class="nav-link btn-sm fw-semibold" data-bs-toggle="tab" data-bs-target="#fs-pane-ranking" type="button" role="tab">
+      <button class="nav-link btn-sm fw-semibold"
+              id="fs-tab-ranking"
+              data-bs-toggle="tab"
+              data-bs-target="#fs-pane-ranking"
+              type="button"
+              role="tab"
+              aria-controls="fs-pane-ranking"
+              aria-selected="false">
         <i data-lucide="trophy" class="fs-4 me-1"></i>Brigadistas
       </button>
     </li>
@@ -216,7 +244,11 @@
 
   <div class="tab-content">
     <div class="row g-3 g-md-5 g-xl-7">
-      <div class="col-12 col-md-6 col-xl-3 tab-pane fade show active" id="fs-pane-distribution" role="tabpanel">
+      <div class="col-12 col-md-6 col-xl-3 tab-pane fade show active"
+           id="fs-pane-distribution"
+           role="tabpanel"
+           aria-labelledby="fs-tab-distribution"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2">
             <h3 class="card-title align-items-start flex-column m-0">
@@ -231,7 +263,11 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-xl-3 tab-pane fade" id="fs-pane-competitor" role="tabpanel">
+      <div class="col-12 col-md-6 col-xl-3 tab-pane fade"
+           id="fs-pane-competitor"
+           role="tabpanel"
+           aria-labelledby="fs-tab-competitor"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2">
             <h3 class="card-title align-items-start flex-column m-0">
@@ -271,7 +307,11 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-xl-3 tab-pane fade" id="fs-pane-trend" role="tabpanel">
+      <div class="col-12 col-md-6 col-xl-3 tab-pane fade"
+           id="fs-pane-trend"
+           role="tabpanel"
+           aria-labelledby="fs-tab-trend"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2">
             <h3 class="card-title align-items-start flex-column m-0">
@@ -285,7 +325,11 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-xl-3 tab-pane fade" id="fs-pane-ranking" role="tabpanel">
+      <div class="col-12 col-md-6 col-xl-3 tab-pane fade"
+           id="fs-pane-ranking"
+           role="tabpanel"
+           aria-labelledby="fs-tab-ranking"
+           tabindex="0">
         <div class="card card-flush h-100">
           <div class="card-header pt-5 pt-md-7 pb-2 align-items-center">
             <h3 class="card-title align-items-start flex-column m-0">
