@@ -1,12 +1,12 @@
 from superadmin.decorators import register
 
 from core.base import BaseSite
-from core.list_mixins import DropdownFilterMixin
+from core.list_mixins import DropdownFilterMixin, OrderingMixin
 
 
 @register("locations.Province")
 class ProvinceSite(BaseSite):
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("code", "name", "is_active:Activo")
     detail_fields = (("code", "name"), ("is_active",))
     search_params = ("code__icontains", "name__icontains")
@@ -15,7 +15,7 @@ class ProvinceSite(BaseSite):
 
 @register("locations.Canton")
 class CantonSite(BaseSite):
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("code", "name", "province", "is_active:Activo")
     detail_fields = (("code", "name"), ("province", "is_active"))
     search_params = ("code__icontains", "name__icontains", "province__name__icontains")
@@ -24,7 +24,7 @@ class CantonSite(BaseSite):
 
 @register("locations.Parish")
 class ParishSite(BaseSite):
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("code", "name", "canton", "kind", "is_active:Activo")
     detail_fields = (("code", "name"), ("canton", "kind"), ("is_active",))
     search_params = ("code__icontains", "name__icontains", "canton__name__icontains")
@@ -33,7 +33,7 @@ class ParishSite(BaseSite):
 
 @register("locations.Sector")
 class SectorSite(BaseSite):
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("name", "parish", "is_active:Activo")
     detail_fields = (("name", "parish"), ("is_active",))
     search_params = ("name__icontains", "parish__name__icontains")

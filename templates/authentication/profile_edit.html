@@ -1,0 +1,162 @@
+{# Self-service edit of the current user's own profile. Renders the minimum #}
+{# field set by default, and the full set when the user has the permission #}
+{# ``authentication.change_full_own_profile``. #}
+{% extends "base/base.html" %}
+
+{% block title %}Editar mi perfil | {{ block.super }}{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-xl-8">
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="card card-flush mb-5 mb-xl-10">
+          <div class="card-header pt-7">
+            <div class="d-flex align-items-center">
+              <span class="symbol symbol-50px me-4">
+                <span class="symbol-label bg-light-primary">
+                  <i data-lucide="user-cog" class="fs-2x text-primary"></i>
+                </span>
+              </span>
+              <div>
+                <h2 class="card-title fw-bolder text-gray-900 mb-1">Editar mi perfil</h2>
+                <span class="text-muted fs-7">
+                  {% if is_full_mode %}
+                    Actualiza tu información personal y de contacto.
+                  {% else %}
+                    Actualiza tu nombre, alias y avatar. Para cambiar el correo o
+                    teléfono, contacta al administrador del partido.
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body pt-3">
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger d-flex align-items-center p-5 mb-7">
+                <i data-lucide="alert-triangle" class="fs-2hx text-danger me-4"></i>
+                <span class="fw-semibold">{{ form.non_field_errors|join:", " }}</span>
+              </div>
+            {% endif %}
+
+            <div class="row g-5">
+              <div class="col-md-6">
+                <label for="{{ form.first_name.id_for_label }}" class="form-label fs-6 fw-bolder text-dark">Nombre</label>
+                <input type="text" name="{{ form.first_name.name }}"
+                       id="{{ form.first_name.id_for_label }}"
+                       value="{{ form.first_name.value|default_if_none:'' }}"
+                       class="form-control form-control-sm {% if form.first_name.errors %}is-invalid{% endif %}"
+                       maxlength="150">
+                {% if form.first_name.errors %}<div class="invalid-feedback d-block">{{ form.first_name.errors|join:", " }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.last_name.id_for_label }}" class="form-label fs-6 fw-bolder text-dark">Apellido</label>
+                <input type="text" name="{{ form.last_name.name }}"
+                       id="{{ form.last_name.id_for_label }}"
+                       value="{{ form.last_name.value|default_if_none:'' }}"
+                       class="form-control form-control-sm {% if form.last_name.errors %}is-invalid{% endif %}"
+                       maxlength="150">
+                {% if form.last_name.errors %}<div class="invalid-feedback d-block">{{ form.last_name.errors|join:", " }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.alias.id_for_label }}" class="form-label fs-6 fw-bolder text-dark">Alias</label>
+                <input type="text" name="{{ form.alias.name }}"
+                       id="{{ form.alias.id_for_label }}"
+                       value="{{ form.alias.value|default_if_none:'' }}"
+                       class="form-control form-control-sm {% if form.alias.errors %}is-invalid{% endif %}"
+                       maxlength="64"
+                       placeholder="Opcional — cómo prefieres que te llamen">
+                {% if form.alias.errors %}<div class="invalid-feedback d-block">{{ form.alias.errors|join:", " }}</div>{% endif %}
+              </div>
+
+              {% if form.email %}
+                <div class="col-md-6">
+                  <label for="{{ form.email.id_for_label }}" class="form-label fs-6 fw-bolder text-dark">Correo electrónico</label>
+                  <input type="email" name="{{ form.email.name }}"
+                         id="{{ form.email.id_for_label }}"
+                         value="{{ form.email.value|default_if_none:'' }}"
+                         class="form-control form-control-sm {% if form.email.errors %}is-invalid{% endif %}"
+                         autocomplete="email">
+                  {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors|join:", " }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              {% if form.phone_number %}
+                <div class="col-md-6">
+                  <label for="{{ form.phone_number.id_for_label }}" class="form-label fs-6 fw-bolder text-dark">Teléfono</label>
+                  <input type="text" name="{{ form.phone_number.name }}"
+                         id="{{ form.phone_number.id_for_label }}"
+                         value="{{ form.phone_number.value|default_if_none:'' }}"
+                         class="form-control form-control-sm {% if form.phone_number.errors %}is-invalid{% endif %}"
+                         maxlength="20"
+                         placeholder="+593...">
+                  {% if form.phone_number.errors %}<div class="invalid-feedback d-block">{{ form.phone_number.errors|join:", " }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              {% if form.bio %}
+                <div class="col-12">
+                  <label for="{{ form.bio.id_for_label }}" class="form-label fs-6 fw-bolder text-dark">Biografía</label>
+                  <textarea name="{{ form.bio.name }}"
+                            id="{{ form.bio.id_for_label }}"
+                            rows="3"
+                            class="form-control form-control-sm {% if form.bio.errors %}is-invalid{% endif %}"
+                            placeholder="Breve descripción profesional o territorial.">{{ form.bio.value|default_if_none:'' }}</textarea>
+                  {% if form.bio.errors %}<div class="invalid-feedback d-block">{{ form.bio.errors|join:", " }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              <div class="col-12">
+                <div class="separator separator-dashed mb-2"></div>
+                <label class="form-label fs-6 fw-bolder text-dark mt-3">Avatar</label>
+                <div class="d-flex align-items-center gap-4">
+                  <span class="symbol symbol-60px">
+                    {% if profile.avatar %}
+                      <img src="{{ profile.avatar.url }}" alt="Avatar actual" loading="lazy" decoding="async">
+                    {% else %}
+                      <span class="symbol-label bg-light-primary text-primary fw-bolder fs-3">
+                        {{ user.get_full_name|default:user.username|first|upper }}
+                      </span>
+                    {% endif %}
+                  </span>
+                  <div class="flex-grow-1">
+                    <input type="file" name="{{ form.avatar.name }}"
+                           id="{{ form.avatar.id_for_label }}"
+                           accept="image/*"
+                           class="form-control form-control-sm {% if form.avatar.errors %}is-invalid{% endif %}">
+                    {% if form.avatar.help_text %}
+                      <div class="form-text">{{ form.avatar.help_text }}</div>
+                    {% endif %}
+                    {% if form.avatar.errors %}<div class="invalid-feedback d-block">{{ form.avatar.errors|join:", " }}</div>{% endif %}
+                    {% if profile.avatar %}
+                      <div class="form-check mt-2">
+                        <input type="checkbox" name="{{ form.clear_avatar.name }}"
+                               id="{{ form.clear_avatar.id_for_label }}"
+                               class="form-check-input"
+                               value="True">
+                        <label for="{{ form.clear_avatar.id_for_label }}" class="form-check-label fs-7">
+                          Quitar avatar actual
+                        </label>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer d-flex justify-content-end gap-3">
+            <a href="{% url 'authentication:profile' %}" class="btn btn-sm btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i data-lucide="check" class="fs-3 me-1"></i>Guardar cambios
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

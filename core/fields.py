@@ -1,13 +1,15 @@
 """Reusable model fields.
 
-Currently exposes :class:`CompressedImageField` only — a drop-in
-replacement for ``django.db.models.ImageField`` that compresses freshly
-uploaded images before handing them to the storage backend.
+- :class:`CompressedImageField` — ``ImageField`` that compresses freshly
+  uploaded images before handing them to the storage backend.
+- :class:`ColorField` — ``CharField`` for hex colors with built-in
+  validation and an HTML5 color picker on auto-built ``ModelForm`` fields.
 """
 from __future__ import annotations
 
 import logging
 
+from django.db import models
 from django.db.models import ImageField
 
 from .image_utils import (
@@ -17,8 +19,32 @@ from .image_utils import (
     OutputFormat,
     compress_image,
 )
+from .validators import hex_color_validator
+from .widgets import ColorPickerWidget
 
 logger = logging.getLogger(__name__)
+
+
+class ColorField(models.CharField):
+    """``CharField`` for hex colors with validation + color picker widget.
+
+    The DB column is identical to ``CharField`` (max_length=7), so swapping
+    an existing ``CharField`` declaration to ``ColorField`` does not require
+    a schema migration. Validation runs on save / form clean, so existing
+    rows are not touched until they are next edited.
+    """
+
+    description = "Hex color (#RGB or #RRGGBB)"
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("max_length", 7)
+        super().__init__(*args, **kwargs)
+        if hex_color_validator not in self.validators:
+            self.validators.append(hex_color_validator)
+
+    def formfield(self, **kwargs):
+        kwargs.setdefault("widget", ColorPickerWidget)
+        return super().formfield(**kwargs)
 
 
 class CompressedImageField(ImageField):

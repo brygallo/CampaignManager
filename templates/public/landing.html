@@ -26,16 +26,16 @@
 </head>
 <body id="kt_body" class="app-blank bg-body">
 
-  <header class="container py-5 d-flex align-items-center justify-content-between">
-    <a href="/" class="d-inline-flex align-items-center gap-3 text-decoration-none">
-      <img src="{% static 'assets/media/logos/default-small.svg' %}" class="h-35px" alt="Control de Campaña">
-      <span class="fs-3 fw-bolder text-dark">Control de Campaña</span>
+  <header class="container py-5 d-flex align-items-center justify-content-between gap-3">
+    <a href="/" class="d-inline-flex align-items-center gap-3 text-decoration-none min-w-0">
+      <img src="{% static 'assets/media/logos/default-small.svg' %}" class="h-35px flex-shrink-0" alt="Control de Campaña">
+      <span class="fs-3 fw-bolder text-dark text-truncate d-none d-sm-inline">Control de Campaña</span>
     </a>
-    <nav class="d-none d-md-flex align-items-center gap-6">
-      <a href="#features" class="text-gray-700 text-hover-primary fw-semibold">Plataforma</a>
-      <a href="#contacto" class="text-gray-700 text-hover-primary fw-semibold">Contacto</a>
-      <a href="#portal" class="btn btn-sm btn-primary">
-        <i class="ki-outline ki-entrance-right fs-3"></i>Ingresar
+    <nav class="d-flex align-items-center gap-3 gap-md-6 flex-shrink-0">
+      <a href="#features" class="d-none d-md-inline text-gray-700 text-hover-primary fw-semibold">Plataforma</a>
+      <a href="#contacto" class="d-none d-md-inline text-gray-700 text-hover-primary fw-semibold">Contacto</a>
+      <a href="#portal" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
+        <i data-lucide="log-in" class="fs-3"></i>Ingresar
       </a>
     </nav>
   </header>
@@ -60,7 +60,7 @@
                 <label class="form-label fw-bold text-dark mb-0">Acceder al portal de tu partido</label>
                 {% if parties %}
                 <div class="position-relative" style="min-width: 220px;">
-                  <i class="ki-outline ki-magnifier fs-5 position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+                  <i data-lucide="search" class="fs-5 position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
                   <input id="party-search"
                          type="text"
                          class="form-control form-control-sm form-control-solid ps-10"
@@ -85,7 +85,7 @@
                           <span class="fw-bold text-dark text-truncate">{{ p.name }}</span>
                           <span class="fs-8 text-muted text-truncate">{{ p.domain_label }}</span>
                         </span>
-                        <i class="ki-outline ki-arrow-right fs-2 text-muted flex-shrink-0"></i>
+                        <i data-lucide="arrow-right" class="fs-2 text-muted flex-shrink-0"></i>
                       </a>
                     </div>
                   {% endfor %}
@@ -95,7 +95,7 @@
                 </div>
               {% else %}
                 <div class="text-center py-6">
-                  <i class="ki-outline ki-abstract-26 fs-3hx text-muted mb-3 d-block"></i>
+                  <i data-lucide="circle-dashed" class="fs-3hx text-muted mb-3 d-block"></i>
                   <p class="text-muted mb-0">Aún no hay partidos activos en la plataforma.</p>
                 </div>
               {% endif %}
@@ -121,7 +121,7 @@
                            pattern="[a-z0-9][a-z0-9-]{1,62}">
                   </div>
                   <button type="submit" class="btn btn-primary fw-bold">
-                    Ingresar<i class="ki-outline ki-arrow-right fs-3 ms-1"></i>
+                    Ingresar<i data-lucide="arrow-right" class="fs-3 ms-1"></i>
                   </button>
                 </form>
                 <div id="portal-error" class="text-danger fs-7 mt-2 d-none">
@@ -153,7 +153,7 @@
           <div class="card card-flush h-100 border">
             <div class="card-body">
               <span class="feature-icon-wrap bg-light-primary mb-4">
-                <i class="ki-outline ki-flag fs-2x text-primary"></i>
+                <i data-lucide="flag" class="fs-2x text-primary"></i>
               </span>
               <h3 class="fs-4 fw-bolder text-dark mb-2">Campañas</h3>
               <p class="text-gray-700 mb-0">Candidatos, elecciones, movimientos políticos y cargos en disputa, con flujos de trabajo trazables.</p>
@@ -165,7 +165,7 @@
           <div class="card card-flush h-100 border">
             <div class="card-body">
               <span class="feature-icon-wrap bg-light-success mb-4">
-                <i class="ki-outline ki-geolocation fs-2x text-success"></i>
+                <i data-lucide="map-pin" class="fs-2x text-success"></i>
               </span>
               <h3 class="fs-4 fw-bolder text-dark mb-2">Control territorial</h3>
               <p class="text-gray-700 mb-0">Vallas, lonas y soportes publicitarios georreferenciados, con estados y aprobaciones.</p>
@@ -177,7 +177,7 @@
           <div class="card card-flush h-100 border">
             <div class="card-body">
               <span class="feature-icon-wrap bg-light-warning mb-4">
-                <i class="ki-outline ki-calendar-tick fs-2x text-warning"></i>
+                <i data-lucide="calendar-check" class="fs-2x text-warning"></i>
               </span>
               <h3 class="fs-4 fw-bolder text-dark mb-2">Agenda política</h3>
               <p class="text-gray-700 mb-0">Eventos, asistencias y compromisos del candidato y su equipo, con visibilidad por rol.</p>
@@ -189,7 +189,7 @@
           <div class="card card-flush h-100 border">
             <div class="card-body">
               <span class="feature-icon-wrap bg-light-info mb-4">
-                <i class="ki-outline ki-chart-simple fs-2x text-info"></i>
+                <i data-lucide="bar-chart-3" class="fs-2x text-info"></i>
               </span>
               <h3 class="fs-4 fw-bolder text-dark mb-2">Levantamientos</h3>
               <p class="text-gray-700 mb-0">Encuestas territoriales y resultados agregados para tomar decisiones con datos.</p>
@@ -212,7 +212,7 @@
         </div>
         <div class="col-lg-4 text-lg-end">
           <a href="#contacto" class="btn btn-primary fw-bold">
-            <i class="ki-outline ki-message-text-2 fs-3"></i>Solicitar acceso
+            <i data-lucide="message-square" class="fs-3"></i>Solicitar acceso
           </a>
         </div>
       </div>

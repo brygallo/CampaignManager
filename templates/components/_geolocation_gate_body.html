@@ -1,0 +1,111 @@
+{# Estado: pre-aviso #}
+<div data-gate-state="prompt">
+  <div class="alert alert-light-primary border border-primary border-opacity-25 d-flex align-items-start gap-3 mb-4 py-3">
+    <i data-lucide="shield-check" class="fs-2 text-primary mt-1"></i>
+    <div class="fs-7 text-gray-700">
+      Solo te lo pedirá una vez. Tu navegador mostrará una ventana para autorizar el acceso.
+    </div>
+  </div>
+  <div class="d-grid gap-2">
+    <button type="button" class="btn btn-primary fw-bold d-flex align-items-center justify-content-center gap-2" data-gate-activate>
+      <i data-lucide="map-pin" class="fs-3"></i>
+      Activar ubicación
+    </button>
+    <button type="button" class="btn btn-light fw-semibold" data-gate-close>
+      Continuar sin ubicación
+    </button>
+  </div>
+</div>
+
+{# Estado: cargando #}
+<div data-gate-state="loading" hidden>
+  <div class="d-flex flex-column align-items-center justify-content-center py-5 gap-3">
+    <span class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Esperando…</span>
+    </span>
+    <div class="fs-7 text-muted">Esperando que autorices la ubicación en tu navegador…</div>
+  </div>
+</div>
+
+{# Estado: denegado — instrucciones por plataforma #}
+<div data-gate-state="denied" hidden>
+  <div class="alert alert-light-danger border border-danger border-opacity-25 d-flex align-items-start gap-3 mb-4 py-3">
+    <i data-lucide="shield-x" class="fs-2 text-danger mt-1"></i>
+    <div class="fs-7 text-gray-700">
+      Tu navegador bloqueó el acceso a la ubicación. Para reactivarlo
+      sigue estos pasos:
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <span class="badge badge-light text-uppercase fw-bold fs-9 letter-spacing-1" data-gate-device>
+      Tu dispositivo
+    </span>
+  </div>
+
+  <ol class="ps-4 mb-4 fs-7 text-gray-800 lh-lg" data-gate-instructions></ol>
+
+  <div class="d-grid gap-2">
+    <button type="button" class="btn btn-primary fw-bold d-flex align-items-center justify-content-center gap-2" data-gate-retry>
+      <i data-lucide="rotate-cw" class="fs-3"></i>
+      Reintentar
+    </button>
+    <button type="button" class="btn btn-light fw-semibold" data-gate-close>
+      Continuar sin ubicación
+    </button>
+  </div>
+</div>
+
+{# Estado: timeout / error transitorio #}
+<div data-gate-state="timeout" hidden>
+  <div class="alert alert-light-warning border border-warning border-opacity-25 d-flex align-items-start gap-3 mb-4 py-3">
+    <i data-lucide="clock" class="fs-2 text-warning mt-1"></i>
+    <div class="fs-7 text-gray-700">
+      No pudimos obtener tu ubicación. Verifica que el GPS esté
+      activo y vuelve a intentar.
+    </div>
+  </div>
+  <div class="d-grid gap-2">
+    <button type="button" class="btn btn-primary fw-bold d-flex align-items-center justify-content-center gap-2" data-gate-retry>
+      <i data-lucide="rotate-cw" class="fs-3"></i>
+      Reintentar
+    </button>
+    <button type="button" class="btn btn-light fw-semibold" data-gate-close>
+      Continuar sin ubicación
+    </button>
+  </div>
+</div>
+
+{# Estado: HTTPS requerido #}
+<div data-gate-state="insecure" hidden>
+  <div class="alert alert-light-danger border border-danger border-opacity-25 d-flex align-items-start gap-3 mb-4 py-3">
+    <i data-lucide="info" class="fs-2 text-danger mt-1"></i>
+    <div class="fs-7 text-gray-700">
+      Esta página no se está sirviendo por <strong>HTTPS</strong>.
+      Los navegadores solo permiten acceder a la ubicación en
+      conexiones seguras. Pide a tu administrador que active HTTPS
+      o accede desde la URL segura del sistema.
+    </div>
+  </div>
+  <div class="d-grid gap-2">
+    <button type="button" class="btn btn-light fw-semibold" data-gate-close>
+      Continuar sin ubicación
+    </button>
+  </div>
+</div>
+
+{# Estado: navegador no soporta geolocation #}
+<div data-gate-state="unsupported" hidden>
+  <div class="alert alert-light-warning border border-warning border-opacity-25 d-flex align-items-start gap-3 mb-4 py-3">
+    <i data-lucide="info" class="fs-2 text-warning mt-1"></i>
+    <div class="fs-7 text-gray-700">
+      Tu navegador no permite acceder a la ubicación. Actualiza el
+      navegador o usa Chrome / Safari / Firefox / Edge recientes.
+    </div>
+  </div>
+  <div class="d-grid gap-2">
+    <button type="button" class="btn btn-light fw-semibold" data-gate-close>
+      Continuar sin ubicación
+    </button>
+  </div>
+</div>

@@ -91,6 +91,7 @@ _KEENICON_TO_LUCIDE = {
     "row-horizontal":       "rows-3",
     "screen":               "monitor",
     "send":                 "send",
+    "setting-2":            "settings",
     "setting-3":            "settings",
     "setting-4":            "sliders-horizontal",
     "shield-cross":         "shield-x",

@@ -2,9 +2,10 @@
 
 from superadmin.decorators import register
 
-from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin
+from core.audit import AuditContextMixin
+from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin, ProtectedDeleteMixin
 from core.form_mixins import SaveOptionsMixin
-from core.list_mixins import DropdownFilterMixin
+from core.list_mixins import DropdownFilterMixin, OrderingMixin
 from core.map_mixins import MapAjaxCreateMixin, MapInitialLocationMixin
 
 from .forms import (
@@ -65,7 +66,7 @@ class CompetitorDetectionOwnershipMixin:
 @register("field_surveys.SurveySupportLevel")
 class SurveySupportLevelSite(BaseSite):
     form_class = SurveySupportLevelForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("code", "name", "color", "order", "is_active:Activo")
     detail_fields = SurveySupportLevelForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
@@ -75,7 +76,7 @@ class SurveySupportLevelSite(BaseSite):
 @register("field_surveys.SurveyAdvertisingResponse")
 class SurveyAdvertisingResponseSite(BaseSite):
     form_class = SurveyAdvertisingResponseForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("code", "name", "color", "order", "is_active:Activo")
     detail_fields = SurveyAdvertisingResponseForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
@@ -85,7 +86,7 @@ class SurveyAdvertisingResponseSite(BaseSite):
 @register("field_surveys.AdvertisingType")
 class AdvertisingTypeSite(BaseSite):
     form_class = AdvertisingTypeForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("code", "name", "icon", "order", "is_active:Activo")
     detail_fields = AdvertisingTypeForm.Meta.fieldsets
     search_params = ("code__icontains", "name__icontains")
@@ -95,7 +96,7 @@ class AdvertisingTypeSite(BaseSite):
 @register("field_surveys.Competitor")
 class CompetitorSite(BaseSite):
     form_class = CompetitorForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = (
         "campaign",
         "list_number",
@@ -116,16 +117,16 @@ class CompetitorSite(BaseSite):
 class FieldSurveySite(BaseSite):
     form_class = FieldSurveyForm
     list_template_name = "field_surveys/fieldsurvey_list.html"
-    list_mixins = (FieldSurveyOwnershipMixin, DropdownFilterMixin)
+    list_mixins = (FieldSurveyOwnershipMixin, OrderingMixin, DropdownFilterMixin)
     create_mixins = (
         FieldSurveyMapInitialLocationMixin,
         FieldSurveyMapAjaxCreateMixin,
         BrigadierAutoAssignMixin,
         SaveOptionsMixin,
     )
-    detail_mixins = (FieldSurveyOwnershipMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
+    detail_mixins = (FieldSurveyOwnershipMixin, AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
     update_mixins = (FieldSurveyOwnershipMixin, BrigadierAutoAssignMixin)
-    delete_mixins = (FieldSurveyOwnershipMixin,)
+    delete_mixins = (FieldSurveyOwnershipMixin, ProtectedDeleteMixin)
 
     always_visible_fieldsets = (
         "Campaña y ubicación",
@@ -153,7 +154,11 @@ class FieldSurveySite(BaseSite):
             ("notes",),
         ),
     }
-    search_params = ("campaign__name__icontains", "brigadier__username__icontains")
+    search_params = (
+        "campaign__name__icontains",
+        "brigadier__username__icontains",
+        "notes__icontains",
+    )
     filter_fields = (
         "campaign:Campaña",
         "brigadier:Brigadista",
@@ -168,16 +173,16 @@ class FieldSurveySite(BaseSite):
 class CompetitorAdvertisingDetectionSite(BaseSite):
     form_class = CompetitorAdvertisingDetectionForm
     list_template_name = "field_surveys/competitordetection_list.html"
-    list_mixins = (CompetitorDetectionOwnershipMixin, DropdownFilterMixin)
+    list_mixins = (CompetitorDetectionOwnershipMixin, OrderingMixin, DropdownFilterMixin)
     create_mixins = (
         FieldSurveyMapInitialLocationMixin,
         CompetitorDetectionMapAjaxCreateMixin,
         BrigadierAutoAssignMixin,
         SaveOptionsMixin,
     )
-    detail_mixins = (CompetitorDetectionOwnershipMixin, DetailMapsMixin)
+    detail_mixins = (CompetitorDetectionOwnershipMixin, AuditContextMixin, DetailMapsMixin)
     update_mixins = (CompetitorDetectionOwnershipMixin, BrigadierAutoAssignMixin)
-    delete_mixins = (CompetitorDetectionOwnershipMixin,)
+    delete_mixins = (CompetitorDetectionOwnershipMixin, ProtectedDeleteMixin)
     list_fields = ("campaign", "competitor", "brigadier", "advertising_type", "created_date:Fecha")
     detail_fields = {
         "Competencia": (

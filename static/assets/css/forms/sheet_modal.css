@@ -22,10 +22,14 @@
   text-align: center;
   padding: 1.75rem 1.5rem 1rem;
   background: linear-gradient(135deg, #eef4ff 0%, #f3eaff 100%);
+  position: relative;
 }
 .cm-sheet-modal__hero[data-tone="warning"] { background: linear-gradient(135deg, #fff4e0 0%, #ffe9e0 100%); }
 .cm-sheet-modal__hero[data-tone="danger"]  { background: linear-gradient(135deg, #ffe2e2 0%, #ffd3d3 100%); }
 .cm-sheet-modal__hero[data-tone="success"] { background: linear-gradient(135deg, #e0f7ec 0%, #d4f4e0 100%); }
+
+/* Hero "lg" — variante reforzada para gates de permisos. */
+.cm-sheet-modal__hero--lg { padding: 2rem 1.5rem 1.25rem; }
 
 .cm-sheet-modal__icon {
   width: 65px;
@@ -36,6 +40,7 @@
   margin-bottom: 0.75rem;
   position: relative;
 }
+.cm-sheet-modal__hero--lg .cm-sheet-modal__icon { width: 80px; height: 80px; margin-bottom: 1rem; }
 .cm-sheet-modal__icon::before,
 .cm-sheet-modal__icon::after {
   content: "";
@@ -47,21 +52,78 @@
   pointer-events: none;
 }
 .cm-sheet-modal__icon::after { animation-delay: 1.2s; }
+
+/* Pulso por tono: el color del anillo refleja el tono semántico del hero. */
+.cm-sheet-modal__hero[data-tone="warning"] .cm-sheet-modal__icon::before,
+.cm-sheet-modal__hero[data-tone="warning"] .cm-sheet-modal__icon::after { border-color: rgba(255, 199, 0, 0.45); }
+.cm-sheet-modal__hero[data-tone="danger"]  .cm-sheet-modal__icon::before,
+.cm-sheet-modal__hero[data-tone="danger"]  .cm-sheet-modal__icon::after { border-color: rgba(241, 65, 108, 0.45); }
+.cm-sheet-modal__hero[data-tone="success"] .cm-sheet-modal__icon::before,
+.cm-sheet-modal__hero[data-tone="success"] .cm-sheet-modal__icon::after { border-color: rgba(80, 205, 137, 0.45); }
+
+/* Tipografía del hero: layout consistente entre variantes choice/confirm/gate. */
+.cm-sheet-modal__title {
+  font-size: 1.15rem;
+  line-height: 1.3;
+  margin: 0 0 0.25rem;
+  color: var(--bs-gray-900);
+}
+.cm-sheet-modal__hero--lg .cm-sheet-modal__title { font-size: 1.35rem; }
+.cm-sheet-modal__subtitle {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  max-width: 36rem;
+}
+
+/* Botón cerrar dentro del hero — esquina superior derecha, 44x44 táctil. */
+.cm-sheet-modal__close {
+  position: absolute !important;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 3;
+  min-width: 44px;
+  min-height: 44px;
+  background-position: center;
+  border-radius: 999px;
+}
+
 @keyframes cm-sheet-pulse {
   0%   { transform: scale(0.7); opacity: 0.7; }
   100% { transform: scale(1.6); opacity: 0;   }
 }
 
+/* Reduce motion: respect user preference. */
+@media (prefers-reduced-motion: reduce) {
+  .cm-sheet-modal__icon::before,
+  .cm-sheet-modal__icon::after { animation: none !important; }
+  .cm-sheet-modal .modal-dialog,
+  .cm-sheet-modal .modal-content { transition-duration: 1ms !important; }
+}
+
 /* ===== Handle (la línea arriba que se clickea) ====================== */
+/* Especificidad alta + !important porque Bootstrap aplica padding
+   propio a los <button> que sobreescribe el nuestro. */
+.cm-sheet-modal .cm-sheet-modal__handle,
 .cm-sheet-modal__handle {
   display: none; /* Solo visible en modo bottom-sheet (mobile). */
   width: 100%;
   background: transparent;
   border: 0;
-  padding: 10px 0 6px;
-  cursor: pointer;
+  /* Padding lateral aleja la zona de drag del btn-close de la esquina.
+     Pixels absolutos porque el proyecto usa html { font-size: 12px } y
+     4rem solo daría 48px (insuficiente para alejar del btn-close 44x44). */
+  padding: 10px 64px 6px !important;
+  cursor: grab;
   flex: 0 0 auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Por encima de tooltips de Leaflet (z-index 700) que a veces
+     sobresalen del map al renderizar pines cercanos al borde. */
+  position: relative;
+  z-index: 4;
 }
+.cm-sheet-modal__handle:active { cursor: grabbing; }
 .cm-sheet-modal__grip {
   display: block;
   width: 44px;
@@ -71,7 +133,15 @@
   border-radius: 999px;
   transition: background 200ms ease, width 200ms ease;
 }
-.cm-sheet-modal__handle:hover .cm-sheet-modal__grip,
+/* Hover: solo en dispositivos con cursor real, no touch (en touch el
+   estado :hover se queda pegado tras el tap). */
+@media (hover: hover) {
+  .cm-sheet-modal__handle:hover .cm-sheet-modal__grip,
+  .cm-sheet-modal__handle:focus-visible .cm-sheet-modal__grip {
+    background: rgba(0, 0, 0, 0.45);
+    width: 56px;
+  }
+}
 .cm-sheet-modal__handle:focus-visible .cm-sheet-modal__grip {
   background: rgba(0, 0, 0, 0.45);
   width: 56px;
@@ -104,23 +174,58 @@
     width: 100%;
     border-radius: 18px 18px 0 0;
     border: none;
-    box-shadow: 0 -8px 28px rgba(60, 64, 67, 0.25);
+    /* Sombra elevada estilo iOS: capa larga difusa + capa corta nítida. */
+    box-shadow:
+      0 -12px 32px -8px rgba(0, 0, 0, 0.18),
+      0 -2px 6px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     /* Estado por defecto: peek (más escondido, estilo Google Maps). */
     height: 40dvh;
     max-height: 40dvh;
-    transition: height 320ms cubic-bezier(0.4, 0, 0.2, 1),
-                max-height 320ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      height 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      max-height 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
     padding-bottom: env(safe-area-inset-bottom);
     display: flex;
     flex-direction: column;
+    /* Live-drag offset escrito por sheet_modal.js durante el gesto. */
+    transform: translateY(var(--cm-sheet-drag, 0px));
   }
 
-  /* Estado expandido: full screen sheet. */
+  /* Mientras el usuario arrastra desactivamos la transición para que el
+     sheet siga al dedo en tiempo real. JS añade .is-dragging. */
+  .cm-sheet-modal.is-dragging .modal-content { transition: none !important; }
+
+  /* Estado expandido: full screen sheet. La altura se adapta al
+     contenido (max 95dvh) para que modales con contenido corto no
+     muestren un inmenso espacio en blanco abajo. Sin min-height: el
+     modal solo ocupa lo que necesita. */
   .cm-sheet-modal.is-full .modal-content {
-    height: 95dvh;
+    height: auto;
     max-height: 95dvh;
   }
+
+  /* Auto-expand al enfocar input/textarea/select. */
+  .cm-sheet-modal:has(:is(input, textarea, select):focus) .modal-content {
+    height: auto;
+    max-height: 95dvh;
+  }
+
+  /* Backdrop estilo iOS cuando hay un sheet abierto: blur + opacidad
+     más alta para que el contenido detrás no compita visualmente. */
+  body:has(.cm-sheet-modal.show) .modal-backdrop.show {
+    --bs-backdrop-opacity: 0.55;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* Asegurar que el sheet queda por encima de overlays de Leaflet
+     (tooltips z-index 700, popups 800) que a veces sobresalen del
+     map container al hacer scroll o por marker pane. Bootstrap modal
+     ya tiene 1055 pero forzamos por consistencia. */
+  .cm-sheet-modal { z-index: 1060; }
+  .cm-sheet-modal .modal-content { z-index: 2; }
 
   /* ===== Estilo hero para modal-header de los map modals ============
      Cuando un cm-sheet-modal usa modal-header (no cm-sheet-modal__hero),
@@ -169,22 +274,71 @@
     font-size: 1.75rem !important;
   }
 
-  /* Título un poco más grande, centrado. */
+  /* Título un poco más grande, centrado. Padding lateral en px absolutos
+     (el proyecto tiene html { font-size: 12px }, así que 2.5rem = 30px,
+     insuficiente para liberar el btn-close de 44px en la esquina). */
   .cm-sheet-modal .modal-header .modal-title {
     font-size: 1.15rem !important;
     font-weight: 700 !important;
     margin-top: 0.25rem;
+    padding-right: 48px !important;
+    padding-left: 48px !important;
+    line-height: 1.3;
   }
 
-  /* Botón cerrar a la esquina. */
+  /* Botón cerrar a la esquina con touch target accesible (44x44 según
+     Apple HIG / WCAG 2.5.5). */
   .cm-sheet-modal .modal-header .btn-close {
     position: absolute !important;
-    top: 0.75rem !important;
-    right: 0.75rem !important;
+    top: 0.5rem !important;
+    right: 0.5rem !important;
     z-index: 3;
+    min-width: 44px;
+    min-height: 44px;
+    background-position: center;
+    border-radius: 999px;
   }
 
-  /* Mostramos el handle clickeable solo cuando estamos en sheet mode. */
+  /* Pulse animation también para el símbolo del modal-header (no solo
+     para el __hero del gate), así los modales de detail/form/elección
+     se ven igual de animados que el gate. */
+  .cm-sheet-modal .modal-header .symbol .symbol-label {
+    position: relative;
+    overflow: visible;
+  }
+  .cm-sheet-modal .modal-header .symbol .symbol-label::before,
+  .cm-sheet-modal .modal-header .symbol .symbol-label::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(62, 151, 255, 0.4);
+    animation: cm-sheet-pulse 2.4s ease-out infinite;
+    pointer-events: none;
+  }
+  .cm-sheet-modal .modal-header .symbol .symbol-label::after {
+    animation-delay: 1.2s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cm-sheet-modal .modal-header .symbol .symbol-label::before,
+    .cm-sheet-modal .modal-header .symbol .symbol-label::after {
+      animation: none !important;
+    }
+  }
+
+  /* Imágenes / placeholders del image-input no deben salirse del
+     contenedor en mobile (problema visto en field_surveys detail). */
+  .cm-sheet-modal .modal-body img,
+  .cm-sheet-modal .modal-body .image-input,
+  .cm-sheet-modal .modal-body .image-input__preview {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Mostramos el handle clickeable solo cuando estamos en sheet mode.
+     Usamos la misma especificidad doble que la regla global (línea ~66)
+     para evitar que el `display: none` global gane en cascade. */
+  .cm-sheet-modal .cm-sheet-modal__handle,
   .cm-sheet-modal__handle {
     display: block;
   }
@@ -193,7 +347,13 @@
     flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* Evita que el scroll del body propague al <body> de la página
+       (anti-bounce iOS / pull-to-refresh accidental). */
+    overscroll-behavior: contain;
   }
+
+  /* Caso especial: PDF preview en mobile. Body con iframe full-height. */
+  .cm-sheet-modal-pdf .modal-body { height: 100% !important; }
 
   /* Aire entre el hero/header y el contenido del body. Sobreescribe
      pt-0 que algunos modales tenían pegado al header. */
@@ -220,5 +380,174 @@
     -webkit-backdrop-filter: blur(8px);
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     flex: 0 0 auto;
+    /* Border-top sutil — solo visible cuando hay scroll real bajo el
+       footer; cuando el contenido cabe entero se ve casi invisible. */
+    border-top-color: rgba(0, 0, 0, 0.06) !important;
   }
 }
+
+/* ===================================================================
+   Choice list (variant="choice")
+   Tarjetas grandes táctiles — pensado para "elegir tipo de registro"
+   en los modales de los mapas (visita / competencia / publicidad…).
+   =================================================================== */
+.cm-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cm-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  min-height: 72px;
+  background: var(--bs-gray-100, #f9f9f9);
+  border: 1px solid var(--bs-gray-200, #f1f1f2);
+  border-radius: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  width: 100%;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.cm-choice-card:focus-visible {
+  outline: 2px solid var(--bs-primary, #3e97ff);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .cm-choice-card:hover {
+    background: var(--bs-light-primary, #eef6ff);
+    border-color: var(--bs-primary, #3e97ff);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px -8px rgba(62, 151, 255, 0.4);
+  }
+}
+.cm-choice-card:active { transform: translateY(0); }
+
+.cm-choice-card[data-tone="warning"]:focus-visible { outline-color: var(--bs-warning, #ffc700); }
+.cm-choice-card[data-tone="danger"]:focus-visible  { outline-color: var(--bs-danger, #f1416c); }
+.cm-choice-card[data-tone="success"]:focus-visible { outline-color: var(--bs-success, #50cd89); }
+@media (hover: hover) {
+  .cm-choice-card[data-tone="warning"]:hover { background: #fff8e6; border-color: var(--bs-warning, #ffc700); box-shadow: 0 4px 14px -8px rgba(255, 199, 0, 0.4); }
+  .cm-choice-card[data-tone="danger"]:hover  { background: #fff0f3; border-color: var(--bs-danger, #f1416c);  box-shadow: 0 4px 14px -8px rgba(241, 65, 108, 0.4); }
+  .cm-choice-card[data-tone="success"]:hover { background: #e8faf2; border-color: var(--bs-success, #50cd89); box-shadow: 0 4px 14px -8px rgba(80, 205, 137, 0.4); }
+}
+
+.cm-choice-card__icon {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.cm-choice-card__body { flex: 1 1 auto; min-width: 0; }
+.cm-choice-card__title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--bs-gray-900, #071437);
+  margin: 0;
+  line-height: 1.3;
+}
+.cm-choice-card__desc {
+  font-size: 0.85rem;
+  color: var(--bs-gray-700, #4b5675);
+  margin: 2px 0 0;
+  line-height: 1.35;
+}
+.cm-choice-card__chevron {
+  flex: 0 0 auto;
+  color: var(--bs-gray-500, #99a1b7);
+  display: flex;
+  align-items: center;
+}
+
+/* ===================================================================
+   Skeleton placeholder (usado en variant="form" mientras carga el AJAX)
+   =================================================================== */
+.cm-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bs-gray-200, #f1f1f2) 25%,
+    var(--bs-gray-300, #dbdfe9) 50%,
+    var(--bs-gray-200, #f1f1f2) 75%
+  );
+  background-size: 200% 100%;
+  animation: cm-skeleton-shimmer 1.4s infinite linear;
+  border-radius: 0.5rem;
+  display: block;
+}
+.cm-skeleton + .cm-skeleton { margin-top: 0.75rem; }
+.cm-skeleton--title  { height: 1.5rem; width: 60%; }
+.cm-skeleton--label  { height: 0.85rem; width: 35%; }
+.cm-skeleton--input  { height: 2.5rem; width: 100%; border-radius: 0.65rem; }
+.cm-skeleton--block  { height: 6rem; width: 100%; }
+.cm-skeleton--button { height: 2.25rem; width: 8rem; border-radius: 0.65rem; }
+
+@keyframes cm-skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ===================================================================
+   Tone variants para el pulso del symbol del modal-header
+   (variant="form" / "detail"). Hoy el pulse del header es siempre azul;
+   con [data-tone] ahora respeta el tono semántico.
+   =================================================================== */
+.cm-sheet-modal .modal-header .symbol[data-tone="warning"] .symbol-label::before,
+.cm-sheet-modal .modal-header .symbol[data-tone="warning"] .symbol-label::after {
+  border-color: rgba(255, 199, 0, 0.45);
+}
+.cm-sheet-modal .modal-header .symbol[data-tone="danger"] .symbol-label::before,
+.cm-sheet-modal .modal-header .symbol[data-tone="danger"] .symbol-label::after {
+  border-color: rgba(241, 65, 108, 0.45);
+}
+.cm-sheet-modal .modal-header .symbol[data-tone="success"] .symbol-label::before,
+.cm-sheet-modal .modal-header .symbol[data-tone="success"] .symbol-label::after {
+  border-color: rgba(80, 205, 137, 0.45);
+}
+
+/* ===================================================================
+   Status chip slot inside the detail header (sits under the title).
+   =================================================================== */
+.cm-sheet-modal__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+/* ===================================================================
+   Command palette — limita el ancho máximo a 640px (estaba inline
+   en el template antes de migrar al partial).
+   =================================================================== */
+.cm-command-palette__dialog { max-width: 640px; }
+.cm-command-palette .modal-content { overflow: hidden; }
+
+/* ===================================================================
+   Reduced motion — cubre TODAS las variantes (hero, header symbol,
+   choice cards, skeletons). El bloque histórico de líneas 56-61 solo
+   cubría el hero original; ampliar a las nuevas superficies.
+   =================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .cm-sheet-modal .modal-header .symbol .symbol-label::before,
+  .cm-sheet-modal .modal-header .symbol .symbol-label::after {
+    animation: none !important;
+  }
+  .cm-skeleton { animation: none !important; }
+  .cm-choice-card { transition: none !important; }
+  .cm-choice-card:hover { transform: none !important; }
+}
+

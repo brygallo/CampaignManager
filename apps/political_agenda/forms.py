@@ -79,8 +79,8 @@ class PoliticalAgendaRequestForm(ModelForm):
                 attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "AgendaEventType"},
             ),
             "priority": Select2Widget(attrs={"data-minimum-input-length": 0}),
-            "proposed_start_at": forms.DateTimeInput(),
-            "proposed_end_at": forms.DateTimeInput(),
+            "proposed_start_at": forms.DateTimeInput(format="%Y-%m-%d %H:%M"),
+            "proposed_end_at": forms.DateTimeInput(format="%Y-%m-%d %H:%M"),
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),
         }
@@ -152,8 +152,8 @@ class PoliticalAgendaEventForm(ModelForm):
                 max_results=100,
                 attrs={"data-minimum-input-length": 0, "data-app": "political_agenda", "data-model": "PoliticalAgendaRequest"},
             ),
-            "start_at": forms.DateTimeInput(),
-            "end_at": forms.DateTimeInput(),
+            "start_at": forms.DateTimeInput(format="%Y-%m-%d %H:%M"),
+            "end_at": forms.DateTimeInput(format="%Y-%m-%d %H:%M"),
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),
         }

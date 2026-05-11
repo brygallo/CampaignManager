@@ -1,0 +1,25 @@
+<div class="modal-header py-2 px-4 border-0 bg-light">
+  <div class="d-flex align-items-center w-100">
+    <i data-lucide="search" class="fs-2 text-muted me-3"></i>
+    <input type="search"
+           id="cm-palette-input"
+           class="form-control form-control-flush border-0 bg-transparent fs-5"
+           placeholder="Saltar a, crear o buscar…"
+           aria-label="Buscar comando o sección"
+           autocomplete="off"
+           enterkeyhint="go">
+    <kbd class="d-none d-md-inline-block fs-9 text-muted" aria-hidden="true">Esc</kbd>
+  </div>
+  <h2 class="visually-hidden" id="cm-palette-title">Paleta de comandos</h2>
+</div>
+<div class="cm-palette-results-host p-0">
+  <div id="cm-palette-results" class="overflow-auto" style="max-height: 60vh;" role="listbox" aria-label="Resultados"></div>
+</div>
+<div class="modal-footer py-2 px-3 border-top bg-light">
+  <div class="d-flex align-items-center gap-3 fs-8 text-muted w-100 flex-wrap">
+    <span class="d-flex align-items-center gap-1"><kbd class="bg-white border px-2 py-1 fs-9" aria-hidden="true">↑</kbd><kbd class="bg-white border px-2 py-1 fs-9" aria-hidden="true">↓</kbd> navegar</span>
+    <span class="d-flex align-items-center gap-1"><kbd class="bg-white border px-2 py-1 fs-9" aria-hidden="true">↵</kbd> abrir</span>
+    <span class="d-flex align-items-center gap-1"><kbd class="bg-white border px-2 py-1 fs-9" aria-hidden="true">Esc</kbd> cerrar</span>
+    <span class="ms-auto d-none d-md-inline">Tip: presiona <kbd class="bg-white border px-2 py-1 fs-9" aria-hidden="true">?</kbd> para ver atajos</span>
+  </div>
+</div>

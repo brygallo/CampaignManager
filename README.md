@@ -5,7 +5,7 @@ infrastructure pulled from the `sim` project. Reuses
 [`gmcm-django-superadmin`](https://pypi.org/project/gmcm-django-superadmin/)
 for declarative CRUD, [`gmcm-django-tracing`](https://pypi.org/project/gmcm-django-tracing/)
 for change auditing, [`django-fsm`](https://pypi.org/project/django-fsm/) for
-state transitions, and the **Maxton — Vertical Menu Light Theme** (Bootstrap
+state transitions, and **Metronic v8 (demo55, vertical menu)** (Bootstrap
 5.3.1) for the UI.
 
 UI strings are in Spanish; code comments are in English.
@@ -19,7 +19,7 @@ UI strings are in Spanish; code comments are in English.
 - **Redis 7** (cache only — no Celery/RabbitMQ)
 - **DRF 3.15** for the API layer
 - **django-fsm 2.8** + custom `apps/workflows` for state machines
-- **Bootstrap 5.3.1** + Maxton vertical-menu light theme
+- **Bootstrap 5.3.1** + Metronic v8 (demo55) vertical-menu light theme
 - File uploads: local filesystem (`media/`) — no S3/MinIO
 
 ---
@@ -36,7 +36,7 @@ CampaignManager/
 ├── core/
 │   ├── settings/{base,development,production,test}.py
 │   ├── urls.py · urls_public.py · wsgi.py · asgi.py
-│   ├── base.py                # BaseSite (Spanish URL suffixes + Maxton templates)
+│   ├── base.py                # BaseSite (Spanish URL suffixes + Metronic v8 templates)
 │   ├── audit.py               # AuditContextMixin + build_processed_traces
 │   ├── list_mixins.py         # DropdownFilterMixin, WorkflowStateFilterMixin
 │   ├── middleware.py          # TenantPathRoutingMiddleware
@@ -61,7 +61,7 @@ CampaignManager/
 │   ├── registration/login.html
 │   └── errors/{403,404,500}.html
 │
-└── static/                    # Maxton bundle (assets/, sass/, plugins/)
+└── static/                    # Metronic v8 (demo55) bundle (assets/, sass/, plugins/)
 ```
 
 Each Django app keeps its own `migrations/` directory (per-app, versioned in
@@ -73,7 +73,7 @@ git — no centralized `dbmigrations/`).
 
 - **Declarative CRUD**: register any model with `@register("app.Model")` on a
   `ModelSite` subclass and you instantly get list/create/update/detail/delete
-  pages with Maxton styling, breadcrumbs, pagination, search, filters and
+  pages with Metronic v8 styling, breadcrumbs, pagination, search, filters and
   permission checks.
 - **Auditing**: every model change (configured via `tracing.Rule`) is recorded
   as a `Trace` with user, IP, OS and a JSON diff. `AuditContextMixin` renders
@@ -201,7 +201,7 @@ python manage.py runserver
 | `port 8000 already in use` | Another dev server | Change to `8001:8000` |
 | `Pipfile.lock not found` | Stale Docker layer | `docker compose build --no-cache app` |
 | CSRF error on login | Cookie domain mismatch | Use `http://localhost:8000`, not `127.0.0.1` |
-| Static files 404 | `static/` directory empty | Make sure the Maxton bundle is at `static/assets/`, `static/sass/`, `static/plugins/` |
+| Static files 404 | `static/` directory empty | Make sure the Metronic v8 (demo55) bundle is at `static/assets/`, `static/sass/`, `static/plugins/` |
 
 ---
 

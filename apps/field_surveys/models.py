@@ -1,19 +1,22 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
-from core.fields import CompressedImageField
+from core.fields import ColorField, CompressedImageField
+from core.validators import (
+    LATITUDE_VALIDATORS,
+    LONGITUDE_VALIDATORS,
+    icon_name_validator,
+)
 
 
 class SurveySupportLevel(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
-    color = models.CharField(
+    color = ColorField(
         "Color",
-        max_length=7,
         blank=True,
         help_text="Hex #RRGGBB usado en mapas, dashboard y badges.",
     )
@@ -31,9 +34,8 @@ class SurveySupportLevel(BaseModel):
 class SurveyAdvertisingResponse(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
-    color = models.CharField(
+    color = ColorField(
         "Color",
-        max_length=7,
         blank=True,
         help_text="Hex #RRGGBB usado en mapas, dashboard y badges.",
     )
@@ -66,13 +68,13 @@ class FieldSurvey(BaseModel):
         "Latitud GPS",
         max_digits=9,
         decimal_places=6,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     longitude = models.DecimalField(
         "Longitud GPS",
         max_digits=9,
         decimal_places=6,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
     gps_accuracy = models.DecimalField(
         "Precisión GPS (m)", max_digits=8, decimal_places=2, null=True, blank=True
@@ -142,6 +144,7 @@ class AdvertisingType(BaseModel):
         max_length=60,
         default="element-12",
         help_text="Nombre del icono KeenIcons usado en mapas y vistas.",
+        validators=[icon_name_validator],
     )
     order = models.PositiveSmallIntegerField("Orden", default=0)
 
@@ -164,7 +167,7 @@ class Competitor(BaseModel):
     list_number = models.CharField("Lista", max_length=16)
     political_organization = models.CharField("Organización política", max_length=180)
     candidate_name = models.CharField("Candidato", max_length=180, blank=True)
-    color = models.CharField("Color", max_length=7, blank=True, help_text="Hex #RRGGBB")
+    color = ColorField("Color", blank=True, help_text="Hex #RRGGBB")
     notes = models.TextField("Notas", blank=True)
 
     class Meta:
@@ -220,13 +223,13 @@ class CompetitorAdvertisingDetection(BaseModel):
         "Latitud GPS",
         max_digits=9,
         decimal_places=6,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     longitude = models.DecimalField(
         "Longitud GPS",
         max_digits=9,
         decimal_places=6,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
     gps_accuracy = models.DecimalField(
         "Precisión GPS (m)", max_digits=8, decimal_places=2, null=True, blank=True

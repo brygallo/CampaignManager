@@ -1,8 +1,9 @@
 from superadmin.decorators import register
 
+from core.audit import AuditContextMixin
 from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin
 from core.form_mixins import SaveOptionsMixin
-from core.list_mixins import DropdownFilterMixin, WorkflowStateFilterMixin
+from core.list_mixins import DropdownFilterMixin, OrderingMixin, WorkflowStateFilterMixin
 from core.map_mixins import MapInitialLocationMixin
 
 from .forms import PoliticalAgendaEventForm, PoliticalAgendaRequestForm
@@ -104,9 +105,9 @@ class PoliticalAgendaRequestSite(BaseSite):
     form_class = PoliticalAgendaRequestForm
     list_template_name = "political_agenda/politicalagendarequest_list.html"
     detail_template_name = "political_agenda/politicalagendarequest_detail.html"
-    list_mixins = (WorkflowStateFilterMixin, DropdownFilterMixin)
+    list_mixins = (OrderingMixin, WorkflowStateFilterMixin, DropdownFilterMixin)
     create_mixins = (AgendaMapInitialLocationMixin, SaveOptionsMixin)
-    detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+    detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
     always_visible_fieldsets = (
         "Solicitud",
         "Solicitante",
@@ -185,12 +186,14 @@ class PoliticalAgendaEventSite(BaseSite):
     list_template_name = "political_agenda/politicalagendaevent_list.html"
     list_mixins = (
         AgendaEventVisibilityQuerysetMixin,
+        OrderingMixin,
         WorkflowStateFilterMixin,
         DropdownFilterMixin,
     )
     create_mixins = (PrefillEventFromRequestMixin, AgendaMapInitialLocationMixin, SaveOptionsMixin)
     detail_mixins = (
         AgendaEventVisibilityQuerysetMixin,
+        AuditContextMixin,
         HideEmptyFieldsetsMixin,
         DetailMapsMixin,
     )

@@ -45,6 +45,69 @@ def default_lookup_for_type(field_type):
     return DEFAULT_LOOKUP_BY_TYPE.get(field_type, "exact")
 
 
+class OrderingMixin:
+    """Honor ``?ordering=<field>`` in the URL so list sort is shareable.
+
+    Click on a column header sends the user to ``?ordering=<field>``; a second
+    click flips to ``?ordering=-<field>``. The queryset is reordered server
+    side, which means the order is the same regardless of pagination and the
+    URL can be bookmarked or shared.
+
+    To avoid leaking model internals via crafted URLs, the field name must
+    appear in either ``site.orderable_fields`` (explicit allowlist) or, by
+    default, in ``site.list_fields`` — the same columns the user sees. The
+    ``field:Label`` shorthand is supported: only the part before the colon
+    is matched against the request.
+    """
+
+    @staticmethod
+    def _strip_display_method(name):
+        """``get_<field>_display`` → ``<field>`` so state columns sort cleanly.
+
+        ``get_state_display`` etc. is the Django convention for rendering a
+        choices field's label. The user clicks the column to sort by the
+        underlying enum, so we translate before consulting the model.
+        """
+        if name.startswith("get_") and name.endswith("_display"):
+            return name[len("get_"):-len("_display")]
+        return name
+
+    def _orderable_fields(self):
+        site_obj = getattr(self, "site", None)
+        explicit = getattr(site_obj, "orderable_fields", None)
+        if explicit:
+            return {str(name) for name in explicit}
+        list_fields = getattr(site_obj, "list_fields", ()) or ()
+        return {self._strip_display_method(str(name).split(":", 1)[0]) for name in list_fields}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        ordering = (self.request.GET.get("ordering") or "").strip()
+        if not ordering:
+            return qs
+        field = ordering.lstrip("-")
+        if field not in self._orderable_fields():
+            return qs
+        return qs.order_by(ordering)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        ordering = (self.request.GET.get("ordering") or "").strip()
+        descending = ordering.startswith("-")
+        ordering_info = {
+            "current": ordering,
+            "field": ordering.lstrip("-"),
+            "direction": "desc" if descending else ("asc" if ordering else ""),
+            "orderable_fields": list(self._orderable_fields()),
+        }
+        site_ctx = context.get("site")
+        if isinstance(site_ctx, dict):
+            site_ctx["ordering"] = ordering_info
+        else:
+            context["site"] = {"ordering": ordering_info}
+        return context
+
+
 class DropdownFilterMixin:
     """Enrich ``site.filter_fields`` with rendering-ready options.
 

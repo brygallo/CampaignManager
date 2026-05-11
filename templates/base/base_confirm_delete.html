@@ -19,7 +19,7 @@
         {% if site.urls.list %}
           <li class="breadcrumb-item text-muted">
             <a href="{{ site.urls.list }}" class="text-muted text-hover-primary">
-              {% firstof site|verbose_name_plural site.model_name|title %}
+              {% firstof site|verbose_name_plural site.model_name|title as crumb_title %}{{ crumb_title|capfirst }}
             </a>
           </li>
           <li class="breadcrumb-item">

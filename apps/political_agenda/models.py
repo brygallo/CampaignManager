@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.safestring import mark_safe
 from django_fsm import FSMIntegerField
@@ -10,6 +9,12 @@ from apps.campaigns.models import Campaign
 from apps.political_agenda.transitions import (
     PoliticalAgendaEventTransitions,
     PoliticalAgendaRequestTransitions,
+)
+from core.fields import ColorField
+from core.validators import (
+    LATITUDE_VALIDATORS,
+    LONGITUDE_VALIDATORS,
+    icon_name_validator,
 )
 
 
@@ -22,9 +27,9 @@ class AgendaEventType(BaseModel):
     code = models.CharField("Código", max_length=40, unique=True)
     name = models.CharField("Nombre", max_length=120)
     order = models.PositiveSmallIntegerField("Orden", default=0)
-    color = models.CharField(
+    color = ColorField(
         "Color",
-        max_length=9,
+        max_length=9,  # preserved from prior CharField(max_length=9)
         default="#3e97ff",
         help_text="Hex #RRGGBB usado en el calendario y badges.",
     )
@@ -33,6 +38,7 @@ class AgendaEventType(BaseModel):
         max_length=60,
         default="calendar-tick",
         help_text="Nombre del ícono Keenicons (sin el prefijo ki-).",
+        validators=[icon_name_validator],
     )
 
     class Meta:
@@ -92,7 +98,7 @@ class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     longitude = models.DecimalField(
         "Longitud tentativa",
@@ -100,7 +106,7 @@ class PoliticalAgendaRequest(BaseModel, PoliticalAgendaRequestTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
 
     objective = models.TextField("Objetivo", blank=True)
@@ -192,7 +198,7 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     longitude = models.DecimalField(
         "Longitud",
@@ -200,7 +206,7 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
 
     is_public = models.BooleanField(

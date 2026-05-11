@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import UpdateView
 
-from .forms import EmailOrUsernameAuthenticationForm, UserPermissionForm
+from .forms import EmailOrUsernameAuthenticationForm, MyProfileEditForm, UserPermissionForm
 from .permissions import build_user_permission_context, resolve_posted_permissions
 
 User = get_user_model()
@@ -44,6 +44,9 @@ def _site_urls_for(model, instance, user=None):
     return get_urls_of_site(model_site, object=instance, user=user)
 
 
+REMEMBER_ME_AGE_SECONDS = 30 * 24 * 60 * 60  # 30 días
+
+
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def login_view(request):
@@ -52,6 +55,13 @@ def login_view(request):
     form = EmailOrUsernameAuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         auth_login(request, form.get_user())
+        # Honor the "Mantenerme conectado por 30 días" checkbox: when checked,
+        # extend the session cookie to 30 days; otherwise tie its lifetime to
+        # the browser session (expires when the user closes the browser).
+        if request.POST.get("remember"):
+            request.session.set_expiry(REMEMBER_ME_AGE_SECONDS)
+        else:
+            request.session.set_expiry(0)
         target = request.POST.get("next") or request.GET.get("next")
         return redirect(_safe_redirect_target(request, target))
     return render(request, "registration/login.html", {"form": form, "next": request.GET.get("next", "")})
@@ -65,7 +75,56 @@ def logout_view(request):
 
 @login_required
 def profile_view(request):
-    return render(request, "authentication/profile.html", {"profile": request.user.profile})
+    return render(
+        request,
+        "authentication/profile.html",
+        {
+            "profile": request.user.profile,
+            "page_title": "Mi perfil",
+            "breadcrumbs": [("Inicio", "/"), ("Mi perfil", None)],
+            "can_edit_full_profile": request.user.has_perm(
+                "authentication.change_full_own_profile"
+            ),
+        },
+    )
+
+
+@login_required
+def profile_edit_view(request):
+    """Self-service edit of the user's own profile.
+
+    Minimum mode (default): first/last name, alias, avatar.
+    Full mode (requires ``authentication.change_full_own_profile``):
+    also email, phone number, biography.
+    """
+    if request.method == "POST":
+        form = MyProfileEditForm(
+            request.POST,
+            request.FILES or None,
+            user=request.user,
+        )
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Tu perfil se actualizó correctamente.")
+            return redirect(reverse_lazy("authentication:profile"))
+    else:
+        form = MyProfileEditForm(user=request.user)
+
+    return render(
+        request,
+        "authentication/profile_edit.html",
+        {
+            "form": form,
+            "profile": getattr(request.user, "profile", None),
+            "page_title": "Editar mi perfil",
+            "breadcrumbs": [
+                ("Inicio", "/"),
+                ("Mi perfil", reverse_lazy("authentication:profile")),
+                ("Editar", None),
+            ],
+            "is_full_mode": form.full_mode,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

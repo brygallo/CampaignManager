@@ -14,6 +14,7 @@ class PoliticalAgendaRequestTransitions:
         field="state",
         source=workflow.PENDING,
         target=workflow.IN_REVIEW,
+        permission="political_agenda.change_politicalagendarequest",
         custom=dict(
             verbose="Enviar a revisión",
             icon="time",
@@ -66,6 +67,7 @@ class PoliticalAgendaRequestTransitions:
         field="state",
         source=[workflow.PENDING, workflow.IN_REVIEW, workflow.APPROVED],
         target=workflow.CANCELED,
+        permission="political_agenda.change_politicalagendarequest",
         custom=dict(
             verbose="Cancelar",
             icon="cross",
@@ -117,6 +119,7 @@ class PoliticalAgendaEventTransitions:
         field="state",
         source=[workflow.SCHEDULED, workflow.RESCHEDULED],
         target=workflow.CANCELED,
+        permission="political_agenda.schedule_politicalagendaevent",
         custom=dict(
             verbose="Cancelar",
             icon="cross",
@@ -132,6 +135,7 @@ class PoliticalAgendaEventTransitions:
         field="state",
         source=workflow.SCHEDULED,
         target=workflow.DONE,
+        permission="political_agenda.schedule_politicalagendaevent",
         custom=dict(
             verbose="Marcar realizado",
             icon="check-square",

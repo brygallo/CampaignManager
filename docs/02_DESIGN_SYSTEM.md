@@ -432,6 +432,128 @@ Las versiones compiladas inyectan en `:root`:
 
 ---
 
+## 12.5 Modales — sistema unificado (bottom-sheet móvil)
+
+Todos los modales del proyecto se construyen a través del partial
+`templates/base/_sheet_modal.html`, que provee el chasis común
+(handle drag, header/hero, body, footer sticky) y aplica las clases
+`cm-sheet-modal` para que `static/assets/js/forms/sheet_modal.js`
+inicialice automáticamente el comportamiento bottom-sheet en móvil
+(peek / full / swipe / haptic) — en desktop es un modal Bootstrap
+centrado normal.
+
+### API mínima
+
+```django
+{% include "base/_sheet_modal.html" with
+   modal_id="my-modal"
+   variant="form"        {# choice | form | detail | gate | confirm | bare #}
+   tone="primary"        {# primary | warning | danger | success #}
+   icon="pencil"         {# Lucide name (o KeenIcons con icon_lib="keenicons") #}
+   title="Editar registro"
+   subtitle="Actualiza los datos"
+   size="xl"             {# sm | md | lg | xl  -- default md #}
+   scrollable=True
+   backdrop_static=False {# True para acciones destructivas / gates #}
+   body_template="..._body.html"
+   footer_template="..._footer.html"
+%}
+```
+
+### Cuándo usar cada `variant`
+
+| Variant | Visual | Casos típicos |
+|---------|--------|----------------|
+| `choice` | Hero gradient + icono pulsante + cm-choice-list de tarjetas grandes | "Elegir tipo": qué registrar en el mapa, qué publicidad colocar |
+| `form` | Header sticky con icono + título/subtítulo + footer sticky con submit | Crear/editar registros (formularios largos) |
+| `detail` | Header sticky con icono + título truncate + chip de estado | Ver detalle de un pin/evento |
+| `gate` | Hero amplio (icon 80px) + CTA grande centrado | Permisos del navegador (GPS, cámara, notif.) |
+| `confirm` | Hero gradient + icono pulsante por tono | Confirmaciones destructivas/sensibles (registrar rechazo, etc.) |
+| `bare` | Sin header — el body controla todo | Lightbox, command palette, PDF preview |
+
+Para confirmaciones de **eliminar** seguir usando el modal específico
+`templates/base/_delete_modal.html` + atributos `data-cm-delete-*`
+en el botón trigger.
+
+### Hooks para JS dinámico
+
+Cuando el JS actualiza títulos/iconos del modal en runtime (p. ej. el
+modal de create de los mapas cambia entre "Visita / Competencia"),
+se pasan `*_attrs` al partial para inyectar atributos `data-*` que
+el JS pueda enganchar:
+
+```django
+{% include "base/_sheet_modal.html" with
+   modal_id="field-survey-create-modal"
+   variant="form"
+   icon="square-plus"
+   title="Nuevo registro"
+   title_attrs="data-create-title"      {# El JS hace querySelector("[data-create-title]") #}
+   subtitle_attrs="data-create-subtitle"
+   icon_attrs="data-create-icon"         {# Atributo en el <i> Lucide #}
+   icon_bg_attrs="data-create-icon-bg"   {# Atributo en el <span.symbol-label> #}
+   ...
+%}
+```
+
+### Loading state — skeleton
+
+Cuando el body se llena por AJAX, el `body_template` puede insertar
+placeholders animados `cm-skeleton`:
+
+```html
+<div class="cm-skeleton-host" data-cm-loading>
+  <div class="cm-skeleton cm-skeleton--label"></div>
+  <div class="cm-skeleton cm-skeleton--input"></div>
+  <div class="cm-skeleton cm-skeleton--block"></div>
+</div>
+```
+
+Cuando el fetch completa, el JS reemplaza el contenido y llama
+`window.cmSheetModal.focusFirstInput(modalEl)` para mover el foco al
+primer input del form recién renderizado.
+
+### Choice cards (`variant="choice"`)
+
+Patrón estándar para presentar opciones grandes táctiles en móvil:
+
+```html
+<div class="cm-choice-list" role="list">
+  <button type="button" class="cm-choice-card" data-tone="primary" data-action="visit" role="listitem">
+    <span class="cm-choice-card__icon">
+      <i data-lucide="home" class="text-primary fs-2x"></i>
+    </span>
+    <span class="cm-choice-card__body">
+      <span class="cm-choice-card__title">Visita / levantamiento</span>
+      <span class="cm-choice-card__desc">Registra una visita en este punto…</span>
+    </span>
+    <span class="cm-choice-card__chevron">
+      <i data-lucide="arrow-right" class="fs-2"></i>
+    </span>
+  </button>
+  …
+</div>
+```
+
+`data-tone="primary|warning|danger|success"` ajusta el color de hover/focus.
+
+### Reglas
+
+- **NO** generar markup de modal a mano (`<div class="modal fade …">`); siempre usar el partial. Excepciones documentadas: `_delete_modal.html` (legacy), `apps/insoles/templates/insoles/modal.html` y `templates/base/base_form.html` (el `<form>` envuelve body+footer, patrón Select2).
+- **NO** usar `<div data-bs-dismiss="modal">` — siempre `<button type="button">` (a11y).
+- **NO** usar KeenIcons en modales nuevos — preferir Lucide (`data-lucide="..."`). KeenIcons solo se mantiene en `_delete_modal.html` por retrocompat.
+- En móvil, los formularios largos (`size="xl"`) auto-expanden a `full` cuando un input recibe foco (CSS `:has(:focus)` + fallback JS).
+- Acciones destructivas → `backdrop_static=True` para evitar cierre accidental.
+
+### Ubicación de assets
+
+| Asset | Path |
+|-------|------|
+| Partial | `templates/base/_sheet_modal.html` |
+| CSS chasis | `static/assets/css/forms/sheet_modal.css` |
+| JS chasis | `static/assets/js/forms/sheet_modal.js` |
+| Delete legacy | `templates/base/_delete_modal.html` |
+
 ## 13. Referencias rápidas
 
 - Plantilla viva: `metronic_html_v8.2.0_demo55/demo55/dist/`

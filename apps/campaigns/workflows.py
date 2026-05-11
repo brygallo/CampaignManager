@@ -9,7 +9,7 @@ from apps.workflows import Workflow, WorkflowChoices
 
 class CampaignWorkflow(Workflow):
     class Choices(WorkflowChoices):
-        CANCELED = 0, "Anulada", dict(visible=False)
+        CANCELED = 0, "Anulada", dict(visible=False, read_only=True)
         DRAFT = 1, "Borrador"
         ACTIVE = 2, "Activa"
-        CLOSED = 3, "Cerrada"
+        CLOSED = 3, "Cerrada", dict(read_only=True)

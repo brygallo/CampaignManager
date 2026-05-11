@@ -27,7 +27,14 @@ class User(AbstractUser):
         verbose_name = "Usuario"
         verbose_name_plural = "Usuarios"
         ordering = ["last_name", "first_name", "username"]
-        permissions = (("view_profile", "Ver perfil de usuario"),)
+        permissions = (
+            ("view_profile", "Ver perfil de usuario"),
+            (
+                "change_full_own_profile",
+                "Puede editar la configuración completa de su propio perfil "
+                "(email, teléfono, biografía)",
+            ),
+        )
 
     def __str__(self):
         return self.get_full_name() or self.username

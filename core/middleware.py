@@ -22,6 +22,12 @@ from django.db import connection
 from django.urls import get_script_prefix, set_script_prefix
 from django_tenants.utils import get_public_schema_name, get_tenant_model
 
+# Importing this module is enough to install the multi-tenant patch on
+# ``tracing.middleware.TracingMiddleware`` (see the docstring there). Done
+# here because Django imports ``core.middleware`` before processing any
+# request, which guarantees the patch is in place before signals fire.
+from core import tracing_patches  # noqa: F401
+
 
 class TenantPathRoutingMiddleware:
     def __init__(self, get_response):

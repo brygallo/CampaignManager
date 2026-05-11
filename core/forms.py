@@ -110,7 +110,16 @@ class Select2ModelFormMixin:
         for field_name, config in self.get_select2_fields().items():
             if field_name not in self.fields:
                 continue
-            self.fields[field_name].widget = model_select2_widget(**config)
+            field = self.fields[field_name]
+            field.widget = model_select2_widget(**config)
+            # Re-bind the widget's ``choices`` to the field's iterator. Without
+            # this step ``ModelSelect2Widget.optgroups()`` cannot resolve the
+            # initial value on edit views — the form renders ``<select>`` with
+            # only the empty placeholder option, forcing the user to reassign
+            # the FK manually (BUG-CAMP-02). The choices iterator is what
+            # ``Field.__init__`` originally hands the widget, so we restore
+            # that pairing here.
+            field.widget.choices = field.choices
 
     def get_select2_fields(self):
         meta = getattr(self, "Meta", None)

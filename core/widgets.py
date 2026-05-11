@@ -3,6 +3,24 @@ from django import forms
 from django.utils.html import format_html
 
 
+class ColorPickerWidget(forms.TextInput):
+    """Marker widget used by the project's form template loader.
+
+    The actual rendering happens in ``templates/widgets/colorpickerinput.html``,
+    which the ``superadmin`` form templatetag picks up via the
+    ``"colorpicker"`` key in ``settings.TEMPLATE_WIDGETS`` (the key matches
+    Django's ``BoundField.widget_type`` — ``ColorPickerWidget`` → ``colorpicker``).
+    The template wraps a hex text input next to a native ``<input type="color">``
+    sibling and keeps both in sync via inline JS.
+    """
+
+    def __init__(self, attrs=None):
+        defaults = {"class": "form-control form-control-sm form-control-solid cm-color-picker"}
+        if attrs:
+            defaults.update(attrs)
+        super().__init__(attrs=defaults)
+
+
 class JsonWidget(forms.Textarea):
     """Textarea that signals JSON content to the frontend."""
 
@@ -83,10 +101,10 @@ class LeafletMapWidget(forms.Widget):
                  data-default-basemap="{}">
               <div class="leaflet-map-widget__toolbar">
                 <button type="button" class="btn btn-sm btn-light-primary" data-leaflet-current-location>
-                  <i class="ki-outline ki-geolocation fs-3"></i>Usar ubicación actual
+                  <i data-lucide="map-pin" class="fs-3"></i>Usar ubicación actual
                 </button>
                 <button type="button" class="btn btn-sm btn-light" data-leaflet-clear>
-                  <i class="ki-outline ki-cross fs-3"></i>Limpiar
+                  <i data-lucide="x" class="fs-3"></i>Limpiar
                 </button>
               </div>
               <div class="leaflet-map-widget__canvas"></div>

@@ -55,6 +55,17 @@ class CandidateForm(ModelForm):
 
 
 class CampaignForm(Select2ModelFormMixin, ModelForm):
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get("start_date")
+        end = cleaned.get("end_date")
+        if start and end and end < start:
+            self.add_error(
+                "end_date",
+                "La fecha de fin no puede ser anterior a la fecha de inicio.",
+            )
+        return cleaned
+
     class Meta:
         model = Campaign
         fieldsets = {

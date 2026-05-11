@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
@@ -8,6 +7,7 @@ from apps.campaigns.models import Campaign
 from apps.field_surveys.models import AdvertisingType
 from apps.territorial_ads.transitions import PhysicalAdTransitions
 from core.fields import CompressedImageField
+from core.validators import LATITUDE_VALIDATORS, LONGITUDE_VALIDATORS
 
 
 class AdvertisingCostType(BaseModel):
@@ -87,7 +87,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     offered_longitude = models.DecimalField(
         "Longitud referencial",
@@ -95,7 +95,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
     offered_photo = CompressedImageField(
         "Foto del lugar ofrecido",
@@ -156,7 +156,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     installed_longitude = models.DecimalField(
         "Longitud GPS instalación",
@@ -164,7 +164,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         decimal_places=6,
         null=True,
         blank=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
     installed_at = models.DateTimeField("Fecha/hora instalación", null=True, blank=True)
     installed_by = models.ForeignKey(
@@ -266,13 +266,13 @@ class AdvertisingRefusal(BaseModel):
         "Latitud",
         max_digits=9,
         decimal_places=6,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     longitude = models.DecimalField(
         "Longitud",
         max_digits=9,
         decimal_places=6,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
     reported_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

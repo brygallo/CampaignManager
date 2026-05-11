@@ -63,6 +63,12 @@ class PoliticalAgendaCalendarView(LoginRequiredMixin, PermissionRequiredMixin, T
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["page_title"] = "Calendario de agenda"
+        context["breadcrumbs"] = [
+            ("Inicio", "/"),
+            ("Agenda política", None),
+            ("Calendario", None),
+        ]
         context["campaigns"] = Campaign.objects.filter(is_active=True).order_by("name")
         context["event_types"] = AgendaEventType.objects.filter(is_active=True).order_by(
             "order", "name"

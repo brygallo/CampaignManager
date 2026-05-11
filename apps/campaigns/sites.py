@@ -1,8 +1,8 @@
 """Register campaign models in superadmin."""
 from superadmin.decorators import register
 
-from core.base import BaseSite
-from core.list_mixins import DropdownFilterMixin, WorkflowStateFilterMixin
+from core.base import BaseSite, BlockEditOnReadOnlyStateMixin
+from core.list_mixins import DropdownFilterMixin, OrderingMixin, WorkflowStateFilterMixin
 
 from .forms import (
     CampaignForm,
@@ -16,7 +16,7 @@ from .forms import (
 @register("campaigns.Election")
 class ElectionSite(BaseSite):
     form_class = ElectionForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("name", "election_date", "is_active:Activa")
     detail_fields = ElectionForm.Meta.fieldsets
     search_params = ("name__icontains",)
@@ -26,7 +26,7 @@ class ElectionSite(BaseSite):
 @register("campaigns.PoliticalMovement")
 class PoliticalMovementSite(BaseSite):
     form_class = PoliticalMovementForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("name", "acronym", "list_number", "is_active:Activo")
     detail_fields = PoliticalMovementForm.Meta.fieldsets
     search_params = ("name__icontains", "acronym__icontains")
@@ -36,7 +36,7 @@ class PoliticalMovementSite(BaseSite):
 @register("campaigns.Position")
 class PositionSite(BaseSite):
     form_class = PositionForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("name", "scope", "is_active:Activo")
     detail_fields = PositionForm.Meta.fieldsets
     search_params = ("name__icontains",)
@@ -46,7 +46,7 @@ class PositionSite(BaseSite):
 @register("campaigns.Candidate")
 class CandidateSite(BaseSite):
     form_class = CandidateForm
-    list_mixins = (DropdownFilterMixin,)
+    list_mixins = (OrderingMixin, DropdownFilterMixin)
     list_fields = ("full_name", "identification", "email", "phone", "is_active:Activo")
     detail_fields = CandidateForm.Meta.fieldsets
     search_params = (
@@ -60,7 +60,8 @@ class CandidateSite(BaseSite):
 @register("campaigns.Campaign")
 class CampaignSite(BaseSite):
     form_class = CampaignForm
-    list_mixins = (WorkflowStateFilterMixin, DropdownFilterMixin)
+    list_mixins = (OrderingMixin, WorkflowStateFilterMixin, DropdownFilterMixin)
+    update_mixins = (BlockEditOnReadOnlyStateMixin,)
     list_fields = (
         "name",
         "election",

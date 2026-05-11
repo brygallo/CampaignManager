@@ -1,8 +1,14 @@
 from superadmin.decorators import register
 
-from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin
+from core.audit import AuditContextMixin
+from core.base import (
+    BaseSite,
+    BlockEditOnReadOnlyStateMixin,
+    DetailMapsMixin,
+    HideEmptyFieldsetsMixin,
+)
 from core.form_mixins import SaveOptionsMixin
-from core.list_mixins import WorkflowStateFilterMixin
+from core.list_mixins import OrderingMixin, WorkflowStateFilterMixin
 from core.map_mixins import MapAjaxCreateMixin, MapInitialLocationMixin
 
 from .forms import AdvertisingRefusalForm, PhysicalAdvertisementForm
@@ -23,7 +29,7 @@ class PhysicalAdMapAjaxCreateMixin(MapAjaxCreateMixin):
 @register("territorial_ads.AdvertisingRefusal")
 class AdvertisingRefusalSite(BaseSite):
     form_class = AdvertisingRefusalForm
-    detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+    detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
 
     list_fields = (
         "id",
@@ -84,13 +90,14 @@ class PhysicalAdvertisementSite(BaseSite):
     form_class = PhysicalAdvertisementForm
     form_template_name = "territorial_ads/physicaladvertisement_form.html"
     list_template_name = "territorial_ads/physicaladvertisement_list.html"
-    list_mixins = (WorkflowStateFilterMixin,)
+    list_mixins = (OrderingMixin, WorkflowStateFilterMixin)
     create_mixins = (
         PhysicalAdMapInitialLocationMixin,
         PhysicalAdMapAjaxCreateMixin,
         SaveOptionsMixin,
     )
-    detail_mixins = (HideEmptyFieldsetsMixin, DetailMapsMixin)
+    update_mixins = (BlockEditOnReadOnlyStateMixin,)
+    detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
 
     always_visible_fieldsets = (
         "Publicidad",

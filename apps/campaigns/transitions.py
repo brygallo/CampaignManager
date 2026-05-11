@@ -25,6 +25,7 @@ class CampaignTransitions:
         field="state",
         source=workflow.DRAFT,
         target=workflow.ACTIVE,
+        permission="campaigns.change_campaign",
         custom=dict(
             verbose="Activar campaña",
             icon="rocket",
@@ -35,11 +36,30 @@ class CampaignTransitions:
     )
     def activate(self, **kwargs):
         """Draft -> Active."""
+        missing = [
+            label
+            for label, value in (
+                ("fecha de inicio", self.start_date),
+                ("fecha de fin", self.end_date),
+            )
+            if not value
+        ]
+        if missing:
+            raise WorkflowException(
+                "Para activar la campaña debes registrar "
+                + " y ".join(missing)
+                + "."
+            )
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise WorkflowException(
+                "La fecha de fin no puede ser anterior a la fecha de inicio."
+            )
 
     @transition(
         field="state",
         source=workflow.ACTIVE,
         target=workflow.CLOSED,
+        permission="campaigns.change_campaign",
         custom=dict(
             verbose="Cerrar campaña",
             icon="check-square",
@@ -64,6 +84,7 @@ class CampaignTransitions:
         field="state",
         source=[workflow.DRAFT, workflow.ACTIVE],
         target=workflow.CANCELED,
+        permission="campaigns.change_campaign",
         custom=dict(
             verbose="Anular",
             icon="cross",

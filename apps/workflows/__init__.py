@@ -23,6 +23,24 @@ def get_current_state(self, Choices):
             return member
 
 
+def is_state_read_only(self, Choices):
+    """``True`` when the instance's current workflow state forbids edits.
+
+    A state opts in by declaring ``dict(read_only=True)`` next to its label.
+    Lets list/detail templates show a "solo lectura" badge, lets the
+    ``BlockEditOnReadOnlyStateMixin`` short-circuit ``update_view``, and
+    lets API serializers expose the flag.
+    """
+    # NOTE: ``current`` is an ``IntEnum`` member whose truthiness mirrors
+    # its integer value, so ``bool(member)`` is False for any state with
+    # value 0 (e.g. Campaign.CANCELED, PhysicalAd.RECHAZADA). Use an
+    # explicit ``is None`` check instead.
+    current = get_current_state(self, Choices)
+    if current is None:
+        return False
+    return bool(getattr(current, "read_only", False))
+
+
 class WorkflowChoicesMeta(ChoicesMeta):
     def __new__(metacls, classname, bases, classdict, **kwds):
         customs = []
@@ -105,4 +123,9 @@ class Workflow:
             cls,
             "get_current_state",
             partialmethod(get_current_state, Choices=self.Choices),
+        )
+        setattr(
+            cls,
+            "is_state_read_only",
+            partialmethod(is_state_read_only, Choices=self.Choices),
         )

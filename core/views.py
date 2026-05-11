@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core import signing
+from django.core.exceptions import PermissionDenied
 from django.core.signing import BadSignature
 from django.db import connection
 from django.http import Http404
@@ -148,9 +149,16 @@ def inicio(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_staff)
 def home(request):
     """Admin panel: KPI cards + upcoming elections + recent campaigns + charts."""
+    # Guarded with ``PermissionDenied`` instead of ``@user_passes_test`` so
+    # authenticated non-staff users hit the 403 page directly. With the old
+    # decorator, the test failure redirected to ``/login/?next=/admin-panel/``;
+    # the login view saw the user was already authenticated and bounced
+    # them back to ``next`` → infinite redirect loop (BUG-SYS-10).
+    if not request.user.is_staff:
+        raise PermissionDenied("Solo personal administrativo (staff) puede acceder al panel.")
+
     from django.db.models import Count
     from django.db.models.functions import TruncMonth
 

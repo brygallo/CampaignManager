@@ -7,6 +7,8 @@ is isolated inside its own PostgreSQL schema, but the registry of tenants
 from decimal import Decimal
 
 from django.core.validators import MaxValueValidator, MinValueValidator
+
+from core.validators import LATITUDE_VALIDATORS, LONGITUDE_VALIDATORS
 from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
 
@@ -144,14 +146,14 @@ class TenantSettings(models.Model):
         max_digits=9,
         decimal_places=6,
         default=Decimal("-2.304600"),
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        validators=list(LATITUDE_VALIDATORS),
     )
     map_center_longitude = models.DecimalField(
         "Longitud centro del mapa",
         max_digits=9,
         decimal_places=6,
         default=Decimal("-78.117500"),
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        validators=list(LONGITUDE_VALIDATORS),
     )
     map_default_zoom = models.PositiveSmallIntegerField(
         "Zoom inicial",

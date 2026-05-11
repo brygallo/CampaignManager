@@ -1,0 +1,7 @@
+<label class="form-label fs-7 fw-semibold mb-1">{{ label|capfirst }}</label>
+<div class="d-flex align-items-center gap-2">
+  <span class="d-inline-block rounded border border-gray-300"
+        aria-hidden="true"
+        style="width: 1.75rem; height: 1.75rem; background: {{ value|default:'transparent' }};"></span>
+  <code class="fs-7 text-gray-800">{{ value|default_if_none:"—" }}</code>
+</div>

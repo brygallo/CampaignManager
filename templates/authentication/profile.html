@@ -23,7 +23,7 @@
           <div class="d-flex flex-column">
             <div class="d-flex align-items-center mb-2">
               <span class="text-gray-900 text-hover-primary fs-2 fw-bold me-1">{{ user.get_full_name|default:user.username }}</span>
-              <i class="ki-outline ki-verify fs-1 text-primary"
+              <i data-lucide="badge-check" class="fs-1 text-primary"
                  data-bs-toggle="tooltip"
                  data-bs-placement="top"
                  title="Cuenta verificada por el administrador del partido."
@@ -33,21 +33,24 @@
 
             <div class="d-flex flex-wrap fw-semibold fs-6 mb-4 pe-2">
               <span class="d-flex align-items-center text-gray-500 text-hover-primary me-5 mb-2">
-                <i class="ki-outline ki-profile-circle fs-4 me-1"></i>{{ user.username }}
+                <i data-lucide="user-circle-2" class="fs-4 me-1"></i>{{ user.username }}
               </span>
               <span class="d-flex align-items-center text-gray-500 text-hover-primary me-5 mb-2">
-                <i class="ki-outline ki-sms fs-4 me-1"></i>{{ user.email }}
+                <i data-lucide="mail" class="fs-4 me-1"></i>{{ user.email }}
               </span>
               {% if profile.phone_number %}
               <span class="d-flex align-items-center text-gray-500 text-hover-primary mb-2">
-                <i class="ki-outline ki-phone fs-4 me-1"></i>{{ profile.phone_number }}
+                <i data-lucide="phone" class="fs-4 me-1"></i>{{ profile.phone_number }}
               </span>
               {% endif %}
             </div>
           </div>
           <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <a href="{% url 'authentication:profile_edit' %}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+              <i data-lucide="user-cog" class="fs-3"></i>Editar perfil
+            </a>
             <a href="{% url 'authentication:password_change' %}" class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-2">
-              <i class="ki-outline ki-lock fs-3"></i>Cambiar contraseña
+              <i data-lucide="lock" class="fs-3"></i>Cambiar contraseña
             </a>
           </div>
         </div>

@@ -1,9 +1,116 @@
 """Base classes used to register models in superadmin."""
 import json
 
+from django.contrib import messages
+from django.db.models import ProtectedError
+from django.http import HttpResponseRedirect
+
 from superadmin.options import ModelSite
 
+from core.audit import AuditContextMixin
 from core.form_mixins import SaveOptionsMixin
+from core.list_mixins import OrderingMixin
+
+
+class ProtectedDeleteMixin:
+    """Render the right flash message for delete views and trap PROTECT errors.
+
+    Two things in one:
+    - The base success message inherited from the ``superadmin`` package is
+      ``"Se ha guardado correctamente."``, hardcoded for create/update/delete
+      alike. For deletes that wording is wrong; we replace it on the queue
+      with ``"Se ha eliminado correctamente."``.
+    - Django raises ``ProtectedError`` on ``delete()`` when ``on_delete=PROTECT``
+      blocks the cascade; without this mixin the exception bubbles up to a
+      500 page (under DEBUG=True it leaks a stack trace). We catch it,
+      drop the package's misleading "guardado" notice that was queued just
+      before the failure, and redirect back with a Spanish error message.
+
+    The ``superadmin`` wrapper class defines ``form_valid`` directly on the
+    runtime view, so it wins the MRO over any mixin we prepend; that's why
+    we cannot bypass it. We let it run and tweak the messages queue after.
+    """
+
+    _SUPERADMIN_SUCCESS_MSG = "Se ha guardado correctamente."
+
+    def _drop_superadmin_success(self):
+        """Remove the wrapper's hardcoded success notice from the queue."""
+        storage = getattr(self.request, "_messages", None)
+        queue = getattr(storage, "_queued_messages", None)
+        if queue is None:
+            return
+        for msg in list(queue):
+            if msg.tags == "success" and msg.message == self._SUPERADMIN_SUCCESS_MSG:
+                queue.remove(msg)
+                break
+
+    def _replace_superadmin_success(self, new_message):
+        """Swap the wrapper's hardcoded notice for a delete-specific one."""
+        storage = getattr(self.request, "_messages", None)
+        queue = getattr(storage, "_queued_messages", None)
+        if queue is None:
+            messages.success(self.request, new_message)
+            return
+        for msg in queue:
+            if msg.tags == "success" and msg.message == self._SUPERADMIN_SUCCESS_MSG:
+                msg.message = new_message
+                return
+        messages.success(self.request, new_message)
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+        except ProtectedError as exc:
+            self._drop_superadmin_success()
+            related_count = len(exc.protected_objects)
+            related_label = ""
+            if exc.protected_objects:
+                first = next(iter(exc.protected_objects))
+                related_label = first._meta.verbose_name_plural or first._meta.verbose_name
+            detail = f" ({related_count} {related_label})" if related_label else f" ({related_count})"
+            messages.error(
+                self.request,
+                "No se puede eliminar este registro porque tiene información "
+                f"relacionada que depende de él{detail}.",
+            )
+            target = (
+                self.object.get_absolute_url()
+                if hasattr(self.object, "get_absolute_url")
+                else self.request.path
+            )
+            return HttpResponseRedirect(target)
+        self._replace_superadmin_success("Se ha eliminado correctamente.")
+        return response
+
+
+class BlockEditOnReadOnlyStateMixin:
+    """Reject ``update_view`` when the workflow state is marked read-only.
+
+    A state opts in via ``dict(read_only=True)`` next to its label in the
+    ``WorkflowChoices`` declaration (see ``apps/workflows/__init__.py``).
+    Wire this mixin on a ``ModelSite`` via ``update_mixins``; nothing else
+    is required because the rule travels with the workflow definition,
+    not with the site.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if hasattr(obj, "is_state_read_only") and obj.is_state_read_only():
+            state_label = ""
+            current = obj.get_current_state() if hasattr(obj, "get_current_state") else None
+            if current is not None:
+                state_label = f" ({current.label})"
+            messages.error(
+                request,
+                f"Este registro está en un estado de solo lectura{state_label} y no puede editarse.",
+            )
+            target = (
+                obj.get_absolute_url()
+                if hasattr(obj, "get_absolute_url")
+                else request.path.rsplit("/editar/", 1)[0] + "/"
+            )
+            return HttpResponseRedirect(target)
+        return super().dispatch(request, *args, **kwargs)
 
 
 class DetailMapsMixin:
@@ -57,7 +164,7 @@ class HideEmptyFieldsetsMixin:
 class BaseSite(ModelSite):
     """Project-wide default ModelSite.
 
-    Templates point to ``templates/base/*`` (Maxton vertical-menu light theme).
+    Templates point to ``templates/base/*`` (Metronic v8 demo55 vertical-menu light theme).
     URL suffixes are translated to Spanish so end users see ``/listar/``,
     ``/crear/``, ``/editar/``, ``/eliminar/`` instead of the English defaults.
 
@@ -70,7 +177,17 @@ class BaseSite(ModelSite):
     form_template_name = "base/base_form.html"
     detail_template_name = "base/base_detail.html"
     delete_template_name = "base/base_confirm_delete.html"
-    detail_mixins = (DetailMapsMixin,)
+    # ``OrderingMixin`` reads ``?ordering=<field>`` from the URL so clicks on
+    # column headers reorder the queryset server-side and the URL stays in
+    # sync (shareable / bookmarkable). Sites that override ``list_mixins``
+    # must re-include it (or any helper they expose, see DropdownFilterMixin).
+    list_mixins = (OrderingMixin,)
+    # ``AuditContextMixin`` populates ``processed_traces`` so the detail
+    # template can show the "Auditoría" tab whenever the model has Trace
+    # rows. Sites without traces just won't render the tab — the template
+    # is already conditional on the context key.
+    detail_mixins = (AuditContextMixin, DetailMapsMixin)
+    delete_mixins = (ProtectedDeleteMixin,)
     detail_maps = ()
 
     create_success_url = "detail"
@@ -84,6 +201,17 @@ class BaseSite(ModelSite):
 
     paginate_by = 25
     form_mixins = (SaveOptionsMixin,)
+
+    def get_urls(self):
+        # superadmin registers a ``<pk>/duplicate/`` route unconditionally,
+        # which redirects to ``crear/?duplicate=<pk>``. When a site opts out
+        # of ``create`` via ``allow_views``, that redirect crashes with
+        # ``NoReverseMatch`` and exposes a debug page. Drop the duplicate
+        # route in lockstep with ``create`` so read-only sites stay clean.
+        urls = super().get_urls()
+        if "create" not in self.allow_views:
+            urls = [u for u in urls if not (u.name or "").endswith("_duplicate")]
+        return urls
 
     def get_detail_maps(self, obj):
         """Resolve declarative ``detail_maps`` against ``obj``.

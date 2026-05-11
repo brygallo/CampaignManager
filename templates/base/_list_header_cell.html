@@ -1,0 +1,20 @@
+{% load list_sort icons %}
+{% is_orderable field_name site.ordering.orderable_fields as orderable %}
+{% sort_indicator field_name as dir %}
+<th data-priority="{{ prio }}"{% if dir %} aria-sort="{% if dir == 'desc' %}descending{% else %}ascending{% endif %}"{% endif %}>
+  {% if orderable %}
+    {% sort_url field_name as href %}
+    <a href="{{ href }}" class="text-muted text-hover-primary text-decoration-none d-inline-flex align-items-center gap-1">
+      <span>{{ label }}</span>
+      {% if dir == 'asc' %}
+        <i data-lucide="arrow-up" class="fs-7" aria-hidden="true"></i>
+      {% elif dir == 'desc' %}
+        <i data-lucide="arrow-down" class="fs-7" aria-hidden="true"></i>
+      {% else %}
+        <i data-lucide="arrow-up-down" class="fs-7 opacity-50" aria-hidden="true"></i>
+      {% endif %}
+    </a>
+  {% else %}
+    {{ label }}
+  {% endif %}
+</th>

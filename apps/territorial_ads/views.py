@@ -54,6 +54,12 @@ class PhysicalAdMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["page_title"] = "Mapa de publicidad territorial"
+        context["breadcrumbs"] = [
+            ("Inicio", "/"),
+            ("Publicidad territorial", None),
+            ("Mapa", None),
+        ]
         context["campaigns"] = Campaign.objects.filter(is_active=True).order_by("name")
         context["states"] = PhysicalAdvertisement.workflow.choices
         return context

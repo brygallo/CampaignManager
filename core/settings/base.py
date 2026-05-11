@@ -142,6 +142,9 @@ TEMPLATES = [
                 "model_meta": "core.templatetags.model_meta",
                 "breadcrumbs": "core.templatetags.breadcrumbs",
                 "site_urls": "core.templatetags.site_urls",
+                "list_format": "core.templatetags.list_format",
+                "list_sort": "core.templatetags.list_sort",
+                "icons": "core.templatetags.icons",
             },
         },
     },
@@ -285,6 +288,7 @@ TEMPLATE_WIDGETS = {
     "password": "widgets/textinput.html",
     "ckeditor": "widgets/ckeditorinput.html",
     "leafletmap": "widgets/textinput.html",
+    "colorpicker": "widgets/colorpickerinput.html",
 }
 
 TEMPLATE_WIDGETS_DETAIL = {

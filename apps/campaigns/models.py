@@ -4,12 +4,18 @@ from tracing.models import BaseModel
 
 from apps.campaigns.transitions import CampaignTransitions
 from apps.workflows.mixins import TransitionRequirementsMixin
-from core.fields import CompressedImageField
+from core.fields import ColorField, CompressedImageField
+from core.validators import reasonable_future_date_validator
 
 
 class Election(BaseModel):
     name = models.CharField("Nombre", max_length=128, unique=True)
-    election_date = models.DateField("Fecha de elección", null=True, blank=True)
+    election_date = models.DateField(
+        "Fecha de elección",
+        null=True,
+        blank=True,
+        validators=[reasonable_future_date_validator],
+    )
     description = models.TextField("Descripción", blank=True)
 
     class Meta:
@@ -27,7 +33,7 @@ class PoliticalMovement(BaseModel):
     name = models.CharField("Nombre", max_length=128, unique=True)
     acronym = models.CharField("Siglas", max_length=16, blank=True)
     list_number = models.CharField("Número de lista", max_length=8, blank=True)
-    color = models.CharField("Color", max_length=7, blank=True, help_text="Hex #RRGGBB")
+    color = ColorField("Color", blank=True, help_text="Hex #RRGGBB")
     logo = CompressedImageField("Logo", upload_to="movements/logos/", null=True, blank=True)
 
     class Meta:

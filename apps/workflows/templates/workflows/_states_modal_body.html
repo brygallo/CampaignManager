@@ -1,0 +1,53 @@
+{% with last_state=states|last %}
+  {% widthratio object.state last_state.value 100 as pct %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="text-muted fw-bold fs-8 text-uppercase">Avance</span>
+    <span class="fw-bolder fs-7 text-primary">
+      {% for s in states %}{% if s.value == object.state %}{{ forloop.counter }}{% endif %}{% endfor %}<span class="text-muted">/{{ states|length }}</span>
+    </span>
+  </div>
+  <div class="progress h-6px mb-6">
+    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ pct }}%" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+  </div>
+{% endwith %}
+
+<div class="timeline">
+  {% for state in states %}
+    <div class="timeline-item"{% if state.value == object.state %} aria-current="step"{% endif %}>
+      <div class="timeline-line w-40px"></div>
+      <div class="timeline-icon symbol symbol-circle symbol-30px me-3">
+        <div class="symbol-label
+          {% if state.value < object.state %}bg-light-success
+          {% elif state.value == object.state %}bg-primary
+          {% else %}bg-light{% endif %}">
+          {% if state.value < object.state %}
+            <i data-lucide="check" class="fs-4 text-success"></i>
+          {% elif state.value == object.state %}
+            <span class="fs-7 fw-bolder text-white">{{ forloop.counter }}</span>
+          {% else %}
+            <span class="fs-7 fw-bolder text-muted">{{ forloop.counter }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="timeline-content mb-4 mt-n1">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <span class="fw-bolder fs-6
+            {% if state.value < object.state %}text-gray-700
+            {% elif state.value == object.state %}text-primary
+            {% else %}text-gray-600{% endif %}">{{ state.label }}</span>
+          {% if state.value|add:-1 == object.state %}
+            <span class="badge badge-light-primary fs-9">Siguiente</span>
+          {% endif %}
+        </div>
+        <div class="fs-8 fw-semibold mt-1
+          {% if state.value < object.state %}text-success
+          {% elif state.value == object.state %}text-primary
+          {% else %}text-muted{% endif %}">
+          {% if state.value < object.state %}Completado
+          {% elif state.value == object.state %}En curso
+          {% else %}Pendiente{% endif %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>

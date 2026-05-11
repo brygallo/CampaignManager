@@ -39,6 +39,12 @@ def public_landing(request):
 
     root_host = request.get_host()
     scheme = request.scheme
+    # Preserve a non-standard port (e.g. dev runserver on :8000) when the
+    # tenant's stored primary domain only has a hostname. Without this the
+    # landing renders links like `http://mmorona.localhost/` that 404 in dev.
+    root_port = request.get_port()
+    default_port = "443" if scheme == "https" else "80"
+    port_suffix = f":{root_port}" if root_port and root_port != default_port else ""
 
     primary_domains = Prefetch(
         "domains",
@@ -57,12 +63,13 @@ def public_landing(request):
     parties = []
     for i, t in enumerate(tenants_qs):
         primary = (t._primary_domains[0].domain if t._primary_domains else None)
-        login_url = (
-            f"{scheme}://{primary}/"
-            if primary
-            else f"{scheme}://{root_host}/{t.slug}/"
-        )
-        domain_label = primary or f"{root_host}/{t.slug}"
+        if primary:
+            primary_host = primary if ":" in primary else f"{primary}{port_suffix}"
+            login_url = f"{scheme}://{primary_host}/"
+            domain_label = primary_host
+        else:
+            login_url = f"{scheme}://{root_host}/{t.slug}/"
+            domain_label = f"{root_host}/{t.slug}"
         brand_name = (
             getattr(getattr(t, "branding", None), "brand_name", "") or t.name
         )

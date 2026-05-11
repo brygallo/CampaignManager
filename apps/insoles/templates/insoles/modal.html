@@ -1,13 +1,14 @@
 <div class="insoles-instance-forms">
-    <div class="modal fade" id="insoles-instance-forms" tabindex="3" role="dialog"
+    <div class="modal fade cm-sheet-modal" id="insoles-instance-forms" tabindex="3" role="dialog"
          aria-labelledby="modalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered" role="document" id="insoles_width">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document" id="insoles_width">
             <div class="modal-content">
+                <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
                 <div class="modal-header">
                     <h2 class="modal-title fw-bold" id="modalLabel">{{ modal_title|default:"Crear nuevo" }}</h2>
                     <button type="button" class="btn btn-icon btn-sm btn-active-light-primary ms-2"
                             data-bs-dismiss="modal" aria-label="Close">
-                        <i class="ki-outline ki-cross fs-1"></i>
+                        <i data-lucide="x" class="fs-1"></i>
                     </button>
                 </div>
                 <form id="insoles-instance-form" action="" method="POST" enctype="multipart/form-data" novalidate>
@@ -20,12 +21,12 @@
                         {% if not flag %}
                             <button type="submit" class="btn btn-primary"
                                     onclick="this.form.submitter='finish'">
-                                <i class="ki-outline ki-check fs-2"></i>
+                                <i data-lucide="check" class="fs-2"></i>
                                 <span id="confirm_button_insoles">{{ custom_name_default|default:"Guardar" }}</span>
                             </button>
                         {% endif %}
                         <button type="button" class="btn btn-light-danger" data-bs-dismiss="modal">
-                            <i class="ki-outline ki-cross fs-2"></i>
+                            <i data-lucide="x" class="fs-2"></i>
                             <span>Cancelar</span>
                         </button>
                     </div>

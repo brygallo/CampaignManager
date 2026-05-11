@@ -4,6 +4,8 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django_select2 import forms as s2forms
 from superadmin.forms import ModelForm
 from tracing.models import Rule
@@ -21,6 +23,28 @@ class EmailOrUsernameAuthenticationForm(AuthenticationForm):
         ),
         "inactive": "Esta cuenta está inactiva.",
     }
+
+    def _resolve_tenant_label(self):
+        """Identifies the active tenant so the error message can hint
+        the user when they typed creds for the wrong subdomain."""
+        if not self.request:
+            return None
+        tenant = getattr(self.request, "tenant", None)
+        if not tenant:
+            return None
+        # Prefer the human name; fall back to schema_name.
+        return getattr(tenant, "name", None) or getattr(tenant, "schema_name", None)
+
+    def get_invalid_login_error(self):
+        tenant_label = self._resolve_tenant_label()
+        message = self.error_messages["invalid_login"]
+        if tenant_label:
+            message = (
+                f"{message} "
+                f"Estás iniciando sesión en «{tenant_label}» — "
+                f"si tu cuenta es de otro partido o cantón, abre el subdominio correcto."
+            )
+        return ValidationError(message, code="invalid_login")
 
     def clean_username(self):
         return self.cleaned_data["username"].strip()
@@ -110,6 +134,15 @@ class UserForm(ModelForm):
             self.instance.password if self.instance and self.instance.pk else None
         )
 
+    def clean_password(self):
+        # Run the validators declared in AUTH_PASSWORD_VALIDATORS (length,
+        # similarity, common, numeric). Skipped when the field is blank on
+        # update, since blank means "keep the existing password".
+        pwd = self.cleaned_data.get("password")
+        if pwd:
+            validate_password(pwd, user=self.instance or None)
+        return pwd
+
     def save(self, commit=True):
         user = super().save(commit=False)
         pwd = self.cleaned_data.get("password")
@@ -132,6 +165,106 @@ class ProfileForm(ModelForm):
                 ("bio",),
             ),
         }
+
+
+class MyProfileEditForm(forms.Form):
+    """Self-service profile edit for the currently authenticated user.
+
+    By default the form exposes the minimum descriptive fields a user can
+    safely change on their own (``first_name``, ``last_name``, ``alias``,
+    ``avatar``). When the user has the ``authentication.change_full_own_profile``
+    permission, the form additionally exposes ``email``, ``phone_number`` and
+    ``bio`` — useful for coordinators and admins who maintain their own
+    extended contact info.
+
+    Edits are persisted across two models (``User`` + ``Profile``) via a
+    single ``save`` call so the view only deals with one form object.
+    """
+
+    _FULL_PROFILE_PERM = "authentication.change_full_own_profile"
+    _USER_FIELDS_MINIMUM = ("first_name", "last_name", "alias")
+    _USER_FIELDS_FULL = _USER_FIELDS_MINIMUM + ("email",)
+    _PROFILE_FIELDS_FULL = ("phone_number", "bio")
+
+    first_name = forms.CharField(label="Nombre", max_length=150, required=False)
+    last_name = forms.CharField(label="Apellido", max_length=150, required=False)
+    alias = forms.CharField(label="Alias", max_length=64, required=False)
+    avatar = forms.ImageField(label="Avatar", required=False)
+    clear_avatar = forms.BooleanField(
+        label="Quitar avatar actual", required=False, initial=False,
+    )
+    email = forms.EmailField(label="Correo electrónico", required=False)
+    phone_number = forms.CharField(label="Teléfono", max_length=20, required=False)
+    bio = forms.CharField(
+        label="Biografía",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.full_mode = bool(user and user.has_perm(self._FULL_PROFILE_PERM))
+        if not self.full_mode:
+            # Drop the elevated fields so they cannot be tampered with via
+            # crafted POSTs (a non-privileged user sending ``email=...`` in
+            # the body would otherwise hit ``cleaned_data`` and overwrite).
+            for field_name in (*self._PROFILE_FIELDS_FULL, "email"):
+                self.fields.pop(field_name, None)
+
+        if not self.is_bound:
+            self.initial.setdefault("first_name", user.first_name)
+            self.initial.setdefault("last_name", user.last_name)
+            self.initial.setdefault("alias", user.alias)
+            profile = getattr(user, "profile", None)
+            if profile is not None and self.fields.get("avatar"):
+                self.fields["avatar"].help_text = (
+                    "Subir reemplaza el avatar actual." if profile.avatar
+                    else "Aún no has subido un avatar."
+                )
+            if self.full_mode:
+                self.initial.setdefault("email", user.email)
+                if profile is not None:
+                    self.initial.setdefault("phone_number", profile.phone_number)
+                    self.initial.setdefault("bio", profile.bio)
+
+    def clean_email(self):
+        value = (self.cleaned_data.get("email") or "").strip().lower()
+        if not value:
+            return self.user.email  # required at model level; keep current
+        qs = self.user.__class__.objects.filter(email__iexact=value).exclude(pk=self.user.pk)
+        if qs.exists():
+            raise ValidationError("Ya existe un usuario con este correo.")
+        return value
+
+    def save(self):
+        cleaned = self.cleaned_data
+        user_fields = self._USER_FIELDS_FULL if self.full_mode else self._USER_FIELDS_MINIMUM
+        update_fields = []
+        for name in user_fields:
+            if name in cleaned:
+                setattr(self.user, name, cleaned.get(name, ""))
+                update_fields.append(name)
+        if update_fields:
+            self.user.save(update_fields=update_fields)
+
+        profile = self.user.profile
+        profile_update = []
+        if self.full_mode:
+            for name in self._PROFILE_FIELDS_FULL:
+                if name in cleaned:
+                    setattr(profile, name, cleaned.get(name, ""))
+                    profile_update.append(name)
+        if cleaned.get("clear_avatar") and profile.avatar:
+            profile.avatar.delete(save=False)
+            profile.avatar = None
+            profile_update.append("avatar")
+        elif cleaned.get("avatar"):
+            profile.avatar = cleaned["avatar"]
+            profile_update.append("avatar")
+        if profile_update:
+            profile.save(update_fields=profile_update)
+        return self.user
 
 
 class GroupForm(ModelForm):

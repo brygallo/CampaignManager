@@ -1,0 +1,49 @@
+{% load superadmin_forms %}
+<div class="input-group input-group-sm cm-color-picker-group" data-color-picker>
+  <span class="input-group-text p-1 bg-body-tertiary cm-color-picker-swatch"
+        aria-hidden="true"
+        style="width: 2.25rem; min-width: 2.25rem;">
+    <span class="d-inline-block rounded w-100 h-100"
+          data-color-picker-preview
+          style="background: {{ field.value|default:'#3e97ff' }};"></span>
+  </span>
+  {{ field|add_class:"form-control form-control-sm form-control-solid cm-color-picker-text" }}
+  <input type="color"
+         class="form-control form-control-color form-control-sm p-1"
+         data-color-picker-native
+         value="{{ field.value|default:'#3e97ff' }}"
+         aria-label="Selector visual de color"
+         style="width: 2.5rem; min-width: 2.5rem;">
+</div>
+<script>
+  (function () {
+    var root = document.currentScript.previousElementSibling;
+    if (!root || !root.matches('.cm-color-picker-group')) return;
+    var text = root.querySelector('.cm-color-picker-text');
+    var native = root.querySelector('[data-color-picker-native]');
+    var preview = root.querySelector('[data-color-picker-preview]');
+    if (!text || !native || !preview) return;
+
+    function isValid(v) { return /^#([0-9a-fA-F]{3}){1,2}$/.test(v || ''); }
+    function expand(v) {
+      // #abc -> #aabbcc so <input type="color"> accepts it.
+      if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+        return '#' + v.slice(1).split('').map(function (c) { return c + c; }).join('');
+      }
+      return v;
+    }
+
+    text.addEventListener('input', function () {
+      var v = (text.value || '').trim();
+      if (isValid(v)) {
+        var expanded = expand(v);
+        native.value = expanded;
+        preview.style.background = expanded;
+      }
+    });
+    native.addEventListener('input', function () {
+      text.value = native.value;
+      preview.style.background = native.value;
+    });
+  })();
+</script>

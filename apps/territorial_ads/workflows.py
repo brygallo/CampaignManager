@@ -4,11 +4,11 @@ from apps.workflows import Workflow, WorkflowChoices
 
 class PhysicalAdWorkflow(Workflow):
     class Choices(WorkflowChoices):
-        RECHAZADA = 0, "Rechazada", dict(visible=False)
+        RECHAZADA = 0, "Rechazada", dict(visible=False, read_only=True)
         OFRECIDA = 1, "Ofrecida"
         APROBADA = 2, "Aprobada"
         PENDIENTE_INSTALACION = 3, "Pendiente instalación"
         INSTALADA = 4, "Instalada"
         DANADA = 5, "Dañada"
-        RETIRADA = 6, "Retirada"
+        RETIRADA = 6, "Retirada", dict(read_only=True)
 

@@ -7,7 +7,7 @@ from django.template.loader import render_to_string
 from django.views.generic import View
 
 # Libraries
-from django_fsm import has_transition_perm
+from django_fsm import TransitionNotAllowed, has_transition_perm
 
 # Local
 from superadmin.utils import import_class
@@ -24,6 +24,8 @@ class ChangeStateView(LoginRequiredMixin, View):
         """Method get view"""
         try:
             transition_name = request.GET.get("transition")
+            if not transition_name:
+                return self.error("Falta el nombre de la transición.")
             object = self.get_object()
 
             if not hasattr(object, transition_name):
@@ -48,11 +50,17 @@ class ChangeStateView(LoginRequiredMixin, View):
             )
         except WorkflowException as e:
             return self.error(str(e))
+        except TransitionNotAllowed:
+            return self.error(
+                "Esta transición no está permitida desde el estado actual."
+            )
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         try:
             transition_name = request.POST.get("transition")
+            if not transition_name:
+                return self.error("Falta el nombre de la transición.")
             object = self.get_object()
 
             if not hasattr(object, transition_name):
@@ -91,6 +99,11 @@ class ChangeStateView(LoginRequiredMixin, View):
             # Mark the @transaction.atomic frame for rollback (no inner savepoint).
             transaction.set_rollback(True)
             return self.error(str(e))
+        except TransitionNotAllowed:
+            transaction.set_rollback(True)
+            return self.error(
+                "Esta transición no está permitida desde el estado actual."
+            )
 
     def get_kwargs(self):
         kwargs = {"user": self.request.user}

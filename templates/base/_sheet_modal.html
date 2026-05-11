@@ -1,0 +1,147 @@
+{% load icons %}
+{% comment %}
+Reusable modal partial — bottom-sheet en mobile, modal Bootstrap centrado en
+desktop. Single source of truth for the modal chassis (handle, header/hero,
+body, footer). Inspired by Google Maps bottom-sheet UX.
+
+Required CSS:  static/assets/css/forms/sheet_modal.css
+Required JS:   static/assets/js/forms/sheet_modal.js (auto-inits drag/snap)
+
+Usage:
+
+    {% include "base/_sheet_modal.html" with
+       modal_id="my-modal"
+       title="Editar registro"
+       subtitle="Actualiza los datos"
+       size="xl"                 {# sm | md | lg | xl  -- default md #}
+       variant="form"            {# choice | form | detail | gate | confirm | bare  -- default form #}
+       tone="primary"            {# primary | warning | danger | success #}
+       icon="pencil"             {# Lucide name (default lib) or KeenIcon name without prefix #}
+       icon_lib="lucide"         {# lucide | keenicons  -- default lucide #}
+       scrollable=True
+       backdrop_static=False
+       sheet_pdf=False           {# adds .cm-sheet-modal-pdf #}
+       extra_classes=""          {# extra classes on the outer .modal element #}
+       dialog_classes=""         {# extra classes on .modal-dialog #}
+       body_class=""             {# extra classes on .modal-body #}
+       body_template=""          {# partial included inside .modal-body #}
+       footer_template=""        {# partial included inside .modal-footer (omit to skip footer) #}
+       labelledby=""             {# overrides "<modal_id>-title" id on the title element #}
+       title_id="" subtitle_id=""
+       title_attrs="" subtitle_attrs="" icon_attrs="" icon_bg_attrs="" icon_wrap_attrs=""
+    %}
+
+Variant cheat-sheet:
+
+  · choice   — Hero gradient + pulse, choose between options. Use with
+               `cm-choice-list` cards in body_template.
+  · form     — Sticky header (icon + title/subtitle) + body + sticky footer.
+               Best for create/edit forms (modal-xl + scrollable).
+  · detail   — Sticky header (icon + title + status chip slot) + body. Read-only
+               views of a record. Slot `header_chip_template` for status chip.
+  · gate     — Reinforced hero (large icon, big CTA) for permission requests
+               (GPS, notifications). Tipically `backdrop_static=True`.
+  · confirm  — Hero gradient + pulse for destructive/sensitive confirms
+               (refusal, archive). The hero color follows `tone`.
+  · bare     — No header. Caller renders its own layout (lightbox, palette).
+{% endcomment %}
+{# Optional vars defaulted via firstof so VariableDoesNotExist never fires under DEBUG=True. Local names use sm_ prefix to avoid colliding with caller vars. #}
+{% firstof variant 'form' as sm_v %}
+{% firstof tone 'primary' as sm_tone %}
+{% firstof size 'md' as sm_size %}
+{% firstof icon_lib 'lucide' as sm_lib %}
+{% firstof icon '' as sm_icon %}
+{% firstof title_id labelledby '' as sm_title_id_explicit %}
+{% firstof subtitle_id '' as sm_subtitle_id_explicit %}
+{% firstof title_attrs '' as sm_title_attrs %}
+{% firstof subtitle_attrs '' as sm_subtitle_attrs %}
+{% firstof icon_attrs '' as sm_icon_attrs %}
+{% firstof icon_bg_attrs '' as sm_icon_bg_attrs %}
+{% firstof icon_wrap_attrs '' as sm_icon_wrap_attrs %}
+{% firstof extra_classes '' as sm_extra %}
+{% firstof dialog_classes '' as sm_dialog_classes %}
+{% firstof body_class '' as sm_body_class %}
+{% firstof body_template '' as sm_body_tpl %}
+{% firstof footer_template '' as sm_footer_tpl %}
+{% firstof header_chip_template '' as sm_chip_tpl %}
+{% firstof title '' as sm_title %}
+{% firstof subtitle '' as sm_subtitle %}
+{% with sm_title_id_auto=modal_id|add:'-title' sm_subtitle_id_auto=modal_id|add:'-subtitle' %}
+{% with sm_title_id=sm_title_id_explicit|default:sm_title_id_auto sm_subtitle_id=sm_subtitle_id_explicit|default:sm_subtitle_id_auto %}
+<div class="modal fade cm-sheet-modal{% if sheet_pdf %} cm-sheet-modal-pdf{% endif %} cm-sheet-modal--{{ sm_v }}{% if sm_extra %} {{ sm_extra }}{% endif %}"
+     id="{{ modal_id }}"
+     tabindex="-1"
+     aria-hidden="true"
+     aria-labelledby="{{ sm_title_id }}"
+     {% if backdrop_static %}data-bs-backdrop="static" data-bs-keyboard="false"{% endif %}>
+  <div class="modal-dialog modal-{{ sm_size }} modal-dialog-centered{% if scrollable %} modal-dialog-scrollable{% endif %}{% if sm_dialog_classes %} {{ sm_dialog_classes }}{% endif %}">
+    <div class="modal-content">
+
+      {# Drag handle (visible only in mobile bottom-sheet mode) #}
+      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer">
+        <span class="cm-sheet-modal__grip"></span>
+      </button>
+
+      {% if sm_v == "choice" or sm_v == "confirm" or sm_v == "gate" %}
+        {# Hero variant: gradient background + pulsing icon + close in corner. #}
+        <div class="cm-sheet-modal__hero{% if sm_v == 'gate' %} cm-sheet-modal__hero--lg{% endif %}" data-tone="{{ sm_tone }}">
+          {% if sm_icon %}
+            <span class="cm-sheet-modal__icon symbol symbol-circle bg-light-{{ sm_tone }}{% if sm_v == 'gate' %} symbol-80px{% else %} symbol-65px{% endif %}">
+              <span class="symbol-label">
+                {% if sm_lib == "keenicons" %}
+                  <i class="ki-outline ki-{{ sm_icon }} text-{{ sm_tone }} fs-2x" aria-hidden="true"></i>
+                {% else %}
+                  <i data-lucide="{{ sm_icon }}" class="text-{{ sm_tone }} fs-2x" aria-hidden="true"></i>
+                {% endif %}
+              </span>
+            </span>
+          {% endif %}
+          <h2 class="cm-sheet-modal__title fw-bolder mb-1" id="{{ sm_title_id }}"{% if sm_title_attrs %} {{ sm_title_attrs|safe }}{% endif %}>{{ sm_title }}</h2>
+          {% if sm_subtitle %}
+            <p class="cm-sheet-modal__subtitle text-gray-700 mb-0" id="{{ sm_subtitle_id }}"{% if sm_subtitle_attrs %} {{ sm_subtitle_attrs|safe }}{% endif %}>{{ sm_subtitle }}</p>
+          {% endif %}
+          <button type="button" class="btn-close cm-sheet-modal__close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+      {% elif sm_v == "form" or sm_v == "detail" %}
+        {# Sticky header variant: icon + title/subtitle + close. #}
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+            {% if sm_icon %}
+              <span class="symbol symbol-40px symbol-circle flex-shrink-0" data-tone="{{ sm_tone }}"{% if sm_icon_wrap_attrs %} {{ sm_icon_wrap_attrs|safe }}{% endif %}>
+                <span class="symbol-label bg-light-{{ sm_tone }} text-{{ sm_tone }}"{% if sm_icon_bg_attrs %} {{ sm_icon_bg_attrs|safe }}{% endif %}>
+                  {% if sm_lib == "keenicons" %}
+                    <i class="ki-outline ki-{{ sm_icon }} fs-2" aria-hidden="true"{% if sm_icon_attrs %} {{ sm_icon_attrs|safe }}{% endif %}></i>
+                  {% else %}
+                    <i data-lucide="{{ sm_icon }}" class="fs-2" aria-hidden="true"{% if sm_icon_attrs %} {{ sm_icon_attrs|safe }}{% endif %}></i>
+                  {% endif %}
+                </span>
+              </span>
+            {% endif %}
+            <div class="min-w-0 flex-grow-1">
+              <h2 class="modal-title fw-bolder mb-0 text-truncate" id="{{ sm_title_id }}"{% if sm_title_attrs %} {{ sm_title_attrs|safe }}{% endif %}>{{ sm_title }}</h2>
+              {% if sm_subtitle %}
+                <span class="text-muted fs-8 text-truncate d-block" id="{{ sm_subtitle_id }}"{% if sm_subtitle_attrs %} {{ sm_subtitle_attrs|safe }}{% endif %}>{{ sm_subtitle }}</span>
+              {% endif %}
+              {% if sm_chip_tpl %}{% include sm_chip_tpl %}{% endif %}
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+      {% endif %}
+
+      <div class="modal-body{% if sm_body_class %} {{ sm_body_class }}{% endif %}"
+           {% if sm_subtitle and sm_v != "bare" %}aria-describedby="{{ sm_subtitle_id }}"{% endif %}>
+        {% if sm_body_tpl %}{% include sm_body_tpl %}{% endif %}
+      </div>
+
+      {% if sm_footer_tpl %}
+        <div class="modal-footer">
+          {% include sm_footer_tpl %}
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endwith %}

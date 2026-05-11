@@ -3,6 +3,20 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 
+# Defense in depth: refuse to start a production process if anything else in
+# the import chain (env override, monkey patch) has set DEBUG truthy. A
+# debug-on prod leaks the URLconf and stack traces, so we crash loudly at
+# boot instead of serving.
+assert not DEBUG, "DEBUG must remain False in production settings."
+
+# ALLOWED_HOSTS in base.py defaults to []. Empty + DEBUG=False makes Django
+# reject every request — surface the misconfig in CI/staging instead of
+# silently 400ing users in production.
+assert ALLOWED_HOSTS, (  # noqa: F405
+    "DJANGO_ALLOWED_HOSTS must be set in production. "
+    "Provide a comma-separated list of hostnames via the environment."
+)
+
 # ----- Security -----
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True

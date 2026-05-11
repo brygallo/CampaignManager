@@ -5,6 +5,7 @@ from tracing.models import Trace
 from superadmin.decorators import register
 
 from core.base import BaseSite
+from core.list_mixins import OrderingMixin
 
 from .forms import GroupForm, PermissionForm, RuleForm, UserForm
 from .mixins import (
@@ -23,7 +24,7 @@ class UserSite(BaseSite):
     form_class = UserForm
     form_mixins = (RestrictPrivilegedFieldsMixin,)
     queryset = User.objects.select_related("profile").prefetch_related("groups")
-    list_mixins = (UserListMixin,)
+    list_mixins = (UserListMixin, OrderingMixin)
     detail_mixins = (UserPermissionsListMixin,)
     detail_template_name = "authentication/user_detail.html"
     slug_field = "username"
@@ -33,6 +34,8 @@ class UserSite(BaseSite):
         "email",
         "is_active:Activo",
     )
+    # ``display_name`` is a method, not a DB column — exclude it from sort.
+    orderable_fields = ("username", "email", "is_active")
     detail_fields = {
         "Datos de acceso": (
             ("username", "email"),
@@ -99,6 +102,15 @@ class TraceSite(BaseSite):
     list_fields = ("name", "user", "date", "action", "ip")
     detail_fields = ("name", "user", "date", "action", "ip", "os", "message")
     filter_fields = ("action",)
+    search_params = (
+        "name__icontains",
+        "user__username__icontains",
+        "user__first_name__icontains",
+        "user__last_name__icontains",
+        "content_type__model__icontains",
+        "content_type__app_label__icontains",
+        "ip__icontains",
+    )
 
 
 @register("tracing.Rule")

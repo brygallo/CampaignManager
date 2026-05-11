@@ -39,6 +39,15 @@ if settings.DEBUG:
         if settings.STATICFILES_DIRS
         else settings.STATIC_ROOT,
     )
+    # Preview routes for the custom error pages. In DEBUG=True Django bypasses
+    # `handler404`/`handler500` and shows its own technical error page, so the
+    # only way to validate the templates pre-deploy is to route to them
+    # explicitly.
+    urlpatterns += [
+        path("_dev/errors/403/", core_views.error_403),
+        path("_dev/errors/404/", core_views.error_404),
+        path("_dev/errors/500/", core_views.error_500),
+    ]
 
 handler403 = "core.views.error_403"
 handler404 = "core.views.error_404"

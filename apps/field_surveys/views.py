@@ -114,6 +114,12 @@ class FieldSurveyDashboardView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, T
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["page_title"] = "Dashboard de levantamientos"
+        context["breadcrumbs"] = [
+            ("Inicio", "/"),
+            ("Levantamientos de campo", None),
+            ("Dashboard", None),
+        ]
         surveys = self.filtered_queryset()
         competitor_ads = CompetitorAdvertisingDetection.objects.filter(field_survey__in=surveys)
         if not can_view_all_field_surveys(self.request.user):
@@ -272,6 +278,12 @@ class FieldSurveyMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVi
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["page_title"] = "Mapa de levantamientos"
+        context["breadcrumbs"] = [
+            ("Inicio", "/"),
+            ("Levantamientos de campo", None),
+            ("Mapa", None),
+        ]
         context.update(get_filter_context(self.request))
         context["can_view_all"] = can_view_all_field_surveys(self.request.user)
         context["competitors"] = Competitor.objects.filter(is_active=True).order_by(
