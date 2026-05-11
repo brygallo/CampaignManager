@@ -7,15 +7,15 @@
       <div class="d-flex align-items-center">
         <span class="symbol symbol-60px me-5">
           <span class="symbol-label bg-light-primary">
-            <i class="ki-outline ki-people fs-2x text-primary"></i>
+            <i data-lucide="users" class="fs-2x text-primary"></i>
           </span>
         </span>
         <div class="d-flex flex-column">
           <span class="fs-2 fw-bolder text-gray-900">{{ object.name }}</span>
           <span class="fs-7 text-muted mt-1">
-            <i class="ki-outline ki-shield-tick fs-7 me-1"></i>
+            <i data-lucide="shield-check" class="fs-7 me-1"></i>
             {{ object.permissions.count }} permiso{{ object.permissions.count|pluralize:"s" }} ·
-            <i class="ki-outline ki-profile-user fs-7 ms-2 me-1"></i>
+            <i data-lucide="user" class="fs-7 ms-2 me-1"></i>
             {{ object.user_set.count }} usuario{{ object.user_set.count|pluralize:"s" }}
           </span>
         </div>
@@ -27,12 +27,12 @@
 {% block detail_extra_tabs %}
   <li class="nav-item">
     <a class="nav-link" data-bs-toggle="tab" href="#tab-permissions" role="tab">
-      <i class="ki-outline ki-shield-tick fs-3 me-2"></i>Permisos
+      <i data-lucide="shield-check" class="fs-3 me-2"></i>Permisos
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link" data-bs-toggle="tab" href="#tab-users" role="tab">
-      <i class="ki-outline ki-profile-user fs-3 me-2"></i>Usuarios
+      <i data-lucide="user" class="fs-3 me-2"></i>Usuarios
     </a>
   </li>
 {% endblock %}

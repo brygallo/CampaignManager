@@ -1,12 +1,18 @@
 (function (window, document) {
   "use strict";
 
-  // Legacy icon names that exist in the DB but not in the bundled KeenIcons
-  // font set. Remap on the client so markers render even before the
-  // 0006 backfill migration runs.
+  // Legacy / seeded icon names from the DB mapped to Lucide equivalents.
+  // Stored values come from seed_territorial_ads_catalog (document, tag,
+  // picture, tablet, flag, element-12) plus historical aliases.
   var ICON_ALIASES = {
-    "billboard": "flag",
-    "sticker": "tag"
+    "billboard":  "flag",
+    "sticker":    "tag",
+    "document":   "file-text",
+    "picture":    "image",
+    "tablet":     "tablet",
+    "element-12": "shapes",
+    "flag":       "flag",
+    "tag":        "tag"
   };
 
   function safeIconName(icon) {
@@ -14,7 +20,7 @@
     if (ICON_ALIASES[raw]) {
       return ICON_ALIASES[raw];
     }
-    return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "element-12";
+    return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "shapes";
   }
 
   function pinIcon(color, icon, markerKind) {
@@ -25,7 +31,7 @@
       className: "map-type-pin" + extraClass,
       html:
         '<span class="map-type-pin__inner" style="background:' + safeColor + ';color:#fff">' +
-          '<i class="ki-solid ki-' + iconName + '" style="color:#fff"></i>' +
+          '<i data-lucide="' + iconName + '" style="color:#fff"></i>' +
         '</span>',
       iconSize: [38, 38],
       iconAnchor: [19, 19],
@@ -400,6 +406,9 @@
       .then(function (data) {
         setHtml(bodyEl, data.html || "");
         bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
       })
       .catch(function () {
         setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
@@ -481,6 +490,9 @@
       .then(function (data) {
         setHtml(bodyEl, data.html || "");
         bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
       })
       .catch(function () {
         setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
@@ -698,6 +710,10 @@
           if (bounds.length) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
           }
+          // Marker icons are injected via Leaflet divIcon HTML; the Lucide
+          // library only scans for [data-lucide] on DOMContentLoaded, so we
+          // re-trigger it here to materialise the new <i> elements as SVG.
+          if (window.cmRenderIcons) window.cmRenderIcons();
         })
         .catch(function () {
           updateCount(counterEl, 0);

@@ -57,7 +57,8 @@
     closeBtn.setAttribute("data-bs-dismiss", "modal");
     closeBtn.setAttribute("aria-label", "Cerrar");
     const closeIcon = document.createElement("i");
-    closeIcon.className = "ki-outline ki-cross fs-1";
+    closeIcon.setAttribute("data-lucide", "x");
+    closeIcon.className = "fs-1";
     closeBtn.appendChild(closeIcon);
     header.appendChild(title);
     header.appendChild(closeBtn);

@@ -5,7 +5,7 @@
   {% if request.user.is_staff %}
     <a href="{% url 'authentication:user_permissions' username=object.username %}"
        class="btn btn-flex btn-light-primary h-40px fs-7 fw-bold">
-      <i class="ki-outline ki-shield-tick fs-2"></i>Editar permisos
+      <i data-lucide="shield-check" class="fs-2"></i>Editar permisos
     </a>
   {% endif %}
 {% endblock %}
@@ -26,10 +26,10 @@
         <div class="d-flex flex-column">
           <span class="fs-2 fw-bolder text-gray-900">{{ object.get_full_name|default:object.username }}</span>
           <div class="d-flex flex-wrap align-items-center gap-3 fs-7 text-muted mt-1">
-            <span><i class="ki-outline ki-sms fs-7 me-1" aria-hidden="true"></i>{{ object.email|default:"Sin correo" }}</span>
-            <span><i class="ki-outline ki-user fs-7 me-1"></i>@{{ object.username }}</span>
+            <span><i data-lucide="mail" class="fs-7 me-1" aria-hidden="true"></i>{{ object.email|default:"Sin correo" }}</span>
+            <span><i data-lucide="user" class="fs-7 me-1"></i>@{{ object.username }}</span>
             {% if object.date_joined %}
-              <span><i class="ki-outline ki-calendar fs-7 me-1"></i>Desde {{ object.date_joined|date:"d/m/Y" }}</span>
+              <span><i data-lucide="calendar" class="fs-7 me-1"></i>Desde {{ object.date_joined|date:"d/m/Y" }}</span>
             {% endif %}
           </div>
         </div>
@@ -52,7 +52,7 @@
         <div class="d-flex flex-wrap gap-2 justify-content-end">
           {% for group in object.groups.all %}
             <span class="badge badge-light-primary fs-8">
-              <i class="ki-outline ki-people fs-8 me-1"></i>{{ group.name }}
+              <i data-lucide="users" class="fs-8 me-1"></i>{{ group.name }}
             </span>
           {% endfor %}
         </div>
@@ -64,7 +64,7 @@
 {% block detail_extra_tabs %}
   <li class="nav-item">
     <a class="nav-link" data-bs-toggle="tab" href="#tab-permissions" role="tab">
-      <i class="ki-outline ki-shield-tick fs-3 me-2"></i>Permisos
+      <i data-lucide="shield-check" class="fs-3 me-2"></i>Permisos
     </a>
   </li>
 {% endblock %}
@@ -79,7 +79,7 @@
       {% if request.user.is_staff %}
         <a href="{% url 'authentication:user_permissions' username=object.username %}"
            class="btn btn-sm btn-light-primary">
-          <i class="ki-outline ki-pencil fs-3 me-1"></i>Editar permisos
+          <i data-lucide="pencil" class="fs-3 me-1"></i>Editar permisos
         </a>
       {% endif %}
     </div>

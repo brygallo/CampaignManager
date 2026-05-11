@@ -7,7 +7,7 @@
           <div class="timeline-line w-40px"></div>
           <div class="timeline-icon symbol symbol-circle symbol-40px">
             <span class="symbol-label bg-light-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}">
-              <i class="ki-outline ki-{% if t.action == 1 %}plus-squared{% elif t.action == 2 %}pencil{% else %}trash{% endif %} fs-3 text-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}"></i>
+              <i data-lucide="{% if t.action == 1 %}square-plus{% elif t.action == 2 %}pencil{% else %}trash-2{% endif %}" class="fs-3 text-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %}"></i>
             </span>
           </div>
           <div class="timeline-content mb-8 mt-n1">
@@ -19,9 +19,9 @@
                 </span>
               </div>
               <div class="d-flex align-items-center mt-1 fs-7 text-muted gap-2 flex-wrap">
-                <span class="d-inline-flex align-items-center gap-1"><i class="ki-outline ki-calendar fs-7"></i>{{ t.date|date:"d/m/Y H:i" }}</span>
-                {% if t.ip %}<span class="bullet bg-gray-300 w-4px h-4px"></span><span class="d-inline-flex align-items-center gap-1"><i class="ki-outline ki-wifi fs-7"></i>{{ t.ip }}</span>{% endif %}
-                {% if t.os %}<span class="bullet bg-gray-300 w-4px h-4px"></span><span class="d-inline-flex align-items-center gap-1"><i class="ki-outline ki-screen fs-7"></i>{{ t.os }}</span>{% endif %}
+                <span class="d-inline-flex align-items-center gap-1"><i data-lucide="calendar" class="fs-7"></i>{{ t.date|date:"d/m/Y H:i" }}</span>
+                {% if t.ip %}<span class="bullet bg-gray-300 w-4px h-4px"></span><span class="d-inline-flex align-items-center gap-1"><i data-lucide="wifi" class="fs-7"></i>{{ t.ip }}</span>{% endif %}
+                {% if t.os %}<span class="bullet bg-gray-300 w-4px h-4px"></span><span class="d-inline-flex align-items-center gap-1"><i data-lucide="monitor" class="fs-7"></i>{{ t.os }}</span>{% endif %}
               </div>
               {% if entry.changes %}
                 <div class="row g-3 mt-3 bg-light-{% if t.action == 1 %}success{% elif t.action == 2 %}warning{% else %}danger{% endif %} bg-opacity-25 rounded p-4">
@@ -51,7 +51,7 @@
   <div class="text-center py-15">
     <span class="symbol symbol-100px symbol-circle d-inline-block mb-5">
       <span class="symbol-label bg-light-info">
-        <i class="ki-outline ki-time fs-3hx text-info"></i>
+        <i data-lucide="clock" class="fs-3hx text-info"></i>
       </span>
     </span>
     <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin movimientos registrados</h4>

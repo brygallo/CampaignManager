@@ -69,10 +69,10 @@
                   {% for message in messages %}
                     {% if message.tags == 'error' %}
                       <div class="alert alert-danger alert-dismissible d-flex align-items-center fade show mb-5" role="alert">
-                        <i class="ki-outline ki-shield-cross fs-2hx text-danger me-3"></i>
+                        <i data-lucide="shield-x" class="fs-2hx text-danger me-3"></i>
                         <div class="d-flex flex-column"><span>{{ message }}</span></div>
                         <button type="button" class="position-absolute position-sm-relative m-2 m-sm-0 top-0 end-0 btn btn-icon ms-auto" data-bs-dismiss="alert" aria-label="Cerrar">
-                          <i class="ki-outline ki-cross fs-1"></i>
+                          <i data-lucide="x" class="fs-1"></i>
                         </button>
                       </div>
                     {% endif %}

@@ -8,10 +8,35 @@
 <script src="{% static 'assets/js/forms/leaflet_map.js' %}"></script>
 <script src="{% static 'assets/js/forms/widgets.js' %}"></script>
 <script src="{% static 'assets/js/forms/image_input.js' %}"></script>
-<script src="{% static 'assets/js/forms/sheet_modal.js' %}?v=20260508-2"></script>
+<script src="{% static 'assets/js/forms/sheet_modal.js' %}?v=20260511-1"></script>
 <script src="{% static 'assets/js/forms/geolocation_gate.js' %}?v=20260508-5"></script>
 <script src="{% static 'assets/js/forms/field_validation.js' %}?v=20260508-1"></script>
 <script src="{% static 'assets/js/forms/delete_modal.js' %}?v=20260508-1"></script>
+
+{# Lucide icon library — replaces Keenicons. The library scans for elements
+   carrying `data-lucide="<name>"` and rewrites them as inline SVGs. We
+   re-run createIcons() after Bootstrap renders modals/dropdowns so dynamic
+   markup also gets icons rendered. #}
+<script src="https://unpkg.com/lucide@0.456.0/dist/umd/lucide.min.js"></script>
+<script>
+  (function () {
+    function renderIcons() {
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
+      }
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", renderIcons);
+    } else {
+      renderIcons();
+    }
+    // Render again once Bootstrap has finished injecting modal/dropdown content.
+    document.addEventListener("shown.bs.modal", renderIcons);
+    document.addEventListener("shown.bs.dropdown", renderIcons);
+    // Expose for callers that mutate the DOM (DataTables child rows, etc.).
+    window.cmRenderIcons = renderIcons;
+  })();
+</script>
 
 {% block vendor_js %}{% endblock %}
 

@@ -36,7 +36,8 @@
       var empty = document.createElement("div");
       empty.className = "text-center py-10 w-100";
       var emptyIcon = document.createElement("i");
-      emptyIcon.className = "ki-outline ki-chart-pie-simple fs-3hx text-muted mb-3 d-block";
+      emptyIcon.setAttribute("data-lucide", "pie-chart");
+      emptyIcon.className = "fs-3hx text-muted mb-3 d-block";
       var emptyText = document.createElement("span");
       emptyText.className = "text-muted fs-6";
       emptyText.textContent = "Sin datos para los filtros activos.";
@@ -122,7 +123,8 @@
       var empty = document.createElement("div");
       empty.className = "text-center py-10 w-100";
       var emptyIcon = document.createElement("i");
-      emptyIcon.className = "ki-outline ki-chart-line fs-3hx text-muted mb-3 d-block";
+      emptyIcon.setAttribute("data-lucide", "trending-up");
+      emptyIcon.className = "fs-3hx text-muted mb-3 d-block";
       var emptyTitle = document.createElement("h4");
       emptyTitle.className = "fs-5 fw-bold text-gray-900 mb-1";
       emptyTitle.textContent = "Sin visitas en el rango";

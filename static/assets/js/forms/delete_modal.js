@@ -12,7 +12,7 @@
              data-bs-target="#cm-delete-modal"
              data-cm-delete-url="{{ row.urls.delete }}"
              data-cm-delete-label="{{ row.values.0|striptags }}">
-       <i class="ki-outline ki-trash fs-4"></i>
+       <i data-lucide="trash-2" class="fs-4"></i>
      </button>
 */
 (function () {

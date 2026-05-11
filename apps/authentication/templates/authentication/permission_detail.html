@@ -7,7 +7,7 @@
       <div class="d-flex align-items-center">
         <span class="symbol symbol-60px me-5">
           <span class="symbol-label bg-light-primary">
-            <i class="ki-outline ki-shield-tick fs-2x text-primary"></i>
+            <i data-lucide="shield-check" class="fs-2x text-primary"></i>
           </span>
         </span>
         <div class="d-flex flex-column">
@@ -15,10 +15,10 @@
           <div class="d-flex flex-wrap align-items-center gap-3 fs-7 text-muted mt-1">
             <code class="badge badge-light-primary fs-8 fw-semibold">{{ object.codename }}</code>
             {% if object.content_type %}
-              <span><i class="ki-outline ki-cube-2 fs-7 me-1"></i>{{ object.content_type.app_label }} · {{ object.content_type.model }}</span>
+              <span><i data-lucide="package" class="fs-7 me-1"></i>{{ object.content_type.app_label }} · {{ object.content_type.model }}</span>
             {% endif %}
             {% if users_list %}
-              <span><i class="ki-outline ki-profile-user fs-7 me-1"></i>{{ users_list|length }} usuario{{ users_list|length|pluralize:"s" }} con este permiso</span>
+              <span><i data-lucide="user" class="fs-7 me-1"></i>{{ users_list|length }} usuario{{ users_list|length|pluralize:"s" }} con este permiso</span>
             {% endif %}
           </div>
         </div>
@@ -30,7 +30,7 @@
 {% block detail_extra_tabs %}
   <li class="nav-item">
     <a class="nav-link" data-bs-toggle="tab" href="#tab-users" role="tab">
-      <i class="ki-outline ki-profile-user fs-3 me-2"></i>Usuarios
+      <i data-lucide="user" class="fs-3 me-2"></i>Usuarios
     </a>
   </li>
 {% endblock %}

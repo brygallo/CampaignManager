@@ -2,6 +2,7 @@
 {% load static %}
 {% load model_meta %}
 {% load list_format %}
+{% load icons %}
 
 {% block title %}{% firstof site.title site|verbose_name_plural site.model_name|title %} | {{ block.super }}{% endblock %}
 
@@ -27,7 +28,7 @@
       {% block list_extra_actions %}{% endblock %}
       {% if site.urls.create %}
         <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1" aria-label="Crear nuevo registro">
-          <i class="ki-outline ki-plus fs-3"></i><span class="d-none d-sm-inline">Nuevo</span>
+          <i data-lucide="plus" class="fs-3"></i><span class="d-none d-sm-inline">Nuevo</span>
         </a>
       {% endif %}
     </div>
@@ -99,7 +100,7 @@
             <a href="{{ item.url }}"
                class="btn btn-sm {% if item.active %}btn-light-{{ item.css }} text-{{ item.css }}{% else %}btn-light btn-active-light-{{ item.css }} text-gray-700{% endif %} d-inline-flex align-items-center gap-2 flex-shrink-0 px-3"
                {% if item.active %}aria-current="page"{% endif %}>
-              <i class="ki-outline ki-{{ item.icon|default:'abstract-26' }} fs-4"></i>
+              <i data-lucide="{{ item.icon|default:'abstract-26'|lucide }}" class="fs-4"></i>
               <span class="fw-semibold">{{ item.label }}</span>
               <span class="badge {% if item.active %}badge-{{ item.css }}{% else %}badge-light{% endif %} fs-8">{{ item.count }}</span>
             </a>
@@ -116,7 +117,7 @@
           <input type="hidden" name="paginate_by" value="{{ request.GET.paginate_by }}">
         {% endif %}
         <div class="d-flex align-items-center position-relative my-1 w-100">
-          <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5 z-index-1"></i>
+          <i data-lucide="search" class="fs-3 position-absolute ms-5 z-index-1"></i>
           <input id="id_table_search"
                  type="search"
                  class="form-control form-control-sm form-control-solid w-100 ps-12"
@@ -145,7 +146,7 @@
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
                   aria-label="Opciones de vista">
-            <i class="ki-outline ki-setting-4 fs-3"></i>
+            <i data-lucide="sliders-horizontal" class="fs-3"></i>
             <span class="d-none d-md-inline">Vista</span>
           </button>
           <div class="dropdown-menu dropdown-menu-end p-4" style="min-width: 260px;">
@@ -173,7 +174,7 @@
               {% endfor %}
             </div>
             <button type="button" class="btn btn-sm btn-light-primary w-100" id="cm-view-reset">
-              <i class="ki-outline ki-arrows-circle fs-4"></i>Restablecer
+              <i data-lucide="rotate-cw" class="fs-4"></i>Restablecer
             </button>
           </div>
         </div>
@@ -188,7 +189,7 @@
       <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3"
            data-kt-filter-session-url="{% url 'site:session' site.app_name site.model_name %}">
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
-          <i class="ki-outline ki-filter fs-3 text-primary"></i>
+          <i data-lucide="filter" class="fs-3 text-primary"></i>
           <span class="text-gray-700 fw-bold fs-7">Filtros activos</span>
           <span class="badge badge-circle badge-light-primary text-primary">{{ site.current_filters|length }}</span>
         </div>
@@ -211,7 +212,7 @@
                       data-kt-filter-remove="true"
                       title="Quitar este filtro"
                       aria-label="Quitar filtro {{ filter.field_label }}">
-                <i class="ki-outline ki-cross fs-4"></i>
+                <i data-lucide="x" class="fs-4"></i>
               </button>
             </span>
           {% endfor %}
@@ -220,7 +221,7 @@
                 id="clear-filters-btn"
                 class="btn btn-sm btn-light-danger flex-shrink-0"
                 data-kt-filter-clear="true">
-          <i class="ki-outline ki-eraser fs-3"></i>Limpiar todo
+          <i data-lucide="eraser" class="fs-3"></i>Limpiar todo
         </button>
       </div>
     </div>
@@ -261,12 +262,12 @@
               <td class="text-end text-nowrap">
                 {% if row.urls.detail %}
                   <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver" aria-label="Ver detalle">
-                    <i class="ki-outline ki-eye fs-4"></i>
+                    <i data-lucide="eye" class="fs-4"></i>
                   </a>
                 {% endif %}
                 {% if row.urls.update %}
                   <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar" aria-label="Editar registro">
-                    <i class="ki-outline ki-pencil fs-4"></i>
+                    <i data-lucide="pencil" class="fs-4"></i>
                   </a>
                 {% endif %}
                 {% if row.urls.delete %}
@@ -278,7 +279,7 @@
                           data-cm-delete-label="{{ row.values.0|striptags }}"
                           title="Eliminar"
                           aria-label="Eliminar registro">
-                    <i class="ki-outline ki-trash fs-4"></i>
+                    <i data-lucide="trash-2" class="fs-4"></i>
                   </button>
                 {% endif %}
               </td>
@@ -289,12 +290,12 @@
       </div>{# /.cm-table-scroll #}
     {% else %}
       <div class="text-center py-10">
-        <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
+        <i data-lucide="folder-up" class="fs-3hx text-muted mb-3 d-block"></i>
         {% if site.current_filters or request.GET.search %}
           <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
           <p class="text-muted fs-6 mb-4">No encontramos registros que cumplan los filtros aplicados.</p>
           <a href="?" class="btn btn-light-primary btn-sm">
-            <i class="ki-outline ki-eraser fs-3"></i>Limpiar filtros
+            <i data-lucide="eraser" class="fs-3"></i>Limpiar filtros
           </a>
         {% else %}
           <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
@@ -305,7 +306,7 @@
           </p>
           {% if site.urls.create %}
             <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">
-              <i class="ki-outline ki-plus fs-3"></i>Crear el primero
+              <i data-lucide="plus" class="fs-3"></i>Crear el primero
             </a>
           {% endif %}
         {% endif %}

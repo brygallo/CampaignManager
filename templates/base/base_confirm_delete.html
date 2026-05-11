@@ -32,11 +32,11 @@
     <div class="d-flex align-items-center gap-2 gap-lg-3">
       {% if site.urls.detail %}
         <a href="{{ site.urls.detail }}" class="btn btn-flex btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px fs-7 fw-bold">
-          <i class="ki-outline ki-arrow-left fs-2"></i>Volver
+          <i data-lucide="arrow-left" class="fs-2"></i>Volver
         </a>
       {% elif site.urls.list %}
         <a href="{{ site.urls.list }}" class="btn btn-flex btn-outline btn-color-gray-700 btn-active-color-primary bg-body h-40px fs-7 fw-bold">
-          <i class="ki-outline ki-arrow-left fs-2"></i>Volver
+          <i data-lucide="arrow-left" class="fs-2"></i>Volver
         </a>
       {% endif %}
     </div>
@@ -48,7 +48,7 @@
   <div class="card-body p-10 text-center">
     <span class="symbol symbol-100px symbol-circle bg-light-danger mx-auto mb-5">
       <span class="symbol-label">
-        <i class="ki-outline ki-shield-cross text-danger fs-3x"></i>
+        <i data-lucide="shield-x" class="text-danger fs-3x"></i>
       </span>
     </span>
     <h2 class="mb-2 fw-bolder">¿Eliminar este registro?</h2>
@@ -57,7 +57,7 @@
     </p>
     <p class="fs-3 fw-bold text-dark mb-6">{{ object }}</p>
     <div class="alert alert-danger d-inline-flex align-items-center gap-2 mb-6 px-4 py-2">
-      <i class="ki-outline ki-shield-cross fs-2 text-danger"></i>
+      <i data-lucide="shield-x" class="fs-2 text-danger"></i>
       <span class="fw-semibold">Esta acción no se puede deshacer.</span>
     </div>
     <form id="delete-form" method="post" class="d-flex justify-content-center gap-3">
@@ -68,7 +68,7 @@
         <a href="{{ site.urls.list }}" class="btn btn-sm btn-light">Cancelar</a>
       {% endif %}
       <button type="submit" class="btn btn-sm btn-danger">
-        <i class="ki-outline ki-trash fs-3"></i>Sí, eliminar
+        <i data-lucide="trash-2" class="fs-3"></i>Sí, eliminar
       </button>
     </form>
   </div>

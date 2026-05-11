@@ -1,4 +1,4 @@
-{% load menu_tags %}
+{% load menu_tags icons %}
 {% comment %}
 Recursively render the menu tree with Metronic's "active / here show" pattern.
 Top-level sections are filtered against ``tenant_features`` so disabled
@@ -11,7 +11,7 @@ modules disappear from the sidebar without touching menu.yaml.
     <div class="menu-item menu-accordion{% if item_open %} here show{% endif %}" data-kt-menu-trigger="click">
       <span class="menu-link">
         <span class="menu-icon">
-          <i class="ki-outline ki-{{ item.icon|default:'category' }} fs-2"></i>
+          <i data-lucide="{{ item.icon|default:'category'|lucide }}" class="fs-2"></i>
         </span>
         <span class="menu-title">{{ item.name }}</span>
         <span class="menu-arrow"></span>
@@ -54,7 +54,7 @@ modules disappear from the sidebar without touching menu.yaml.
     <div class="menu-item">
       <a class="menu-link{% if item.url|url_active:request.path %} active{% endif %}" href="{{ item.url|default:'#' }}">
         <span class="menu-icon">
-          <i class="ki-outline ki-{{ item.icon|default:'right' }} fs-2"></i>
+          <i data-lucide="{{ item.icon|default:'right'|lucide }}" class="fs-2"></i>
         </span>
         <span class="menu-title">{{ item.name }}</span>
       </a>

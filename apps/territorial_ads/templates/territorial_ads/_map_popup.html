@@ -1,4 +1,4 @@
-{% load static %}
+{% load static icons %}
 <div class="map-popup">
 
   {# ===== Hero ===== #}
@@ -7,7 +7,7 @@
       <span class="symbol-label fw-bolder text-white"
             style="background:{{ state_color }};"
             aria-hidden="true">
-        <i class="ki-outline ki-{{ type_icon }} fs-1 text-white"></i>
+        <i data-lucide="{{ type_icon|lucide }}" class="fs-1 text-white"></i>
       </span>
     </div>
     <div class="flex-grow-1 min-w-0">
@@ -29,7 +29,7 @@
       </p>
       {% if ad.campaign %}
         <p class="m-0 mt-2 d-flex align-items-center gap-2 flex-wrap">
-          <i class="ki-outline ki-rocket fs-6 text-primary" aria-hidden="true"></i>
+          <i data-lucide="rocket" class="fs-6 text-primary" aria-hidden="true"></i>
           <span class="text-dark fw-semibold fs-7">{{ ad.campaign.name }}</span>
           {% if ad.campaign.candidate %}
             <span class="text-gray-400">·</span>
@@ -38,7 +38,7 @@
           {% if ad.campaign.election.election_date %}
             <span class="text-gray-400">·</span>
             <span class="text-muted fs-8">
-              <i class="ki-outline ki-calendar fs-8 me-1" aria-hidden="true"></i>{{ ad.campaign.election.election_date|date:"d M Y" }}
+              <i data-lucide="calendar" class="fs-8 me-1" aria-hidden="true"></i>{{ ad.campaign.election.election_date|date:"d M Y" }}
             </span>
           {% endif %}
         </p>
@@ -49,7 +49,7 @@
   {# ===== Progress stepper / rejected alert ===== #}
   {% if is_rejected %}
     <div class="alert alert-danger d-flex align-items-center gap-3 py-3 px-4 mb-5" role="status">
-      <i class="ki-outline ki-cross-circle fs-2x text-danger" aria-hidden="true"></i>
+      <i data-lucide="x-circle" class="fs-2x text-danger" aria-hidden="true"></i>
       <div>
         <div class="fw-bolder text-danger">Aviso rechazado</div>
         <div class="text-muted fs-7">No avanzó por el flujo de instalación.</div>
@@ -61,7 +61,7 @@
         <li class="map-popup__step{% if step.is_done %} is-done{% endif %}{% if step.is_current %} is-current{% endif %}"
             {% if step.is_current %}aria-current="step"{% endif %}>
           <span class="map-popup__step-marker" aria-hidden="true">
-            <i class="ki-outline ki-{{ step.icon }}"></i>
+            <i data-lucide="{{ step.icon|lucide }}"></i>
           </span>
           <span class="map-popup__step-label">{{ step.label }}</span>
         </li>
@@ -75,7 +75,7 @@
   {# ===== Pin location hint ===== #}
   {% if pin_kind %}
     <div class="map-popup__pin-hint" role="note">
-      <i class="ki-outline ki-geolocation fs-3" aria-hidden="true"></i>
+      <i data-lucide="map-pin" class="fs-3" aria-hidden="true"></i>
       <div class="flex-grow-1">
         <div class="fw-bold text-dark fs-7">
           El pin marca la ubicación
@@ -85,7 +85,7 @@
       </div>
       {% if ad.offered_latitude and ad.installed_latitude %}
         <span class="badge badge-light-info fs-8" title="Hay coordenadas ofrecidas e instaladas registradas">
-          <i class="ki-outline ki-double-check fs-8 me-1" aria-hidden="true"></i>2 puntos
+          <i data-lucide="check-check" class="fs-8 me-1" aria-hidden="true"></i>2 puntos
         </span>
       {% endif %}
     </div>
@@ -100,7 +100,7 @@
            aria-label="Abrir foto del lugar ofrecido en pestaña nueva">
           <img src="{{ ad.offered_photo.url }}" alt="Foto del lugar ofrecido" loading="lazy">
           <span class="map-popup__photo-caption">
-            <i class="ki-outline ki-handcart fs-7" aria-hidden="true"></i>Ofrecida
+            <i data-lucide="shopping-cart" class="fs-7" aria-hidden="true"></i>Ofrecida
           </span>
         </a>
       {% endif %}
@@ -110,7 +110,7 @@
            aria-label="Abrir foto de instalación en pestaña nueva">
           <img src="{{ ad.installation_photo.url }}" alt="Foto de la instalación" loading="lazy">
           <span class="map-popup__photo-caption">
-            <i class="ki-outline ki-check-circle fs-7" aria-hidden="true"></i>Instalada
+            <i data-lucide="check-circle-2" class="fs-7" aria-hidden="true"></i>Instalada
           </span>
         </a>
       {% endif %}
@@ -120,7 +120,7 @@
            aria-label="Abrir foto del daño en pestaña nueva">
           <img src="{{ ad.damage_photo.url }}" alt="Foto del daño reportado" loading="lazy">
           <span class="map-popup__photo-caption">
-            <i class="ki-outline ki-information-5 fs-7" aria-hidden="true"></i>Daño
+            <i data-lucide="info" class="fs-7" aria-hidden="true"></i>Daño
           </span>
         </a>
       {% endif %}
@@ -130,7 +130,7 @@
   {# ===== Owner conditions (offered_notes) ===== #}
   {% if ad.offered_notes %}
     <blockquote class="map-popup__quote" aria-label="Condiciones ofrecidas por el propietario">
-      <i class="ki-outline ki-message-text-2 fs-2 text-muted" aria-hidden="true"></i>
+      <i data-lucide="message-square" class="fs-2 text-muted" aria-hidden="true"></i>
       <div>
         <div class="text-muted fw-bold fs-8 text-uppercase mb-1">Condiciones ofrecidas</div>
         <div class="text-gray-700 fs-7">{{ ad.offered_notes|linebreaksbr }}</div>
@@ -143,7 +143,7 @@
     <div class="col-12 col-sm-6">
       <div class="map-popup__fact">
         <span class="symbol symbol-40px symbol-circle">
-          <span class="symbol-label bg-light-primary"><i class="ki-outline ki-geolocation fs-3 text-primary" aria-hidden="true"></i></span>
+          <span class="symbol-label bg-light-primary"><i data-lucide="map-pin" class="fs-3 text-primary" aria-hidden="true"></i></span>
         </span>
         <div class="map-popup__fact-body">
           <div class="map-popup__fact-label">Lugar</div>
@@ -151,7 +151,7 @@
           {% if ad.reference %}<div class="text-muted fs-8">{{ ad.reference }}</div>{% endif %}
           {% if ad.offered_latitude and ad.offered_longitude %}
             <div class="text-muted fs-8 font-monospace mt-1">
-              <i class="ki-outline ki-pin fs-8 me-1" aria-hidden="true"></i>{{ ad.offered_latitude }} / {{ ad.offered_longitude }}
+              <i data-lucide="map-pin" class="fs-8 me-1" aria-hidden="true"></i>{{ ad.offered_latitude }} / {{ ad.offered_longitude }}
             </div>
           {% endif %}
         </div>
@@ -160,14 +160,14 @@
     <div class="col-12 col-sm-6">
       <div class="map-popup__fact">
         <span class="symbol symbol-40px symbol-circle">
-          <span class="symbol-label bg-light-info"><i class="ki-outline ki-profile-user fs-3 text-info" aria-hidden="true"></i></span>
+          <span class="symbol-label bg-light-info"><i data-lucide="user" class="fs-3 text-info" aria-hidden="true"></i></span>
         </span>
         <div class="map-popup__fact-body">
           <div class="map-popup__fact-label">Contacto</div>
           <div class="fw-bold text-dark">{{ ad.owner_name }}</div>
           {% if ad.owner_phone %}
             <a href="tel:{{ ad.owner_phone }}" class="text-muted fs-8 d-inline-flex align-items-center gap-1">
-              <i class="ki-outline ki-phone fs-8" aria-hidden="true"></i>{{ ad.owner_phone }}
+              <i data-lucide="phone" class="fs-8" aria-hidden="true"></i>{{ ad.owner_phone }}
             </a>
           {% endif %}
         </div>
@@ -177,7 +177,7 @@
       <div class="col-12 col-sm-6">
         <div class="map-popup__fact">
           <span class="symbol symbol-40px symbol-circle">
-            <span class="symbol-label bg-light-success"><i class="ki-outline ki-dollar fs-3 text-success" aria-hidden="true"></i></span>
+            <span class="symbol-label bg-light-success"><i data-lucide="dollar-sign" class="fs-3 text-success" aria-hidden="true"></i></span>
           </span>
           <div class="map-popup__fact-body">
             <div class="map-popup__fact-label">Costo</div>
@@ -191,7 +191,7 @@
       <div class="col-12 col-sm-6">
         <div class="map-popup__fact">
           <span class="symbol symbol-40px symbol-circle">
-            <span class="symbol-label bg-light-warning"><i class="ki-outline ki-user-tick fs-3 text-warning" aria-hidden="true"></i></span>
+            <span class="symbol-label bg-light-warning"><i data-lucide="user-check" class="fs-3 text-warning" aria-hidden="true"></i></span>
           </span>
           <div class="map-popup__fact-body">
             <div class="map-popup__fact-label">Instalador</div>
@@ -209,13 +209,13 @@
   {% if ad.rejected_at or ad.approved_at or ad.assigned_at or ad.installed_at or ad.damage_reported_at or ad.retired_at %}
     <div class="separator separator-dashed my-5"></div>
     <h6 class="text-gray-600 fw-bold text-uppercase fs-8 mb-4">
-      <i class="ki-outline ki-time fs-7 me-1" aria-hidden="true"></i>Bitácora
+      <i data-lucide="clock" class="fs-7 me-1" aria-hidden="true"></i>Bitácora
     </h6>
     <ol class="map-popup__activity">
 
       {% if ad.rejected_at %}
         <li class="map-popup__activity-item is-danger">
-          <span class="map-popup__activity-icon"><i class="ki-outline ki-cross-circle" aria-hidden="true"></i></span>
+          <span class="map-popup__activity-icon"><i data-lucide="x-circle" aria-hidden="true"></i></span>
           <div class="map-popup__activity-body">
             <div class="map-popup__activity-head">
               <span class="fw-bolder text-dark">Rechazada</span>
@@ -228,7 +228,7 @@
 
       {% if ad.approved_at %}
         <li class="map-popup__activity-item is-success">
-          <span class="map-popup__activity-icon"><i class="ki-outline ki-verify" aria-hidden="true"></i></span>
+          <span class="map-popup__activity-icon"><i data-lucide="badge-check" aria-hidden="true"></i></span>
           <div class="map-popup__activity-body">
             <div class="map-popup__activity-head">
               <span class="fw-bolder text-dark">Aprobada</span>
@@ -241,7 +241,7 @@
 
       {% if ad.assigned_at %}
         <li class="map-popup__activity-item is-info">
-          <span class="map-popup__activity-icon"><i class="ki-outline ki-user-tick" aria-hidden="true"></i></span>
+          <span class="map-popup__activity-icon"><i data-lucide="user-check" aria-hidden="true"></i></span>
           <div class="map-popup__activity-body">
             <div class="map-popup__activity-head">
               <span class="fw-bolder text-dark">Instalación asignada</span>
@@ -253,7 +253,7 @@
 
       {% if ad.installed_at %}
         <li class="map-popup__activity-item is-primary">
-          <span class="map-popup__activity-icon"><i class="ki-outline ki-check-circle" aria-hidden="true"></i></span>
+          <span class="map-popup__activity-icon"><i data-lucide="check-circle-2" aria-hidden="true"></i></span>
           <div class="map-popup__activity-body">
             <div class="map-popup__activity-head">
               <span class="fw-bolder text-dark">Instalada</span>
@@ -261,7 +261,7 @@
             </div>
             {% if ad.installed_latitude and ad.installed_longitude %}
               <div class="text-muted fs-8 mt-1">
-                <i class="ki-outline ki-geolocation fs-8 me-1" aria-hidden="true"></i>{{ ad.installed_latitude }} / {{ ad.installed_longitude }}
+                <i data-lucide="map-pin" class="fs-8 me-1" aria-hidden="true"></i>{{ ad.installed_latitude }} / {{ ad.installed_longitude }}
               </div>
             {% endif %}
             {% if ad.installation_notes %}<div class="text-gray-700 fs-7 mt-1">{{ ad.installation_notes|linebreaksbr }}</div>{% endif %}
@@ -271,7 +271,7 @@
 
       {% if ad.damage_reported_at %}
         <li class="map-popup__activity-item is-warning">
-          <span class="map-popup__activity-icon"><i class="ki-outline ki-information-5" aria-hidden="true"></i></span>
+          <span class="map-popup__activity-icon"><i data-lucide="info" aria-hidden="true"></i></span>
           <div class="map-popup__activity-body">
             <div class="map-popup__activity-head">
               <span class="fw-bolder text-dark">Daño reportado</span>
@@ -284,7 +284,7 @@
 
       {% if ad.retired_at %}
         <li class="map-popup__activity-item is-gray">
-          <span class="map-popup__activity-icon"><i class="ki-outline ki-cross-square" aria-hidden="true"></i></span>
+          <span class="map-popup__activity-icon"><i data-lucide="x-square" aria-hidden="true"></i></span>
           <div class="map-popup__activity-body">
             <div class="map-popup__activity-head">
               <span class="fw-bolder text-dark">Retirada</span>
@@ -301,14 +301,14 @@
   <footer class="map-popup__meta d-flex flex-wrap gap-3 text-muted fs-8 mt-5 pt-3">
     {% if ad.created_date %}
       <span class="d-inline-flex align-items-center gap-1">
-        <i class="ki-outline ki-add-files fs-8" aria-hidden="true"></i>
+        <i data-lucide="file-plus" class="fs-8" aria-hidden="true"></i>
         Creado {{ ad.created_date|date:"d M Y · H:i" }}
         {% if ad.creation_user %}<span class="text-gray-400">·</span><span>{{ ad.creation_user }}</span>{% endif %}
       </span>
     {% endif %}
     {% if ad.modified_date and ad.modified_date != ad.created_date %}
       <span class="d-inline-flex align-items-center gap-1">
-        <i class="ki-outline ki-pencil fs-8" aria-hidden="true"></i>
+        <i data-lucide="pencil" class="fs-8" aria-hidden="true"></i>
         Última edición {{ ad.modified_date|date:"d M Y · H:i" }}
         {% if ad.modification_user %}<span class="text-gray-400">·</span><span>{{ ad.modification_user }}</span>{% endif %}
       </span>

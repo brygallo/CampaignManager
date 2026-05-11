@@ -12,7 +12,7 @@ to preserve selected values.
   <div class="card-header pt-4 pt-md-6 pb-3 pb-md-4 border-0 align-items-center">
     <h3 class="card-title align-items-start flex-column m-0">
       <span class="card-label fw-bold text-dark d-flex align-items-center gap-2 fs-6 fs-md-5">
-        <i class="ki-outline ki-filter fs-3 fs-md-2 text-primary"></i>Filtros
+        <i data-lucide="filter" class="fs-3 fs-md-2 text-primary"></i>Filtros
       </span>
       <span class="text-muted fw-semibold fs-8 fs-md-7 mt-1 d-none d-md-block">Acota visitas por campaña, brigadista, apoyo, publicidad o fecha.</span>
     </h3>
@@ -23,7 +23,7 @@ to preserve selected values.
               data-bs-target="#field_surveys_filters_body"
               aria-expanded="false"
               aria-controls="field_surveys_filters_body">
-        <i class="ki-outline ki-down fs-3"></i>
+        <i data-lucide="chevron-down" class="fs-3"></i>
         <span class="d-none d-md-inline">Mostrar / ocultar</span>
       </button>
     </div>
@@ -34,7 +34,7 @@ to preserve selected values.
       {% for campaign in filter_campaigns %}
         {% if active_filters.campaign == campaign.id|stringformat:"s" %}
           <span class="badge badge-light-primary fs-7 d-flex align-items-center gap-1">
-            <i class="ki-outline ki-flag fs-7"></i>{{ campaign.name }}
+            <i data-lucide="flag" class="fs-7"></i>{{ campaign.name }}
           </span>
         {% endif %}
       {% endfor %}
@@ -42,7 +42,7 @@ to preserve selected values.
         {% for brigadier in filter_brigadiers %}
           {% if active_filters.brigadier == brigadier.brigadier_id|stringformat:"s" %}
             <span class="badge badge-light-info fs-7 d-flex align-items-center gap-1">
-              <i class="ki-outline ki-user fs-7"></i>{% firstof brigadier.brigadier__first_name brigadier.brigadier__username %} {{ brigadier.brigadier__last_name }}
+              <i data-lucide="user" class="fs-7"></i>{% firstof brigadier.brigadier__first_name brigadier.brigadier__username %} {{ brigadier.brigadier__last_name }}
             </span>
           {% endif %}
         {% endfor %}
@@ -50,25 +50,25 @@ to preserve selected values.
       {% for level in filter_support_levels %}
         {% if active_filters.support_level == level.id|stringformat:"s" %}
           <span class="badge badge-light-success fs-7 d-flex align-items-center gap-1">
-            <i class="ki-outline ki-check fs-7"></i>{{ level.name }}
+            <i data-lucide="check" class="fs-7"></i>{{ level.name }}
           </span>
         {% endif %}
       {% endfor %}
       {% for response in filter_advertising_responses %}
         {% if active_filters.advertising_response == response.id|stringformat:"s" %}
           <span class="badge badge-light-warning fs-7 d-flex align-items-center gap-1">
-            <i class="ki-outline ki-rocket fs-7"></i>{{ response.name }}
+            <i data-lucide="rocket" class="fs-7"></i>{{ response.name }}
           </span>
         {% endif %}
       {% endfor %}
       {% if active_filters.date_from %}
         <span class="badge badge-light-warning fs-7 d-flex align-items-center gap-1">
-          <i class="ki-outline ki-calendar fs-7"></i>Desde {{ active_filters.date_from }}
+          <i data-lucide="calendar" class="fs-7"></i>Desde {{ active_filters.date_from }}
         </span>
       {% endif %}
       {% if active_filters.date_to %}
         <span class="badge badge-light-warning fs-7 d-flex align-items-center gap-1">
-          <i class="ki-outline ki-calendar fs-7"></i>Hasta {{ active_filters.date_to }}
+          <i data-lucide="calendar" class="fs-7"></i>Hasta {{ active_filters.date_to }}
         </span>
       {% endif %}
     </div>
@@ -135,10 +135,10 @@ to preserve selected values.
 
         <div class="col-12 d-flex flex-wrap gap-2 justify-content-end pt-2 border-top border-gray-200">
           <a href="{{ request.path }}" class="btn btn-sm btn-light">
-            <i class="ki-outline ki-arrows-circle fs-3"></i>Limpiar
+            <i data-lucide="rotate-cw" class="fs-3"></i>Limpiar
           </a>
-          <button type="submit" class="btn btn-sm btn-primary">
-            <i class="ki-outline ki-filter fs-3"></i>Aplicar filtros
+          <button type="submit" class="btn btn-sm btn-primary" data-cm-filter-submit>
+            <i data-lucide="filter" class="fs-3"></i>Aplicar filtros
           </button>
         </div>
       </form>
@@ -147,6 +147,33 @@ to preserve selected values.
 </div>
 {% endwith %}
 {% endwith %}
+<style>
+  /* Lucide SVGs inside the filter submit button must be click-transparent so
+     the event reaches the button itself, not the inner SVG (some automation
+     tools and touch handlers stop dispatching clicks at the SVG layer). */
+  [data-cm-filter-submit] svg,
+  [data-cm-filter-submit] i { pointer-events: none; }
+</style>
+<script>
+  // Defensive submit binding for the dashboard filter button. We use event
+  // delegation so the handler still fires when the click lands on a child
+  // node (icon, text) instead of the button element itself.
+  (function () {
+    document.addEventListener('click', function (event) {
+      var btn = event.target.closest('[data-cm-filter-submit]');
+      if (!btn) return;
+      if (event.defaultPrevented) return;
+      var form = btn.closest('form');
+      if (!form) return;
+      event.preventDefault();
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit(btn);
+      } else {
+        form.submit();
+      }
+    });
+  })();
+</script>
 
 <script>
   // Filters are collapsed by default; auto-expand on tablet/desktop where

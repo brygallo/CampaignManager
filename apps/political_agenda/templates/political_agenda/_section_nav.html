@@ -2,30 +2,41 @@
 Cross-navigation between the pages of "Agenda política".
 Receives:
   - active: one of "calendar", "request", "event", "type"
+
+Labels are hidden on viewports < md so the icon-only fallback needs aria-label
+and title attributes for screen-reader / tooltip parity.
 {% endcomment %}
 <div class="btn-group btn-group-sm" role="group" aria-label="Navegación de agenda política">
   <a href="{% url 'political_agenda:calendar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'calendar' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Calendario"
+     title="Calendario"
      {% if active == 'calendar' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-calendar-tick fs-3"></i>
+    <i data-lucide="calendar-check" class="fs-3"></i>
     <span class="d-none d-md-inline">Calendario</span>
   </a>
   <a href="{% url 'site:political_agenda_politicalagendarequest_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'request' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Solicitudes"
+     title="Solicitudes"
      {% if active == 'request' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-document fs-3"></i>
+    <i data-lucide="file-text" class="fs-3"></i>
     <span class="d-none d-md-inline">Solicitudes</span>
   </a>
   <a href="{% url 'site:political_agenda_politicalagendaevent_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'event' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Eventos"
+     title="Eventos"
      {% if active == 'event' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-row-horizontal fs-3"></i>
+    <i data-lucide="rows-3" class="fs-3"></i>
     <span class="d-none d-md-inline">Eventos</span>
   </a>
   <a href="{% url 'site:political_agenda_agendaeventtype_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'type' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Tipos de evento"
+     title="Tipos de evento"
      {% if active == 'type' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-tag fs-3"></i>
+    <i data-lucide="tag" class="fs-3"></i>
     <span class="d-none d-md-inline">Tipos</span>
   </a>
 </div>

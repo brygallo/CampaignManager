@@ -1,4 +1,12 @@
 {% load static %}
+{# Submenu links use a near-white gray by default which fails WCAG AA on white. #}
+{# Bump them to a mid-gray so 2nd/3rd-level items stay legible — especially on mobile. #}
+<style>
+  #kt_app_sidebar_menu .menu-sub .menu-link { color: var(--bs-gray-700); }
+  #kt_app_sidebar_menu .menu-sub .menu-link:hover,
+  #kt_app_sidebar_menu .menu-sub .menu-link.active { color: var(--bs-primary); }
+  #kt_app_sidebar_menu .menu-sub .menu-link .menu-bullet .bullet { background-color: var(--bs-gray-500); }
+</style>
 <div id="kt_app_sidebar" class="app-sidebar flex-column mt-lg-4 ps-2 pe-2 ps-lg-7 pe-lg-4"
      data-kt-drawer="true"
      data-kt-drawer-name="app-sidebar"
@@ -24,7 +32,7 @@
   {# Sidebar quick-search (client-side) — filters menu items live. #}
   <div class="app-sidebar-search px-3 mb-3 mt-2">
     <div class="position-relative">
-      <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
+      <i data-lucide="search" class="fs-3 position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
       <input id="kt_app_sidebar_search"
              type="search"
              class="form-control form-control-sm form-control-solid ps-10"
@@ -49,7 +57,7 @@
 
         <div class="menu-item">
           <a class="menu-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'home' %}">
-            <span class="menu-icon"><i class="ki-outline ki-home-2 fs-2"></i></span>
+            <span class="menu-icon"><i data-lucide="home" class="fs-2"></i></span>
             <span class="menu-title">Inicio</span>
           </a>
         </div>
@@ -57,7 +65,7 @@
         {% if user.is_staff %}
           <div class="menu-item">
             <a class="menu-link{% if request.resolver_match.url_name == 'superadmin_home' %} active{% endif %}" href="{% url 'superadmin_home' %}">
-              <span class="menu-icon"><i class="ki-outline ki-element-11 fs-2"></i></span>
+              <span class="menu-icon"><i data-lucide="layout-dashboard" class="fs-2"></i></span>
               <span class="menu-title">Panel administrativo</span>
             </a>
           </div>
@@ -87,7 +95,7 @@
           <div class="menu-item">
             <a class="menu-link{% if request.resolver_match.url_name == 'map_settings' %} active{% endif %}"
                href="{% url 'tenancy:map_settings' %}">
-              <span class="menu-icon"><i class="ki-outline ki-map fs-2"></i></span>
+              <span class="menu-icon"><i data-lucide="map" class="fs-2"></i></span>
               <span class="menu-title">Configuración del mapa</span>
             </a>
           </div>
@@ -95,7 +103,7 @@
 
         {# Empty state when search has no matches. #}
         <div id="kt_app_sidebar_search_empty" class="d-none text-center py-6 px-3">
-          <i class="ki-outline ki-magnifier fs-2x text-muted mb-2 d-block"></i>
+          <i data-lucide="search" class="fs-2x text-muted mb-2 d-block"></i>
           <span class="text-muted fs-7">Sin coincidencias</span>
         </div>
       </div>
@@ -132,7 +140,8 @@
         const iconWrap = document.createElement("span");
         iconWrap.className = "menu-icon";
         const iconI = document.createElement("i");
-        iconI.className = "ki-outline ki-star-2 fs-3 text-warning";
+        iconI.setAttribute("data-lucide", "star");
+        iconI.className = "fs-3 text-warning";
         iconWrap.appendChild(iconI);
 
         const title = document.createElement("span");
@@ -145,7 +154,8 @@
         remove.setAttribute("aria-label", "Quitar de favoritos");
         remove.dataset.favRemove = fav.href;
         const removeIcon = document.createElement("i");
-        removeIcon.className = "ki-outline ki-cross fs-7";
+        removeIcon.setAttribute("data-lucide", "x");
+        removeIcon.className = "fs-7";
         remove.appendChild(removeIcon);
 
         a.appendChild(iconWrap);
@@ -172,13 +182,23 @@
         star.className = "btn btn-icon btn-sm btn-active-light-warning ms-auto p-0 border-0 bg-transparent menu-fav-toggle";
         star.setAttribute("aria-label", "Marcar como favorito");
         const starI = document.createElement("i");
-        starI.className = "ki-outline ki-star fs-6 text-muted";
+        starI.setAttribute("data-lucide", "star");
+        starI.className = "fs-6 text-muted";
         star.appendChild(starI);
         link.appendChild(star);
 
         const sync = () => {
           const isFav = readFavs().some(f => f.href === href);
-          starI.className = `ki-${isFav ? "solid" : "outline"} ki-star fs-6 ${isFav ? "text-warning" : "text-muted"}`;
+          // Toggle the visual: keep the same icon name (Lucide doesn't have
+          // outline/filled variants) and just change the colour. The svg
+          // already exists from the initial render — flip its className.
+          const svg = star.querySelector("svg.lucide") || starI;
+          svg.classList.remove("text-muted", "text-warning");
+          svg.classList.add(isFav ? "text-warning" : "text-muted");
+          // If the lucide-injected SVG is filled-style desired, set fill.
+          if (svg.tagName && svg.tagName.toLowerCase() === "svg") {
+            svg.style.fill = isFav ? "currentColor" : "none";
+          }
         };
         sync();
         star.addEventListener("click", (e) => {
@@ -205,11 +225,19 @@
         writeFavs(readFavs().filter(f => f.href !== href));
         renderFavorites();
         // Re-sync star icon on original leaf.
-        const orig = menuRoot.querySelector(`a.menu-link[href="${CSS.escape(href)}"] .menu-fav-toggle i`);
-        if (orig) { orig.className = "ki-outline ki-star fs-6 text-muted"; }
+        const wrapper = menuRoot.querySelector(`a.menu-link[href="${CSS.escape(href)}"] .menu-fav-toggle`);
+        if (wrapper) {
+          const svg = wrapper.querySelector("svg.lucide") || wrapper.querySelector("[data-lucide]");
+          if (svg) {
+            svg.classList.remove("text-warning");
+            svg.classList.add("text-muted");
+            if (svg.tagName && svg.tagName.toLowerCase() === "svg") svg.style.fill = "none";
+          }
+        }
       });
 
       renderFavorites();
+      if (window.cmRenderIcons) window.cmRenderIcons();
 
       // --- Live filter ---
       const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");

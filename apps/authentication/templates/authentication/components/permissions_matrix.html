@@ -3,12 +3,12 @@
 <div class="card card-flush mb-5 mb-xl-10">
   <div class="card-header pt-7 flex-wrap gap-3">
     <h3 class="card-title fw-bolder text-gray-900">
-      <i class="ki-outline ki-shield-tick fs-2 me-2 text-primary"></i>
+      <i data-lucide="shield-check" class="fs-2 me-2 text-primary"></i>
       Configuración de permisos
     </h3>
     <div class="card-toolbar d-flex align-items-center gap-3 flex-wrap">
       <div class="position-relative w-md-300px">
-        <i class="ki-outline ki-magnifier fs-3 position-absolute top-50 translate-middle-y ms-4"></i>
+        <i data-lucide="search" class="fs-3 position-absolute top-50 translate-middle-y ms-4"></i>
         <label for="permissions-matrix-search" class="visually-hidden">Filtrar permisos</label>
         <input id="permissions-matrix-search" type="search"
                class="form-control form-control-sm form-control-solid ps-11"
@@ -23,12 +23,12 @@
   <div class="card-body pt-3">
     {% if enabled %}
       <div class="alert alert-primary d-flex align-items-center p-5 mb-7">
-        <i class="ki-outline ki-information-5 fs-2hx text-primary me-4"></i>
+        <i data-lucide="info" class="fs-2hx text-primary me-4"></i>
         <div class="d-flex flex-column">
           <span class="fw-bold mb-1">Cómo funciona</span>
           <span class="fs-7">
             Marca o desmarca cada acción para asignar permisos.
-            <i class="ki-outline ki-people fs-7 text-success"></i> indica que el permiso ya está disponible mediante un grupo.
+            <i data-lucide="users" class="fs-7 text-success"></i> indica que el permiso ya está disponible mediante un grupo.
           </span>
         </div>
       </div>
@@ -43,7 +43,7 @@
                   data-bs-toggle="collapse"
                   data-bs-target="#permissions-app-{{ forloop.counter }}">
             <span class="fw-bolder text-gray-800 d-flex align-items-center">
-              <i class="ki-outline ki-cube-2 fs-3 me-2 text-primary"></i>{{ app.app_name }}
+              <i data-lucide="package" class="fs-3 me-2 text-primary"></i>{{ app.app_name }}
               <span class="text-muted fs-8 ms-2">({{ app.app_label }})</span>
             </span>
             <span class="badge badge-light-primary" data-permission-app-count>{{ app.models|length }}</span>
@@ -86,7 +86,7 @@
                               {% if perm.via_groups %}
                                 <div class="mt-1">
                                   {% for g in perm.via_groups %}
-                                    <i class="ki-outline ki-people fs-8 text-success" title="Heredado del grupo {{ g }}"></i>
+                                    <i data-lucide="users" class="fs-8 text-success" title="Heredado del grupo {{ g }}"></i>
                                   {% endfor %}
                                 </div>
                               {% endif %}
@@ -109,7 +109,7 @@
                                 <span class="form-check-label fs-7 ms-2">
                                   {{ perm.name }}
                                   {% if perm.via_groups %}
-                                    <i class="ki-outline ki-people fs-8 text-success ms-1" title="Heredado de grupo"></i>
+                                    <i data-lucide="users" class="fs-8 text-success ms-1" title="Heredado de grupo"></i>
                                   {% endif %}
                                 </span>
                               </label>

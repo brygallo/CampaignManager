@@ -2,7 +2,7 @@
   {% if req %}
     {% if req.pending_count %}
       <div class="alert alert-warning d-flex align-items-start gap-3 mb-4" role="alert">
-        <i class="ki-outline ki-information-5 fs-2hx text-warning"></i>
+        <i data-lucide="info" class="fs-2hx text-warning"></i>
         <div class="flex-grow-1">
           <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
             <div class="me-auto">
@@ -12,7 +12,7 @@
               </small>
             </div>
             <span class="badge badge-warning d-flex align-items-center gap-1">
-              <i class="ki-outline ki-information fs-5"></i>
+              <i data-lucide="info" class="fs-5"></i>
               {{ req.pending_count }} sin completar
             </span>
           </div>
@@ -23,7 +23,7 @@
                 <div class="d-flex align-items-center p-3 rounded h-100 bg-white border {% if item.is_met %}border-success{% else %}border-danger{% endif %}">
                   <span class="symbol symbol-40px me-3">
                     <span class="symbol-label bg-{% if item.is_met %}success{% else %}danger{% endif %} text-white">
-                      <i class="ki-outline ki-{% if item.is_met %}check{% else %}cross{% endif %} fs-3"></i>
+                      <i data-lucide="{% if item.is_met %}check{% else %}x{% endif %}" class="fs-3"></i>
                     </span>
                   </span>
                   <div class="flex-grow-1" style="min-width: 0;">
@@ -46,17 +46,17 @@
 
           {% if req.help_text %}
             <div class="text-muted small mt-3 d-flex align-items-center gap-1">
-              <i class="ki-outline ki-information-5 fs-6"></i>{{ req.help_text }}
+              <i data-lucide="info" class="fs-6"></i>{{ req.help_text }}
             </div>
           {% endif %}
         </div>
       </div>
     {% else %}
       <div class="alert alert-success d-flex align-items-center flex-wrap gap-2 mb-4" role="alert">
-        <i class="ki-outline ki-check-circle fs-2 text-success"></i>
+        <i data-lucide="check-circle-2" class="fs-2 text-success"></i>
         <strong class="me-auto">{{ req.ready_text }}</strong>
         <span class="badge badge-light-success d-flex align-items-center gap-1">
-          <i class="ki-outline ki-check fs-6"></i>Listo para avanzar
+          <i data-lucide="check" class="fs-6"></i>Listo para avanzar
         </span>
       </div>
     {% endif %}

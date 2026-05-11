@@ -14,7 +14,7 @@
 
     {% if form.non_field_errors %}
       <div class="alert alert-danger d-flex align-items-center p-5 mb-9">
-        <i class="ki-outline ki-shield-cross fs-2hx text-danger me-4"></i>
+        <i data-lucide="shield-x" class="fs-2hx text-danger me-4"></i>
         <div class="d-flex flex-column">
           <span class="fw-semibold">{{ form.non_field_errors|join:", " }}</span>
         </div>
@@ -44,8 +44,8 @@
                 class="btn btn-sm btn-icon position-absolute translate-middle top-50 end-0 me-n2"
                 data-kt-password-meter-control="visibility"
                 aria-label="Mostrar u ocultar contraseña">
-          <i class="ki-outline ki-eye-slash fs-2"></i>
-          <i class="ki-outline ki-eye fs-2 d-none"></i>
+          <i data-lucide="eye-off" class="fs-2"></i>
+          <i data-lucide="eye" class="fs-2 d-none"></i>
         </button>
       </div>
       {% if form.password.errors %}<div class="invalid-feedback d-block" role="alert">{{ form.password.errors|join:", " }}</div>{% endif %}

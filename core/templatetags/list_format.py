@@ -11,12 +11,16 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from core.templatetags.icons import lucide as _lucide
+
 register = template.Library()
 
-# `FieldService.get_field_value()` may return either Python booleans (when the
-# field is a `BooleanField`) or their string representation. Match both.
-_TRUTHY = {True, "True", "true"}
-_FALSY = {False, "False", "false"}
+# Stringified booleans returned by ``FieldService.get_field_value()`` when
+# the field is a ``BooleanField``. Real Python booleans are handled before
+# this set is consulted (see ``isinstance(value, bool)``), so we keep these
+# string-only to avoid the ``1 == True`` / ``0 == False`` collision.
+_TRUTHY = {"True", "true"}
+_FALSY = {"False", "false"}
 
 # Hex color literal (3, 6 or 8 digits, with leading "#").
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
@@ -80,8 +84,18 @@ def list_cell(value):
     """
     if value is None or value == "":
         return ""
-    if value is True or value is False or value in _TRUTHY or value in _FALSY:
-        truthy = value in _TRUTHY or value is True
+    # Booleans render as Sí/No badges. We check ``isinstance(value, bool)``
+    # before ``in _TRUTHY``/``_FALSY`` because ``1 == True`` and ``0 == False``
+    # in Python, so a raw int (e.g. ``voters_count=1``) would otherwise be
+    # picked up as truthy and render as "Sí" instead of the number.
+    if isinstance(value, bool):
+        css = "success" if value else "secondary"
+        label = "Sí" if value else "No"
+        return mark_safe(
+            f'<span class="badge badge-light-{css} fw-semibold">{label}</span>'
+        )
+    if isinstance(value, str) and (value in _TRUTHY or value in _FALSY):
+        truthy = value in _TRUTHY
         css = "success" if truthy else "secondary"
         label = "Sí" if truthy else "No"
         return mark_safe(
@@ -100,7 +114,7 @@ def list_cell(value):
         css, icon = state
         safe_label = escape(value)
         icon_html = (
-            f'<i class="ki-outline ki-{icon} fs-7 me-1" aria-hidden="true"></i>'
+            f'<i data-lucide="{_lucide(icon)}" class="fs-7 me-1" aria-hidden="true"></i>'
             if icon else ""
         )
         return mark_safe(

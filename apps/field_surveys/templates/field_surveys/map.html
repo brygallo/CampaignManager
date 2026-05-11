@@ -30,7 +30,7 @@
           aria-controls="field-survey-map-panel"
           aria-expanded="false"
           aria-label="Abrir filtros">
-    <i class="ki-outline ki-setting-3 fs-2"></i>
+    <i data-lucide="settings" class="fs-2"></i>
     <span id="field-survey-filter-count"
           class="map-filter-btn__count"
           hidden>0</span>
@@ -49,7 +49,7 @@
       <div class="d-flex align-items-center gap-3">
         <span class="symbol symbol-35px symbol-circle">
           <span class="symbol-label bg-light-primary">
-            <i class="ki-outline ki-filter fs-3 text-primary"></i>
+            <i data-lucide="filter" class="fs-3 text-primary"></i>
           </span>
         </span>
         <div class="d-flex flex-column">
@@ -61,7 +61,7 @@
               class="btn btn-icon btn-sm btn-active-light-primary field-survey-map-panel__close"
               data-panel-toggle
               aria-label="Cerrar filtros">
-        <i class="ki-outline ki-cross fs-2"></i>
+        <i data-lucide="x" class="fs-2"></i>
       </button>
     </div>
 
@@ -129,13 +129,13 @@
         <button type="button"
                 class="btn btn-sm btn-light fw-semibold flex-fill"
                 id="field-survey-map-reset">
-          <i class="ki-outline ki-eraser fs-3"></i>
+          <i data-lucide="eraser" class="fs-3"></i>
           <span>Limpiar</span>
         </button>
         <button type="button"
                 class="btn btn-sm btn-primary fw-semibold flex-fill d-md-none"
                 data-panel-toggle>
-          <i class="ki-outline ki-check fs-3"></i>
+          <i data-lucide="check" class="fs-3"></i>
           <span>Ver mapa</span>
         </button>
       </div>
@@ -158,18 +158,18 @@
   <div class="map-controls-stack" aria-label="Controles del mapa">
     <div class="map-controls-group" role="group" aria-label="Zoom">
       <button type="button" class="map-controls-btn" data-zoom-in aria-label="Acercar">
-        <i class="ki-outline ki-plus fs-2"></i>
+        <i data-lucide="plus" class="fs-2"></i>
       </button>
       <span class="map-controls-divider" aria-hidden="true"></span>
       <button type="button" class="map-controls-btn" data-zoom-out aria-label="Alejar">
-        <i class="ki-outline ki-minus fs-2"></i>
+        <i data-lucide="minus" class="fs-2"></i>
       </button>
     </div>
     <button type="button"
             class="map-controls-btn map-controls-btn--solo"
             id="field-survey-my-location"
             aria-label="Ir a mi ubicación">
-      <i class="ki-outline ki-geolocation fs-2"></i>
+      <i data-lucide="map-pin" class="fs-2"></i>
     </button>
   </div>
   <div class="map-location-status"
@@ -184,7 +184,7 @@
           aria-expanded="false"
           aria-label="Mostrar leyenda del mapa"
           title="Leyenda">
-    <i class="ki-outline ki-information-2"></i>
+    <i data-lucide="info"></i>
   </button>
 
   <aside id="field-survey-map-legend"
@@ -197,7 +197,7 @@
               class="field-survey-map-legend__close"
               data-legend-close
               aria-label="Cerrar leyenda">
-        <i class="ki-outline ki-cross fs-5"></i>
+        <i data-lucide="x" class="fs-5"></i>
       </button>
     </div>
 
@@ -205,25 +205,25 @@
       <div class="field-survey-map-legend__group-title">Visitas</div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--apoya">
-          <i class="ki-solid ki-like"></i>
+          <i data-lucide="thumbs-up"></i>
         </span>
         <span>Apoya</span>
       </div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--indeciso">
-          <i class="ki-solid ki-question-2"></i>
+          <i data-lucide="help-circle"></i>
         </span>
         <span>Indeciso</span>
       </div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--noapoya">
-          <i class="ki-solid ki-dislike"></i>
+          <i data-lucide="thumbs-down"></i>
         </span>
         <span>No apoya</span>
       </div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--noatendio">
-          <i class="ki-solid ki-home-2"></i>
+          <i data-lucide="home"></i>
         </span>
         <span>No atendió</span>
       </div>
@@ -233,13 +233,13 @@
       <div class="field-survey-map-legend__group-title">Publicidad</div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--accept">
-          <i class="ki-solid ki-check"></i>
+          <i data-lucide="check"></i>
         </span>
         <span>Acepta material</span>
       </div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--reject">
-          <i class="ki-solid ki-cross"></i>
+          <i data-lucide="x"></i>
         </span>
         <span>Rechaza material</span>
       </div>
@@ -249,7 +249,7 @@
       <div class="field-survey-map-legend__group-title">Competencia</div>
       <div class="field-survey-map-legend__row">
         <span class="field-survey-map-legend__swatch field-survey-map-legend__swatch--competitor">
-          <i class="ki-solid ki-flag"></i>
+          <i data-lucide="flag"></i>
         </span>
         <span>Detección de oposición</span>
       </div>
@@ -259,125 +259,13 @@
 </div>
 
 {# Modal: choose what to create when an empty map spot is clicked. #}
-<div class="modal fade cm-sheet-modal field-survey-map-modal" id="field-survey-choose-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4 border-0">
-        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
-            <span class="symbol-label bg-light-primary text-primary">
-              <i class="ki-outline ki-geolocation fs-2"></i>
-            </span>
-          </span>
-          <div class="min-w-0">
-            <h5 class="modal-title fw-bolder mb-0 text-truncate">¿Qué deseas registrar aquí?</h5>
-            <span class="text-muted fs-8" data-choose-coords>Selecciona una opción.</span>
-          </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body pt-0">
-        <div class="d-grid gap-3">
-          <button type="button"
-                  class="btn btn-light-primary text-start d-flex align-items-center gap-3 py-4"
-                  data-choose-action="visit">
-            <i class="ki-duotone ki-home-2 fs-2x">
-              <span class="path1"></span>
-              <span class="path2"></span>
-            </i>
-            <span class="d-flex flex-column flex-grow-1">
-              <span class="fw-bolder fs-6">Visita / levantamiento</span>
-              <span class="fs-8 opacity-75">Registra una visita en este punto y opcionalmente ofrece publicidad.</span>
-            </span>
-            <i class="ki-outline ki-arrow-right fs-2 ms-auto"></i>
-          </button>
-          <button type="button"
-                  class="btn btn-light-danger text-start d-flex align-items-center gap-3 py-4"
-                  data-choose-action="competitor">
-            <i class="ki-duotone ki-flag fs-2x">
-              <span class="path1"></span>
-              <span class="path2"></span>
-            </i>
-            <span class="d-flex flex-column flex-grow-1">
-              <span class="fw-bolder fs-6">Detección de competencia</span>
-              <span class="fs-8 opacity-75">Reporta publicidad de la oposición vista en este lugar.</span>
-            </span>
-            <i class="ki-outline ki-arrow-right fs-2 ms-auto"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+{% include "base/_sheet_modal.html" with modal_id="field-survey-choose-modal" variant="choice" tone="primary" icon="map-pin" title="¿Qué deseas registrar aquí?" subtitle="Selecciona una opción." subtitle_attrs="data-choose-coords" size="md" scrollable=True extra_classes="field-survey-map-modal" body_template="field_surveys/_choose_modal_body.html" %}
 
 {# Modal: empty map click → quick create form #}
-<div class="modal fade cm-sheet-modal field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-create-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable field-survey-map-sheet-dialog">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4">
-        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-          <span class="symbol symbol-40px symbol-circle flex-shrink-0" data-create-icon-wrap>
-            <span class="symbol-label bg-light-primary text-primary" data-create-icon-bg>
-              <i class="ki-outline ki-plus-square fs-2" data-create-icon></i>
-            </span>
-          </span>
-          <div class="min-w-0">
-            <h5 class="modal-title fw-bolder mb-0 text-truncate" data-create-title>Nuevo registro</h5>
-            <span class="text-muted fs-8" data-create-subtitle>Completa los datos de la visita</span>
-          </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body" data-create-modal-body>
-        <div class="text-center text-muted py-10">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando…</span>
-          </div>
-          <div class="mt-3">Cargando formulario…</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit"
-                form="field-survey-map-create-form"
-                class="btn btn-sm btn-primary d-flex align-items-center gap-2"
-                data-create-submit>
-          <i class="ki-outline ki-check fs-3"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+{% include "base/_sheet_modal.html" with modal_id="field-survey-create-modal" variant="form" tone="primary" icon="square-plus" title="Nuevo registro" subtitle="Completa los datos de la visita" title_attrs="data-create-title" subtitle_attrs="data-create-subtitle" icon_attrs="data-create-icon" icon_bg_attrs="data-create-icon-bg" icon_wrap_attrs="data-create-icon-wrap" size="xl" scrollable=True extra_classes="field-survey-map-modal field-survey-map-sheet-modal" dialog_classes="field-survey-map-sheet-dialog" body_template="field_surveys/_create_modal_body.html" footer_template="field_surveys/_create_modal_footer.html" %}
 
-{# Modal shown when a visit or competitor pin is clicked. Body is filled with the Superadmin detail page. #}
-<div class="modal fade cm-sheet-modal field-survey-map-modal field-survey-map-sheet-modal" id="field-survey-detail-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable field-survey-map-sheet-dialog">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4">
-        <h5 class="modal-title fw-bolder text-truncate" data-modal-title>Levantamiento</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body" data-modal-body>
-        <div class="text-center text-muted py-10">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando…</span>
-          </div>
-          <div class="mt-3">Cargando...</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cerrar</button>
-        <a href="#" class="btn btn-sm btn-primary d-flex align-items-center gap-2" data-detail-link>
-          Abrir página completa
-          <i class="ki-outline ki-arrow-right fs-3"></i>
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
+{# Modal shown when a visit or competitor pin is clicked. #}
+{% include "base/_sheet_modal.html" with modal_id="field-survey-detail-modal" variant="detail" tone="primary" icon="map-pin" title="Levantamiento" title_attrs="data-modal-title" size="xl" scrollable=True extra_classes="field-survey-map-modal field-survey-map-sheet-modal" dialog_classes="field-survey-map-sheet-dialog" body_template="field_surveys/_detail_modal_body.html" footer_template="field_surveys/_detail_modal_footer.html" %}
 {% endblock %}
 
 {% block extra_css %}

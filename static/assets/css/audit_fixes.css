@@ -5,6 +5,31 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   Lucide icons (replaced Keenicons in 2026-05-08 audit pass).
+   The library injects an <svg class="lucide ..."> in place of each
+   `<i data-lucide="name">`. We size by `font-size` so existing fs-* utility
+   classes (fs-2, fs-3, fs-3hx, etc.) keep working without changes.
+   -------------------------------------------------------------------------- */
+i[data-lucide],
+.lucide,
+svg.lucide {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.125em;
+  stroke-width: 1.75;
+  flex-shrink: 0;
+}
+/* Slight nudge for icons paired with text in a flex row — keeps the visual
+   center on the cap-height line. */
+.btn > i[data-lucide],
+.btn > svg.lucide,
+.menu-icon i[data-lucide],
+.menu-icon svg.lucide {
+  vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------------
    Form section divider: replace the heavy 3px blue bar with a subtle line.
    Keeps the existing markup (`.h-3px.bg-primary`) working so we don't have
    to touch every template — just override the visual.

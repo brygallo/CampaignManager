@@ -6,14 +6,18 @@ Receives:
 <div class="btn-group btn-group-sm" role="group" aria-label="Navegación de publicidad territorial">
   <a href="{% url 'territorial_ads:map' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'map' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Mapa"
+     title="Mapa"
      {% if active == 'map' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-map fs-3"></i>
+    <i data-lucide="map" class="fs-3"></i>
     <span class="d-none d-md-inline">Mapa</span>
   </a>
   <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'list' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Lista"
+     title="Lista"
      {% if active == 'list' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-row-horizontal fs-3"></i>
+    <i data-lucide="rows-3" class="fs-3"></i>
     <span class="d-none d-md-inline">Lista</span>
   </a>
 </div>

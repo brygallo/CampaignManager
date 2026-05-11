@@ -6,26 +6,34 @@ Receives:
 <div class="btn-group btn-group-sm" role="group" aria-label="Navegación de levantamientos">
   <a href="{% url 'field_surveys:map' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'map' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Mapa"
+     title="Mapa"
      {% if active == 'map' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-map fs-3"></i>
+    <i data-lucide="map" class="fs-3"></i>
     <span class="d-none d-md-inline">Mapa</span>
   </a>
   <a href="{% url 'site:field_surveys_fieldsurvey_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'visits' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Visitas"
+     title="Visitas"
      {% if active == 'visits' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-row-horizontal fs-3"></i>
+    <i data-lucide="rows-3" class="fs-3"></i>
     <span class="d-none d-md-inline">Visitas</span>
   </a>
   <a href="{% url 'site:field_surveys_competitoradvertisingdetection_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'competitors' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Competencia"
+     title="Competencia"
      {% if active == 'competitors' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-flag fs-3"></i>
+    <i data-lucide="flag" class="fs-3"></i>
     <span class="d-none d-md-inline">Competencia</span>
   </a>
   <a href="{% url 'field_surveys:dashboard' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'dashboard' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Dashboard"
+     title="Dashboard"
      {% if active == 'dashboard' %}aria-current="page"{% endif %}>
-    <i class="ki-outline ki-chart-simple fs-3"></i>
+    <i data-lucide="bar-chart-3" class="fs-3"></i>
     <span class="d-none d-md-inline">Dashboard</span>
   </a>
 </div>

@@ -2,7 +2,7 @@
 
 {% if form.non_field_errors %}
   <div class="alert alert-danger d-flex align-items-center p-5 mb-7">
-    <i class="ki-outline ki-shield-cross fs-2hx text-danger me-4"></i>
+    <i data-lucide="shield-x" class="fs-2hx text-danger me-4"></i>
     <div class="d-flex flex-column">
       <span class="fw-bold mb-1">Revise la información del formulario</span>
       {% for error in form.non_field_errors %}

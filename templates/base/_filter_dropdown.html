@@ -7,7 +7,7 @@
         data-kt-menu-trigger="click"
         data-kt-menu-placement="bottom-end"
         aria-haspopup="menu">
-  <i class="ki-outline ki-filter fs-3"></i>Filtros
+  <i data-lucide="filter" class="fs-3"></i>Filtros
   {% if site.current_filters %}
     <span class="badge badge-circle badge-primary ms-2">{{ site.current_filters|length }}</span>
   {% endif %}
@@ -64,7 +64,7 @@
                     class="btn btn-icon btn-sm btn-light"
                     data-kt-list-filter-daterange-clear="filter_{{ opt.name }}"
                     title="Limpiar rango">
-              <i class="ki-outline ki-cross fs-3"></i>
+              <i data-lucide="x" class="fs-3"></i>
             </button>
           </div>
           <input type="hidden" name="{{ opt.name }}__gte"

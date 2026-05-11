@@ -1,24 +1,33 @@
 (function (window, document) {
   "use strict";
 
+  // Migrated to Lucide names (see core/templatetags/icons.py for the full map).
+  // Pin HTML uses `<i data-lucide="...">` and the global lucide.createIcons()
+  // call (kicked from cmRenderIcons) replaces them with inline SVGs.
   var ICON_ALIASES = {
     "billboard": "flag",
-    "sticker": "tag"
+    "sticker":   "tag",
+    "like":      "thumbs-up",
+    "dislike":   "thumbs-down",
+    "question-2":"help-circle",
+    "home-2":    "home",
+    "geolocation":"map-pin",
+    "cross":     "x"
   };
 
   // Visual config per support state. Drives icon, color, semantic class.
   // The fallback ("") is used when a survey has not been classified yet.
   var SUPPORT_STATES = {
-    "APOYA":      { icon: "like",       color: "#50cd89", cls: "is-apoya",      label: "Apoya" },
-    "INDECISO":   { icon: "question-2", color: "#ffc700", cls: "is-indeciso",   label: "Indeciso" },
-    "NO_APOYA":   { icon: "dislike",    color: "#f1416c", cls: "is-noapoya",    label: "No apoya" },
-    "NO_ATENDIO": { icon: "home-2",     color: "#7e8299", cls: "is-noatendio",  label: "No atendió" },
-    "":           { icon: "geolocation",color: "#3e97ff", cls: "is-pending",    label: "Sin clasificar" }
+    "APOYA":      { icon: "thumbs-up",   color: "#50cd89", cls: "is-apoya",      label: "Apoya" },
+    "INDECISO":   { icon: "help-circle", color: "#ffc700", cls: "is-indeciso",   label: "Indeciso" },
+    "NO_APOYA":   { icon: "thumbs-down", color: "#f1416c", cls: "is-noapoya",    label: "No apoya" },
+    "NO_ATENDIO": { icon: "home",        color: "#7e8299", cls: "is-noatendio",  label: "No atendió" },
+    "":           { icon: "map-pin",     color: "#3e97ff", cls: "is-pending",    label: "Sin clasificar" }
   };
 
   var ADVERTISING_BADGES = {
     "ACEPTA":  { icon: "check", cls: "fs-pin__badge--accept", label: "Acepta publicidad" },
-    "RECHAZA": { icon: "cross", cls: "fs-pin__badge--reject", label: "Rechaza publicidad" }
+    "RECHAZA": { icon: "x",     cls: "fs-pin__badge--reject", label: "Rechaza publicidad" }
   };
 
   function safeIconName(icon) {
@@ -26,7 +35,7 @@
     if (ICON_ALIASES[raw]) {
       return ICON_ALIASES[raw];
     }
-    return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "element-12";
+    return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "circle";
   }
 
   function safeColor(color, fallback) {
@@ -43,7 +52,7 @@
     if (badge) {
       badgeHtml =
         '<span class="fs-pin__badge ' + badge.cls + '" title="' + badge.label + '">' +
-          '<i class="ki-solid ki-' + badge.icon + '"></i>' +
+          '<i data-lucide="' + badge.icon + '"></i>' +
         '</span>';
     }
 
@@ -51,7 +60,7 @@
       className: "fs-pin fs-pin--visit " + state.cls,
       html:
         '<span class="fs-pin__shape" style="background:' + color + '">' +
-          '<i class="ki-solid ki-' + iconName + '"></i>' +
+          '<i data-lucide="' + iconName + '"></i>' +
         '</span>' +
         '<span class="fs-pin__tail" style="border-top-color:' + color + '"></span>' +
         badgeHtml,
@@ -73,7 +82,7 @@
       html:
         '<span class="fs-pin__diamond" style="border-color:' + color + '">' +
           '<span class="fs-pin__diamond-icon" style="color:' + color + '">' +
-            '<i class="ki-solid ki-' + COMPETITOR_ICON + '"></i>' +
+            '<i data-lucide="' + COMPETITOR_ICON + '"></i>' +
           '</span>' +
         '</span>',
       iconSize: [44, 44],
@@ -243,7 +252,7 @@
       html:
         '<span class="fs-cluster fs-cluster--competitor">' +
           '<span class="fs-cluster__inner fs-cluster__inner--competitor">' +
-            '<i class="ki-solid ki-flag"></i>' +
+            '<i data-lucide="flag"></i>' +
             '<span class="fs-cluster__count">' + total + '</span>' +
           '</span>' +
         '</span>',
@@ -469,6 +478,9 @@
         // data.html is server-rendered with Django autoescape.
         setHtml(bodyEl, data.html || "");
         bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
       })
       .catch(function () {
         setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
@@ -714,6 +726,9 @@
           if (bounds.length) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
           }
+          // Pin HTML contains <i data-lucide="..."> placeholders — render
+          // them now that Leaflet has placed the markers in the DOM.
+          if (window.cmRenderIcons) window.cmRenderIcons();
         })
         .catch(function () {
           updateCount(counterEl, 0);
@@ -845,7 +860,10 @@
       var iconBg = createModalEl.querySelector("[data-create-icon-bg]");
       if (titleEl) titleEl.textContent = preset.title;
       if (subtitleEl) subtitleEl.textContent = preset.subtitle;
-      if (iconEl) iconEl.className = "ki-outline ki-" + preset.icon + " fs-2";
+      if (iconEl) {
+        iconEl.setAttribute("data-lucide", safeIconName(preset.icon));
+        iconEl.className = "fs-2";
+      }
       if (iconBg) iconBg.className = "symbol-label " + preset.bgClass;
     }
 

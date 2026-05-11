@@ -37,19 +37,19 @@
              class="btn btn-icon btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body{% if not site.nav.previous_url %} disabled{% endif %}"
              {% if not site.nav.previous_url %}aria-disabled="true" tabindex="-1"{% endif %}
              title="Anterior" aria-label="Registro anterior">
-            <i class="ki-outline ki-arrow-left fs-3"></i>
+            <i data-lucide="arrow-left" class="fs-3"></i>
           </a>
           <a href="{{ site.nav.next_url|default:'#' }}"
              class="btn btn-icon btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body{% if not site.nav.next_url %} disabled{% endif %}"
              {% if not site.nav.next_url %}aria-disabled="true" tabindex="-1"{% endif %}
              title="Siguiente" aria-label="Siguiente registro">
-            <i class="ki-outline ki-arrow-right fs-3"></i>
+            <i data-lucide="arrow-right" class="fs-3"></i>
           </a>
         </div>
       {% endif %}
       {% if site.urls.list %}
         <a href="{{ site.urls.list }}" class="btn btn-sm btn-outline btn-color-gray-700 btn-active-color-primary bg-body d-flex align-items-center gap-1" aria-label="Volver al listado">
-          <i class="ki-outline ki-arrow-left fs-3"></i><span class="d-none d-md-inline">Volver</span>
+          <i data-lucide="arrow-left" class="fs-3"></i><span class="d-none d-md-inline">Volver</span>
         </a>
       {% endif %}
       {% if object and site.urls.delete %}
@@ -61,13 +61,13 @@
                 data-cm-delete-label="{{ object }}"
                 title="Eliminar"
                 aria-label="Eliminar registro">
-          <i class="ki-outline ki-trash fs-3"></i>
+          <i data-lucide="trash-2" class="fs-3"></i>
         </button>
       {% endif %}
       <div class="btn-group">
         <button type="submit" form="main-form" name="_save" value="1" class="btn btn-primary btn-sm" data-kt-form-submit="true">
           <span class="indicator-label d-flex align-items-center">
-            <i class="ki-outline ki-check fs-3"></i>Guardar
+            <i data-lucide="check" class="fs-3"></i>Guardar
           </span>
           <span class="indicator-progress">
             Guardando…<span class="spinner-border spinner-border-sm align-middle ms-2"></span>
@@ -85,18 +85,18 @@
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
             <button type="submit" form="main-form" name="_continue" value="1" class="dropdown-item d-flex align-items-center gap-2" data-kt-form-submit="true">
-              <i class="ki-outline ki-pencil fs-3"></i>Guardar y continuar editando
+              <i data-lucide="pencil" class="fs-3"></i>Guardar y continuar editando
             </button>
           </li>
           <li>
             <button type="submit" form="main-form" name="_addanother" value="1" class="dropdown-item d-flex align-items-center gap-2" data-kt-form-submit="true">
-              <i class="ki-outline ki-plus-square fs-3"></i>Guardar y crear otro
+              <i data-lucide="square-plus" class="fs-3"></i>Guardar y crear otro
             </button>
           </li>
           <li><hr class="dropdown-divider"></li>
           <li>
             <button type="submit" form="main-form" name="_save" value="1" class="dropdown-item d-flex align-items-center gap-2" data-kt-form-submit="true">
-              <i class="ki-outline ki-exit-right fs-3"></i>Guardar y salir
+              <i data-lucide="log-out" class="fs-3"></i>Guardar y salir
             </button>
           </li>
         </ul>
@@ -144,14 +144,14 @@
   <div class="form-mobile-actionbar-inner d-flex align-items-center gap-2">
     {% if site.urls.list %}
       <a href="{{ site.urls.list }}" class="btn btn-icon btn-sm btn-light flex-shrink-0" aria-label="Cancelar y volver">
-        <i class="ki-outline ki-arrow-left fs-3"></i>
+        <i data-lucide="arrow-left" class="fs-3"></i>
       </a>
     {% endif %}
     <button type="submit" form="main-form" name="_save" value="1"
             class="btn btn-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center"
             data-kt-form-submit="true">
       <span class="indicator-label d-flex align-items-center">
-        <i class="ki-outline ki-check fs-3 me-1"></i>Guardar
+        <i data-lucide="check" class="fs-3 me-1"></i>Guardar
       </span>
       <span class="indicator-progress">
         Guardando…<span class="spinner-border spinner-border-sm align-middle ms-2"></span>
@@ -265,7 +265,7 @@
         <div class="modal-header">
           <h2 class="modal-title fw-bold" id="insolesFormsLabel">Crear nuevo</h2>
           <button type="button" class="btn btn-icon btn-sm btn-active-light-primary ms-2" data-bs-dismiss="modal" aria-label="Cerrar">
-            <i class="ki-outline ki-cross fs-1"></i>
+            <i data-lucide="x" class="fs-1"></i>
           </button>
         </div>
         <form id="insoles-form" action="" method="post" enctype="multipart/form-data" novalidate>
@@ -273,10 +273,10 @@
           <div class="modal-body"></div>
           <div class="modal-footer">
             <button type="submit" class="btn btn-primary btn-sm">
-              <i class="ki-outline ki-check fs-3"></i>Guardar
+              <i data-lucide="check" class="fs-3"></i>Guardar
             </button>
             <button type="button" class="btn btn-light-danger btn-sm" data-bs-dismiss="modal">
-              <i class="ki-outline ki-cross fs-3"></i>Cancelar
+              <i data-lucide="x" class="fs-3"></i>Cancelar
             </button>
           </div>
         </form>

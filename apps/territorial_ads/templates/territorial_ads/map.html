@@ -35,7 +35,7 @@
           aria-controls="physical-ad-map-panel"
           aria-expanded="false"
           aria-label="Abrir filtros">
-    <i class="ki-outline ki-setting-3 fs-2"></i>
+    <i data-lucide="settings" class="fs-2"></i>
     <span id="physical-ad-filter-count"
           class="map-filter-btn__count"
           hidden>0</span>
@@ -55,7 +55,7 @@
       <div class="d-flex align-items-center gap-3">
         <span class="symbol symbol-35px symbol-circle">
           <span class="symbol-label bg-light-primary">
-            <i class="ki-outline ki-filter fs-3 text-primary"></i>
+            <i data-lucide="filter" class="fs-3 text-primary"></i>
           </span>
         </span>
         <div class="d-flex flex-column">
@@ -67,7 +67,7 @@
               class="btn btn-icon btn-sm btn-active-light-primary physical-ad-map-panel__close"
               data-panel-toggle
               aria-label="Cerrar filtros">
-        <i class="ki-outline ki-cross fs-2"></i>
+        <i data-lucide="x" class="fs-2"></i>
       </button>
     </div>
 
@@ -96,13 +96,13 @@
         <button type="button"
                 class="btn btn-sm btn-light fw-semibold flex-fill"
                 id="physical-ad-map-reset">
-          <i class="ki-outline ki-eraser fs-3"></i>
+          <i data-lucide="eraser" class="fs-3"></i>
           <span>Limpiar</span>
         </button>
         <button type="button"
                 class="btn btn-sm btn-primary fw-semibold flex-fill d-md-none"
                 data-panel-toggle>
-          <i class="ki-outline ki-check fs-3"></i>
+          <i data-lucide="check" class="fs-3"></i>
           <span>Ver mapa</span>
         </button>
       </div>
@@ -131,21 +131,21 @@
               class="map-controls-btn"
               data-zoom-in
               aria-label="Acercar">
-        <i class="ki-outline ki-plus fs-2"></i>
+        <i data-lucide="plus" class="fs-2"></i>
       </button>
       <span class="map-controls-divider" aria-hidden="true"></span>
       <button type="button"
               class="map-controls-btn"
               data-zoom-out
               aria-label="Alejar">
-        <i class="ki-outline ki-minus fs-2"></i>
+        <i data-lucide="minus" class="fs-2"></i>
       </button>
     </div>
     <button type="button"
             class="map-controls-btn map-controls-btn--solo"
             id="physical-ad-my-location"
             aria-label="Ir a mi ubicación">
-      <i class="ki-outline ki-geolocation fs-2"></i>
+      <i data-lucide="map-pin" class="fs-2"></i>
     </button>
   </div>
   <div class="map-location-status"
@@ -155,172 +155,17 @@
 
 </div>
 
-{% comment %}
-  Modal shown first when an empty map spot is clicked: choose between
-  registering advertising or logging a refusal.
-{% endcomment %}
-<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-choice-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4">
-        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
-            <span class="symbol-label bg-light-primary text-primary">
-              <i class="ki-outline ki-question-2 fs-2"></i>
-            </span>
-          </span>
-          <div class="min-w-0">
-            <h5 class="modal-title fw-bolder mb-0 text-truncate">¿Qué quieres registrar?</h5>
-            <span class="text-muted fs-8">Elige una opción para este lugar</span>
-          </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <div class="d-grid gap-3">
-          <button type="button"
-                  class="btn btn-light-primary text-start d-flex align-items-center gap-3 py-4"
-                  data-choice="ad">
-            <span class="symbol symbol-45px symbol-circle">
-              <span class="symbol-label bg-primary text-white">
-                <i class="ki-outline ki-flag fs-2 text-white"></i>
-              </span>
-            </span>
-            <span class="d-flex flex-column text-start">
-              <span class="fw-bolder fs-6 text-gray-900">Registrar publicidad</span>
-              <span class="text-muted fs-8">Una persona ofreció el lugar para colocar publicidad.</span>
-            </span>
-          </button>
-          <button type="button"
-                  class="btn btn-light text-start d-flex align-items-center gap-3 py-4"
-                  data-choice="refusal">
-            <span class="symbol symbol-45px symbol-circle">
-              <span class="symbol-label bg-secondary text-white">
-                <i class="ki-outline ki-cross-square fs-2 text-white"></i>
-              </span>
-            </span>
-            <span class="d-flex flex-column text-start">
-              <span class="fw-bolder fs-6 text-gray-900">No quiere publicidad</span>
-              <span class="text-muted fs-8">El propietario rechazó. Solo se pide el motivo.</span>
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+{# Modal: choose between registering advertising or logging a refusal. #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-choice-modal" variant="choice" tone="primary" icon="help-circle" title="¿Qué quieres registrar?" subtitle="Elige una opción para este lugar" size="md" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_choose_modal_body.html" %}
 
-{# Modal shown when an empty map spot is clicked. Body receives the create form. #}
-<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-create-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4">
-        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
-            <span class="symbol-label bg-light-primary text-primary">
-              <i class="ki-outline ki-plus-square fs-2"></i>
-            </span>
-          </span>
-          <div class="min-w-0">
-            <h5 class="modal-title fw-bolder mb-0 text-truncate">Nueva publicidad</h5>
-            <span class="text-muted fs-8">Completa los datos del lugar ofrecido</span>
-          </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body" data-create-modal-body>
-        <div class="text-center text-muted py-10">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando…</span>
-          </div>
-          <div class="mt-3">Cargando formulario…</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit"
-                form="physical-ad-map-create-form"
-                class="btn btn-sm btn-primary d-flex align-items-center gap-2"
-                data-create-submit>
-          <i class="ki-outline ki-check fs-3"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+{# Modal: empty map click → publicidad create form #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-create-modal" variant="form" tone="primary" icon="square-plus" title="Nueva publicidad" subtitle="Completa los datos del lugar ofrecido" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_create_modal_body.html" footer_template="territorial_ads/_create_modal_footer.html" %}
 
-{% comment %}
-  Modal shown when the user picked "No quiere publicidad". Body receives a
-  minimal refusal form.
-{% endcomment %}
-<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-refusal-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4">
-        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
-          <span class="symbol symbol-40px symbol-circle flex-shrink-0">
-            <span class="symbol-label bg-secondary text-white">
-              <i class="ki-outline ki-cross-square fs-2 text-white"></i>
-            </span>
-          </span>
-          <div class="min-w-0">
-            <h5 class="modal-title fw-bolder mb-0 text-truncate">No quiere publicidad</h5>
-            <span class="text-muted fs-8">Indica el motivo del rechazo</span>
-          </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body" data-refusal-modal-body>
-        <div class="text-center text-muted py-10">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando…</span>
-          </div>
-          <div class="mt-3">Cargando formulario…</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit"
-                form="physical-ad-map-refusal-form"
-                class="btn btn-sm btn-primary d-flex align-items-center gap-2"
-                data-refusal-submit>
-          <i class="ki-outline ki-check fs-3"></i>Guardar rechazo
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+{# Modal: rechazo registrado — hero rojo + form de motivo. #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-refusal-modal" variant="confirm" tone="danger" icon="x-circle" title="Registrar rechazo de publicidad" subtitle="Indica el motivo del rechazo en este lugar" size="lg" scrollable=True backdrop_static=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_refusal_modal_body.html" footer_template="territorial_ads/_refusal_modal_footer.html" %}
 
 {# Modal shown when a pin is clicked. Body is filled via fetch. #}
-<div class="modal fade cm-sheet-modal physical-ad-map-modal physical-ad-map-sheet-modal" id="physical-ad-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable physical-ad-map-sheet-dialog">
-    <div class="modal-content">
-      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
-      <div class="modal-header py-4">
-        <h5 class="modal-title fw-bolder text-truncate" data-modal-title>Publicidad</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body" data-modal-body>
-        <div class="text-center text-muted py-10">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando…</span>
-          </div>
-          <div class="mt-3">Cargando…</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cerrar</button>
-        <a href="#" class="btn btn-sm btn-primary d-flex align-items-center gap-2" data-detail-link>
-          Abrir página completa
-          <i class="ki-outline ki-arrow-right fs-3"></i>
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-modal" variant="detail" tone="primary" icon="flag" title="Publicidad" title_attrs="data-modal-title" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_detail_modal_body.html" footer_template="territorial_ads/_detail_modal_footer.html" %}
 {% endblock %}
 
 {% block extra_css %}
