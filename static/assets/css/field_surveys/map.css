@@ -685,7 +685,7 @@
 .fs-pin--visit .fs-pin__shape {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -697,10 +697,14 @@
   color: #ffffff;
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
-.fs-pin--visit .fs-pin__shape i {
+.fs-pin--visit .fs-pin__shape i,
+.fs-pin--visit .fs-pin__shape svg {
   color: #ffffff !important;
-  font-size: 1.25rem;
+  font-size: 1.45rem;
+  width: 1.45rem;
+  height: 1.45rem;
   line-height: 1;
+  stroke-width: 2.75;
 }
 .fs-pin--visit .fs-pin__tail {
   position: absolute;
@@ -767,10 +771,14 @@
   transform: rotate(-45deg);
   /* color is set inline (per-party) and inherited by the icon */
 }
-.fs-pin--competitor .fs-pin__diamond-icon i {
+.fs-pin--competitor .fs-pin__diamond-icon i,
+.fs-pin--competitor .fs-pin__diamond-icon svg {
   color: inherit !important;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
+  width: 1.3rem;
+  height: 1.3rem;
   line-height: 1;
+  stroke-width: 2.75;
 }
 .fs-pin--competitor:hover .fs-pin__diamond,
 .fs-pin--competitor:focus-visible .fs-pin__diamond,
@@ -794,10 +802,14 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   z-index: 2;
 }
-.fs-pin__badge i {
+.fs-pin__badge i,
+.fs-pin__badge svg {
   color: #ffffff !important;
-  font-size: 0.55rem;
+  font-size: 0.7rem;
+  width: 0.7rem;
+  height: 0.7rem;
   line-height: 1;
+  stroke-width: 3.25;
 }
 .fs-pin__badge--accept { background: #3e97ff; }
 .fs-pin__badge--reject { background: #7e8299; }

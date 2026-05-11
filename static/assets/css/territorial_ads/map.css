@@ -661,9 +661,13 @@
 .map-type-pin__inner i {
   color: #ffffff !important;
 }
-.map-type-pin__inner i {
-  font-size: 1.4rem;
+.map-type-pin__inner i,
+.map-type-pin__inner svg {
+  font-size: 1.55rem;
+  width: 1.55rem;
+  height: 1.55rem;
   line-height: 1;
+  stroke-width: 2.75;
 }
 .map-type-pin:hover .map-type-pin__inner,
 .map-type-pin:focus-visible .map-type-pin__inner,

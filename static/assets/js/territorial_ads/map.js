@@ -557,6 +557,18 @@
         })
       : window.L.layerGroup();
     pinsLayer.addTo(map);
+
+    // When clusters expand/collapse, Leaflet rebuilds marker DOM from the
+    // divIcon HTML string, which still contains raw <i data-lucide> nodes.
+    // Re-run Lucide so they materialise back into SVGs.
+    if (pinsLayer && typeof pinsLayer.on === "function") {
+      var reRenderPinIcons = function () {
+        if (window.cmRenderIcons) window.cmRenderIcons();
+      };
+      pinsLayer.on("animationend", reRenderPinIcons);
+      pinsLayer.on("spiderfied", reRenderPinIcons);
+      pinsLayer.on("unspiderfied", reRenderPinIcons);
+    }
     var locationLayer = window.L.layerGroup().addTo(map);
 
     window.L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);

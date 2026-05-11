@@ -62,8 +62,8 @@
         '<span class="fs-pin__tail" style="border-top-color:' + color + '"></span>' +
         badgeHtml,
       iconSize: [40, 50],
-      iconAnchor: [20, 46],
-      popupAnchor: [0, -44]
+      iconAnchor: [20, 48],
+      popupAnchor: [0, -46]
     });
   }
 
@@ -552,6 +552,20 @@
         })
       : window.L.layerGroup();
     competitorLayer.addTo(map);
+
+    // When clusters expand/collapse, Leaflet rebuilds marker DOM from the
+    // divIcon HTML string, which still contains raw <i data-lucide> nodes.
+    // Re-run Lucide so they materialise back into SVGs.
+    function reRenderPinIcons() {
+      if (window.cmRenderIcons) window.cmRenderIcons();
+    }
+    [pinsLayer, competitorLayer].forEach(function (layer) {
+      if (layer && typeof layer.on === "function") {
+        layer.on("animationend", reRenderPinIcons);
+        layer.on("spiderfied", reRenderPinIcons);
+        layer.on("unspiderfied", reRenderPinIcons);
+      }
+    });
     var locationLayer = window.L.layerGroup().addTo(map);
 
     window.L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
