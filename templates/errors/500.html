@@ -1,22 +1,16 @@
-{% extends "base/base.html" %}
-{% load static %}
-{% block title %}Error interno (500) | {{ block.super }}{% endblock %}
-{% block content %}
-<div class="d-flex flex-column flex-center text-center py-15">
-  <h1 class="fw-bolder fs-3qx text-gray-300 mb-1" aria-hidden="true">500</h1>
-  <img src="{% static 'assets/media/auth/500-error.png' %}" class="theme-light-show mb-7 mw-100 h-200px" alt="">
-  <img src="{% static 'assets/media/auth/500-error-dark.png' %}" class="theme-dark-show mb-7 mw-100 h-200px" alt="">
-  <h2 class="fw-bolder fs-2hx text-gray-900 mb-3">Algo salió mal</h2>
-  <p class="fs-5 fw-semibold text-gray-500 mb-7 mw-450px mx-auto">
-    Ocurrió un error en el servidor. Nuestro equipo ya fue notificado. Intenta recargar en unos minutos.
-  </p>
-  <div class="d-flex flex-wrap justify-content-center gap-3">
-    <a href="javascript:location.reload()" class="btn btn-light">
-      <i data-lucide="rotate-cw" class="fs-2"></i>Reintentar
-    </a>
-    <a href="{% url 'home' %}" class="btn btn-primary">
-      <i data-lucide="home" class="fs-2"></i>Ir al inicio
-    </a>
+{% extends "errors/_blank.html" %}
+{% block title %}Error interno (500){% endblock %}
+{% block inner %}
+  <p class="code" aria-hidden="true">500</p>
+  <h1>Algo salió mal</h1>
+  <p>Ocurrió un error en el servidor. Nuestro equipo ya fue notificado. Intenta de nuevo en unos minutos.</p>
+  {# An empty <form> GET submits to the current URL — equivalent to a
+     reload but works under strict CSP and with JavaScript disabled,
+     unlike `<a href="javascript:location.reload()">`. #}
+  <div class="actions">
+    <form method="get" action="" style="margin:0;">
+      <button type="submit" class="btn btn-secondary">Reintentar</button>
+    </form>
+    <a href="/" class="btn btn-primary">Ir al inicio</a>
   </div>
-</div>
 {% endblock %}
