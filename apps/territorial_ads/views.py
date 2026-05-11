@@ -61,6 +61,10 @@ class PhysicalAdMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
 
 class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = "territorial_ads.view_physicaladvertisement"
+    # Same rationale as FieldSurveyMapDataView.MAX_POINTS — hard cap so the
+    # Leaflet client doesn't choke on huge payloads. Frontend surfaces a
+    # banner when truncation happens.
+    MAX_POINTS = 5000
 
     def get(self, request, *args, **kwargs):
         queryset = (
@@ -76,6 +80,31 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
         state = request.GET.get("state")
         if state:
             queryset = queryset.filter(state=state)
+
+        # Refusals share the same map but live in a different model; we
+        # build their queryset early so the count() feeds the truncation
+        # budget below. They are hidden when a state filter is set because
+        # AdvertisingRefusal doesn't participate in the PhysicalAdvertisement
+        # workflow.
+        refusal_qs = None
+        refusal_total = 0
+        if not state:
+            refusal_qs = AdvertisingRefusal.objects.select_related("campaign").filter(
+                latitude__isnull=False, longitude__isnull=False, is_active=True
+            )
+            if campaign_id:
+                refusal_qs = refusal_qs.filter(campaign_id=campaign_id)
+            refusal_total = refusal_qs.count()
+
+        ad_total = queryset.count()
+        grand_total = ad_total + refusal_total
+        truncated = grand_total > self.MAX_POINTS
+        if truncated:
+            ad_cap = int(self.MAX_POINTS * ad_total / grand_total)
+            refusal_cap = self.MAX_POINTS - ad_cap
+            queryset = queryset.order_by("-id")[:ad_cap]
+            if refusal_qs is not None:
+                refusal_qs = refusal_qs.order_by("-id")[:refusal_cap]
 
         ads = []
         for ad in queryset:
@@ -102,15 +131,7 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 }
             )
 
-        # Refusals are not filtered by ``state`` because they don't take part
-        # in the PhysicalAdvertisement workflow. They are hidden when a state
-        # filter is set so the user gets only the matching workflow pins.
-        if not state:
-            refusal_qs = AdvertisingRefusal.objects.select_related("campaign").filter(
-                latitude__isnull=False, longitude__isnull=False, is_active=True
-            )
-            if campaign_id:
-                refusal_qs = refusal_qs.filter(campaign_id=campaign_id)
+        if refusal_qs is not None:
             for refusal in refusal_qs:
                 ads.append(
                     {
@@ -131,7 +152,15 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     }
                 )
 
-        return JsonResponse({"ads": ads})
+        return JsonResponse(
+            {
+                "ads": ads,
+                "truncated": truncated,
+                "total": grand_total,
+                "returned": len(ads),
+                "limit": self.MAX_POINTS,
+            }
+        )
 
 
 class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):

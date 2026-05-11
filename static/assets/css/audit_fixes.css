@@ -219,3 +219,29 @@ table thead th.cm-actions-col .visually-hidden { font-size: initial; }
   margin-top: 0.4rem;
   margin-bottom: 0;
 }
+
+/* --------------------------------------------------------------------------
+   Truncation banner for full-screen map data views (A11 audit follow-up).
+   Sits in the same top-overlay area as the pin counter and uses .alert from
+   Bootstrap; this rule only adjusts positioning + icon-text alignment.
+   -------------------------------------------------------------------------- */
+.cm-map-truncation {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  max-width: min(560px, calc(100% - 1.5rem));
+  font-size: 0.85rem;
+  line-height: 1.35;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+.cm-map-truncation > svg.lucide,
+.cm-map-truncation > i[data-lucide] {
+  flex-shrink: 0;
+}

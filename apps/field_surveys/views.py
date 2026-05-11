@@ -281,6 +281,13 @@ class FieldSurveyMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVi
 
 
 class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, View):
+    # Hard ceiling on points returned per response. Beyond this, the client
+    # struggles (Leaflet rendering + cluster math) and the payload grows
+    # past what's reasonable to ship over the wire. The frontend shows a
+    # banner asking the user to narrow filters when truncation kicks in.
+    # Long-term fix is viewport-based loading (audit A11 option 1).
+    MAX_POINTS = 5000
+
     def get(self, request, *args, **kwargs):
         surveys = self.filtered_queryset().select_related(
             "campaign", "brigadier", "support_level", "advertising_response"
@@ -300,6 +307,20 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             competitor_ads = competitor_ads.filter(created_date__date__gte=request.GET["date_from"])
         if request.GET.get("date_to"):
             competitor_ads = competitor_ads.filter(created_date__date__lte=request.GET["date_to"])
+
+        # Count first (cheap aggregate) and slice before materialising in
+        # Python. We split the budget proportionally between visits and
+        # competitor ads so a tenant with mostly visits doesn't lose the
+        # competitor layer entirely.
+        survey_total = surveys.count()
+        competitor_total = competitor_ads.count()
+        grand_total = survey_total + competitor_total
+        truncated = grand_total > self.MAX_POINTS
+        if truncated:
+            survey_cap = int(self.MAX_POINTS * survey_total / grand_total)
+            competitor_cap = self.MAX_POINTS - survey_cap
+            surveys = surveys.order_by("-created_date")[:survey_cap]
+            competitor_ads = competitor_ads.order_by("-created_date")[:competitor_cap]
 
         visits = []
         for survey in surveys:
@@ -340,7 +361,16 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
                 }
             )
 
-        return JsonResponse({"visits": visits, "competitor_ads": competitor_data})
+        return JsonResponse(
+            {
+                "visits": visits,
+                "competitor_ads": competitor_data,
+                "truncated": truncated,
+                "total": grand_total,
+                "returned": len(visits) + len(competitor_data),
+                "limit": self.MAX_POINTS,
+            }
+        )
 
 
 def build_support_distribution(result_counts):

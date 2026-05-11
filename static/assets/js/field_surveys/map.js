@@ -678,6 +678,21 @@
       return qs ? base + (base.indexOf("?") === -1 ? "?" : "&") + qs : base;
     }
 
+    var truncationEl = document.getElementById("field-survey-map-truncated");
+
+    function showTruncation(data) {
+      if (!truncationEl) return;
+      if (data && data.truncated) {
+        var shown = truncationEl.querySelector("[data-truncated-shown]");
+        var total = truncationEl.querySelector("[data-truncated-total]");
+        if (shown) shown.textContent = String(data.returned || 0);
+        if (total) total.textContent = String(data.total || 0);
+        truncationEl.classList.remove("d-none");
+      } else {
+        truncationEl.classList.add("d-none");
+      }
+    }
+
     function load() {
       pinsLayer.clearLayers();
       competitorLayer.clearLayers();
@@ -690,6 +705,7 @@
           var visits = data.visits || [];
           var competitorAds = data.competitor_ads || [];
           updateCount(counterEl, visits.length);
+          showTruncation(data);
 
           visits.forEach(function (item) {
             var state = SUPPORT_STATES[item.support_code || ""] || SUPPORT_STATES[""];

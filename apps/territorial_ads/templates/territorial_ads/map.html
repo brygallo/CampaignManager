@@ -28,6 +28,18 @@
     <span class="map-pin-count__label" data-pin-count-label>ubicaciones</span>
   </div>
 
+  <div id="physical-ad-map-truncated"
+       class="cm-map-truncation alert alert-warning d-none"
+       role="status"
+       aria-live="polite">
+    <i data-lucide="alert-triangle" class="fs-4"></i>
+    <span>
+      Mostrando <strong data-truncated-shown>0</strong> de
+      <strong data-truncated-total>0</strong> ubicaciones. Aplica filtros para
+      reducir el resultado.
+    </span>
+  </div>
+
   {# ===== Filter trigger (top-right, icon-only round) ===== #}
   <button type="button"
           class="map-filter-btn physical-ad-map-filter-trigger"

@@ -681,6 +681,21 @@
       return qs ? base + (base.indexOf("?") === -1 ? "?" : "&") + qs : base;
     }
 
+    var truncationEl = document.getElementById("physical-ad-map-truncated");
+
+    function showTruncation(data) {
+      if (!truncationEl) return;
+      if (data && data.truncated) {
+        var shown = truncationEl.querySelector("[data-truncated-shown]");
+        var total = truncationEl.querySelector("[data-truncated-total]");
+        if (shown) shown.textContent = String(data.returned || 0);
+        if (total) total.textContent = String(data.total || 0);
+        truncationEl.classList.remove("d-none");
+      } else {
+        truncationEl.classList.add("d-none");
+      }
+    }
+
     function load() {
       pinsLayer.clearLayers();
       updateCount(counterEl, 0);
@@ -691,6 +706,7 @@
           var bounds = [];
           var ads = data.ads || [];
           updateCount(counterEl, ads.length);
+          showTruncation(data);
           ads.forEach(function (ad) {
             var marker = window.L.marker([ad.lat, ad.lng], {
               icon: pinIcon(ad.color, ad.type_icon, ad.marker_kind),
