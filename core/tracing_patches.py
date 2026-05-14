@@ -18,6 +18,7 @@ get the freshly loaded per-tenant dict).
 from threading import local
 
 from django.db import connection
+from django.utils.functional import SimpleLazyObject
 
 from tracing.middleware import TracingMiddleware
 from tracing.services import TraceService
@@ -46,6 +47,23 @@ def _reload_rules_per_tenant(cls):
     _per_thread.schema = schema
 
 
+def _get_info_safe_user(cls):
+    """Return tracing request metadata with anonymous users normalized to None."""
+    user = cls.thread_local.user if hasattr(cls.thread_local, "user") else None
+    if isinstance(user, SimpleLazyObject):
+        user = user if getattr(user, "is_authenticated", False) else None
+    elif not getattr(user, "is_authenticated", False):
+        user = None
+
+    ip = cls.thread_local.ip if hasattr(cls.thread_local, "ip") else None
+    os = cls.thread_local.os if hasattr(cls.thread_local, "os") else None
+    return {
+        "user": user,
+        "ip": ip,
+        "os": os,
+    }
+
+
 def install():
     """Replace the upstream classmethods. Idempotent."""
     if getattr(TracingMiddleware, "_cm_tenant_aware", False):
@@ -54,6 +72,7 @@ def install():
         _get_rule_by_classname_per_tenant
     )
     TracingMiddleware.reload_rules = classmethod(_reload_rules_per_tenant)
+    TracingMiddleware.get_info = classmethod(_get_info_safe_user)
     TracingMiddleware._cm_tenant_aware = True
 
 

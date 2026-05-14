@@ -888,8 +888,19 @@
       if (titleEl) titleEl.textContent = preset.title;
       if (subtitleEl) subtitleEl.textContent = preset.subtitle;
       if (iconEl) {
-        iconEl.setAttribute("data-lucide", safeIconName(preset.icon));
-        iconEl.className = "fs-2";
+        var iconName = safeIconName(preset.icon);
+        if (iconEl.tagName && iconEl.tagName.toLowerCase() === "svg") {
+          var replacement = document.createElement("i");
+          replacement.setAttribute("data-create-icon", "");
+          replacement.setAttribute("data-lucide", iconName);
+          replacement.setAttribute("class", "fs-2");
+          replacement.setAttribute("aria-hidden", "true");
+          iconEl.replaceWith(replacement);
+        } else {
+          iconEl.setAttribute("data-lucide", iconName);
+          iconEl.setAttribute("class", "fs-2");
+        }
+        if (window.cmRenderIcons) window.cmRenderIcons();
       }
       if (iconBg) iconBg.className = "symbol-label " + preset.bgClass;
     }

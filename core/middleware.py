@@ -17,6 +17,8 @@ Caveat: tenants sharing a root domain also share cookies and sessions.
 Recommended only for trial/demo tenants. Premium tenants should use mode 1
 or 2.
 """
+from importlib import import_module
+
 from django.conf import settings
 from django.db import connection
 from django.urls import get_script_prefix, set_script_prefix
@@ -27,6 +29,30 @@ from django_tenants.utils import get_public_schema_name, get_tenant_model
 # here because Django imports ``core.middleware`` before processing any
 # request, which guarantees the patch is in place before signals fire.
 from core import tracing_patches  # noqa: F401
+
+
+class PublicSchemaSessionRoutingMiddleware:
+    """Swap the session store on `public` before auth/messages touch it.
+
+    The public landing runs on the `public` schema, which deliberately does
+    not contain tenant-only tables such as `django_session`. Using the regular
+    DB-backed session engine there causes every anonymous request to `/` to
+    fail before the view runs. Tenant schemas keep the default session engine.
+    The standard SessionMiddleware remains in MIDDLEWARE so Django's checks
+    and admin integration still see it.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._public_session_store = import_module(
+            "django.contrib.sessions.backends.signed_cookies"
+        ).SessionStore
+
+    def __call__(self, request):
+        if connection.schema_name == get_public_schema_name():
+            session_key = request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+            request.session = self._public_session_store(session_key)
+        return self.get_response(request)
 
 
 class TenantPathRoutingMiddleware:

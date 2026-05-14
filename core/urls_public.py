@@ -27,7 +27,8 @@ def public_landing(request):
     """Marketing landing for the platform's root domain.
 
     Renders a card grid of active tenants so users can pick their party and
-    jump straight to its login. Always uses path-based URLs (root_host/slug/)
+    jump straight to its login. Always uses path-based URLs
+    (root_host/slug/login/)
     so every party is reached through the same hostname; subdomain access
     still works for tenants that have a Domain row, but the landing does not
     advertise it.
@@ -47,7 +48,7 @@ def public_landing(request):
 
     parties = []
     for i, t in enumerate(tenants_qs):
-        login_url = f"{scheme}://{root_host}/{t.slug}/"
+        login_url = f"{scheme}://{root_host}/{t.slug}/login/"
         domain_label = f"{root_host}/{t.slug}"
         brand_name = (
             getattr(getattr(t, "branding", None), "brand_name", "") or t.name
