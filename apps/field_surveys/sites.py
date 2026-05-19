@@ -6,7 +6,7 @@ from core.audit import AuditContextMixin
 from core.base import BaseSite, DetailMapsMixin, HideEmptyFieldsetsMixin, ProtectedDeleteMixin
 from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import DropdownFilterMixin, OrderingMixin
-from core.map_mixins import MapAjaxCreateMixin, MapInitialLocationMixin
+from core.map_mixins import MapAjaxDeleteMixin
 
 from .forms import (
     AdvertisingTypeForm,
@@ -16,51 +16,16 @@ from .forms import (
     SurveyAdvertisingResponseForm,
     SurveySupportLevelForm,
 )
-from .views import can_view_all_field_surveys
-
-
-class FieldSurveyMapInitialLocationMixin(MapInitialLocationMixin):
-    """Prefill GPS coordinates when the create form is opened from the map."""
-
-    coordinate_initial_fields = ("latitude", "longitude")
-
-
-class FieldSurveyMapAjaxCreateMixin(MapAjaxCreateMixin):
-    """Render and submit the create form inside the map modal."""
-
-    map_form_template_name = "field_surveys/_map_create_form.html"
-    map_detail_url_name = "site:field_surveys_fieldsurvey_"
-
-
-class CompetitorDetectionMapAjaxCreateMixin(FieldSurveyMapAjaxCreateMixin):
-    map_detail_url_name = "site:field_surveys_competitoradvertisingdetection_"
-
-
-class FieldSurveyOwnershipMixin:
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        if can_view_all_field_surveys(self.request.user):
-            return queryset
-        return queryset.filter(brigadier=self.request.user)
-
-
-class BrigadierAutoAssignMixin:
-    """Stamp request.user fields that are intentionally absent from map forms."""
-
-    def form_valid(self, form):
-        if not form.instance.brigadier_id:
-            form.instance.brigadier = self.request.user
-        if hasattr(form.instance, "created_by_id") and not form.instance.created_by_id:
-            form.instance.created_by = self.request.user
-        return super().form_valid(form)
-
-
-class CompetitorDetectionOwnershipMixin:
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        if can_view_all_field_surveys(self.request.user):
-            return queryset
-        return queryset.filter(brigadier=self.request.user)
+from .views import (
+    BrigadierAutoAssignMixin,
+    CompetitorDetectionMapAjaxCreateMixin,
+    CompetitorDetectionMapAjaxUpdateMixin,
+    CompetitorDetectionOwnershipMixin,
+    FieldSurveyMapAjaxCreateMixin,
+    FieldSurveyMapAjaxUpdateMixin,
+    FieldSurveyMapInitialLocationMixin,
+    FieldSurveyOwnershipMixin,
+)
 
 
 @register("field_surveys.SurveySupportLevel")
@@ -125,8 +90,12 @@ class FieldSurveySite(BaseSite):
         SaveOptionsMixin,
     )
     detail_mixins = (FieldSurveyOwnershipMixin, AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
-    update_mixins = (FieldSurveyOwnershipMixin, BrigadierAutoAssignMixin)
-    delete_mixins = (FieldSurveyOwnershipMixin, ProtectedDeleteMixin)
+    update_mixins = (
+        FieldSurveyMapAjaxUpdateMixin,
+        FieldSurveyOwnershipMixin,
+        BrigadierAutoAssignMixin,
+    )
+    delete_mixins = (MapAjaxDeleteMixin, FieldSurveyOwnershipMixin, ProtectedDeleteMixin)
 
     always_visible_fieldsets = (
         "Campaña y ubicación",
@@ -181,8 +150,12 @@ class CompetitorAdvertisingDetectionSite(BaseSite):
         SaveOptionsMixin,
     )
     detail_mixins = (CompetitorDetectionOwnershipMixin, AuditContextMixin, DetailMapsMixin)
-    update_mixins = (CompetitorDetectionOwnershipMixin, BrigadierAutoAssignMixin)
-    delete_mixins = (CompetitorDetectionOwnershipMixin, ProtectedDeleteMixin)
+    update_mixins = (
+        CompetitorDetectionMapAjaxUpdateMixin,
+        CompetitorDetectionOwnershipMixin,
+        BrigadierAutoAssignMixin,
+    )
+    delete_mixins = (MapAjaxDeleteMixin, CompetitorDetectionOwnershipMixin, ProtectedDeleteMixin)
     list_fields = ("campaign", "competitor", "brigadier", "advertising_type", "created_date:Fecha")
     detail_fields = {
         "Competencia": (

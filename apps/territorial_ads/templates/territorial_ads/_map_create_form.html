@@ -2,8 +2,8 @@
       action="{{ action_url }}"
       enctype="multipart/form-data"
       class="form"
-      id="physical-ad-map-create-form"
-      data-map-create-form="true">
+      id="physical-ad-map-{% if is_update %}update{% else %}create{% endif %}-form"
+      {% if is_update %}data-map-update-form="true"{% else %}data-map-create-form="true"{% endif %}>
   {% csrf_token %}
   {% include "forms/form.html" with form=form %}
 </form>

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from apps.territorial_ads.sites import MapInitialLocationMixin
+from core.map_mixins import MapInitialLocationMixin
 
 
 class _StubParent:

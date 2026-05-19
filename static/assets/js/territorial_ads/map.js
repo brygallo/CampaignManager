@@ -127,6 +127,38 @@
     }
   }
 
+  function roundMetersForUi(value) {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    if (value <= 100) {
+      return Math.max(10, Math.round(value / 10) * 10);
+    }
+    return Math.round(value / 50) * 50;
+  }
+
+  function distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) {
+    var point = map.project(latlng, zoom);
+    var shifted = window.L.point(point.x + widthPx, point.y);
+    var shiftedLatLng = map.unproject(shifted, zoom);
+    return latlng.distanceTo(shiftedLatLng);
+  }
+
+  function findZoomForTargetMeters(map, latlng, targetMeters, widthPx) {
+    var minZoom = Number.isFinite(map.getMinZoom()) ? map.getMinZoom() : 0;
+    var maxZoom = Number.isFinite(map.getMaxZoom()) ? map.getMaxZoom() : 20;
+    var chosenZoom = maxZoom;
+    var zoom;
+    for (zoom = maxZoom; zoom >= minZoom; zoom -= 1) {
+      if (distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) <= targetMeters) {
+        chosenZoom = zoom;
+      } else {
+        break;
+      }
+    }
+    return chosenZoom;
+  }
+
   function geolocationErrorMessage(error) {
     if (!window.isSecureContext) {
       return "Para usar ubicación abre el sitio con HTTPS.";
@@ -232,6 +264,172 @@
     }
   }
 
+  function applyActionLink(modalEl, selector, url) {
+    var el = modalEl.querySelector(selector);
+    if (!el) return;
+    if (url) {
+      el.href = url;
+      el.dataset.actionUrl = url;
+      el.classList.remove("d-none");
+      el.classList.add("d-flex");
+    } else {
+      el.removeAttribute("href");
+      delete el.dataset.actionUrl;
+      el.classList.add("d-none");
+      el.classList.remove("d-flex");
+    }
+  }
+
+  // Opens the inline update modal: fetches the form via AJAX (same pattern as
+  // create), submits via AJAX, refreshes the markers without reloading. The
+  // ``opts`` object lets callers point at refusal-specific selectors when the
+  // refusal update modal is in use (different form id and slot data-attrs).
+  function openUpdateModal(modalEl, detailModalEl, updateUrl, label, onSaved, opts) {
+    if (!modalEl || !window.bootstrap || !updateUrl) return;
+    opts = opts || {};
+    var bodySelector = opts.bodySelector || "[data-update-modal-body]";
+    var submitSelector = opts.submitSelector || "[data-update-submit]";
+    var titleSelector = opts.titleSelector || "[data-update-modal-title]";
+    var formSelector = opts.formSelector || "[data-map-update-form]";
+    var bodyEl = modalEl.querySelector(bodySelector);
+    var submitButton = modalEl.querySelector(submitSelector);
+    var titleEl = modalEl.querySelector(titleSelector);
+    if (titleEl && label) titleEl.textContent = "Editar " + label;
+    setHtml(bodyEl, loadingHtml("Cargando formulario..."));
+
+    // Close the detail modal first so we don't stack two on top of each other.
+    if (detailModalEl) {
+      var detail = window.bootstrap.Modal.getInstance(detailModalEl);
+      if (detail) detail.hide();
+    }
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    function bindForm() {
+      var form = modalEl.querySelector(formSelector);
+      if (!form) return;
+      initDynamicForm(form);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (submitButton) submitButton.disabled = true;
+        fetch(updateUrl, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Map-Update": "1"
+          },
+          credentials: "same-origin"
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.ok) {
+              modal.hide();
+              if (onSaved) onSaved(result.data);
+              return;
+            }
+            setHtml(bodyEl, result.data.html || "");
+            bindForm();
+          })
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("territorial-ads map update failed", error);
+            }
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar los cambios.</div>');
+          })
+          .finally(function () {
+            if (submitButton) submitButton.disabled = false;
+          });
+      });
+    }
+
+    fetch(updateUrl, {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Map-Update": "1"
+      },
+      credentials: "same-origin"
+    })
+      .then(function (response) {
+        return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok && result.data && result.data.error) {
+          setHtml(bodyEl, '<div class="alert alert-warning">' + result.data.error + '</div>');
+          return;
+        }
+        setHtml(bodyEl, result.data.html || "");
+        bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
+      })
+      .catch(function () {
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
+      });
+  }
+
+  // Opens the inline delete-confirmation modal and submits the DELETE via AJAX.
+  function openDeleteModal(modalEl, detailModalEl, deleteUrl, label, onDeleted) {
+    if (!modalEl || !window.bootstrap || !deleteUrl) return;
+    var labelEl = modalEl.querySelector("[data-delete-label]");
+    var confirmBtn = modalEl.querySelector("[data-delete-confirm]");
+    if (labelEl) labelEl.textContent = label || "";
+    if (detailModalEl) {
+      var detail = window.bootstrap.Modal.getInstance(detailModalEl);
+      if (detail) detail.hide();
+    }
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    if (!confirmBtn) return;
+    // Replace node to drop any previous click listener bound to a prior pin.
+    var freshBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(freshBtn, confirmBtn);
+    freshBtn.addEventListener("click", function () {
+      freshBtn.disabled = true;
+      var csrf = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value
+        || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+        || "";
+      fetch(deleteUrl, {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "X-Map-Delete": "1",
+          "X-CSRFToken": csrf
+        },
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (result.ok && result.data.ok) {
+            modal.hide();
+            if (onDeleted) onDeleted(result.data);
+            return;
+          }
+          if (window.console && window.console.error) {
+            window.console.error("territorial-ads map delete rejected", result);
+          }
+        })
+        .catch(function (error) {
+          if (window.console && window.console.error) {
+            window.console.error("territorial-ads map delete failed", error);
+          }
+        })
+        .finally(function () {
+          freshBtn.disabled = false;
+        });
+    });
+  }
+
   function openModal(modalEl, ad) {
     if (!modalEl || !window.bootstrap) {
       window.location.href = ad.url;
@@ -243,9 +441,15 @@
     if (titleEl) {
       titleEl.textContent = ad.label || "Publicidad";
     }
+    modalEl.dataset.currentLabel = ad.label || "";
+    modalEl.dataset.currentDetailUrl = ad.url || "";
+    modalEl.dataset.markerKind = "ad";
     if (detailLink) {
       detailLink.href = ad.url;
+      detailLink.style.display = "";
     }
+    applyActionLink(modalEl, "[data-edit-link]", ad.update_url);
+    applyActionLink(modalEl, "[data-delete-link]", ad.delete_url);
     setHtml(
       bodyEl,
       '<div class="text-center text-muted py-10">' +
@@ -308,9 +512,14 @@
     if (titleEl) {
       titleEl.textContent = ad.label || "Rechazo";
     }
+    modalEl.dataset.currentLabel = ad.label || "";
+    modalEl.dataset.currentDetailUrl = ad.url || "";
+    modalEl.dataset.markerKind = "refusal";
     if (detailLink) {
       detailLink.style.display = "none";
     }
+    applyActionLink(modalEl, "[data-edit-link]", ad.update_url);
+    applyActionLink(modalEl, "[data-delete-link]", ad.delete_url);
     setHtml(bodyEl, loadingHtml("Cargando..."));
 
     var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -510,8 +719,95 @@
     var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
     var modalEl = document.getElementById("physical-ad-modal");
     var createModalEl = document.getElementById("physical-ad-create-modal");
+    var updateModalEl = document.getElementById("physical-ad-update-modal");
+    var deleteModalEl = document.getElementById("physical-ad-delete-modal");
+    var refusalUpdateModalEl = document.getElementById("physical-ad-refusal-update-modal");
     var refusalModalEl = document.getElementById("physical-ad-refusal-modal");
     var choiceModalEl = document.getElementById("physical-ad-choice-modal");
+
+    // Wire the Edit/Delete buttons of the detail modal once on init. The
+    // current URL/label/marker_kind live on the modal's dataset (set in
+    // openModal/openRefusalPopup) so we don't need to rebind per pin. The
+    // marker_kind routes between the publicidad and rechazo update modals.
+    if (modalEl) {
+      var editLinkEl = modalEl.querySelector("[data-edit-link]");
+      var deleteLinkEl = modalEl.querySelector("[data-delete-link]");
+      if (editLinkEl) {
+        editLinkEl.addEventListener("click", function (event) {
+          event.preventDefault();
+          var url = editLinkEl.dataset.actionUrl;
+          if (!url) return;
+          var targetModal = modalEl.dataset.markerKind === "refusal"
+            ? refusalUpdateModalEl
+            : updateModalEl;
+          var formSelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-map-refusal-update-form]"
+            : "[data-map-update-form]";
+          var bodySelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-refusal-update-modal-body]"
+            : "[data-update-modal-body]";
+          var submitSelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-refusal-update-submit]"
+            : "[data-update-submit]";
+          var titleSelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-refusal-update-modal-title]"
+            : "[data-update-modal-title]";
+          openUpdateModal(
+            targetModal,
+            modalEl,
+            url,
+            modalEl.dataset.currentLabel || "",
+            function () { load(); },
+            { bodySelector: bodySelector, submitSelector: submitSelector, titleSelector: titleSelector, formSelector: formSelector }
+          );
+        });
+      }
+      if (deleteLinkEl) {
+        deleteLinkEl.addEventListener("click", function (event) {
+          event.preventDefault();
+          var url = deleteLinkEl.dataset.actionUrl;
+          if (!url) return;
+          openDeleteModal(deleteModalEl, modalEl, url, modalEl.dataset.currentLabel || "", function () {
+            load();
+          });
+        });
+      }
+
+      // Workflow transitions (Aprobar, Marcar instalada, etc.) submit via
+      // workflows.js and used to do ``window.location.reload()``. While the
+      // detail modal is open we instead re-fetch the body so the user sees
+      // the new state without losing the map view.
+      modalEl.addEventListener("workflow:transitioned", function (event) {
+        event.preventDefault();
+        var detailUrl = modalEl.dataset.currentDetailUrl;
+        var bodyEl = modalEl.querySelector("[data-modal-body]");
+        if (!detailUrl || !bodyEl) {
+          load();
+          return;
+        }
+        setHtml(bodyEl, loadingHtml("Actualizando..."));
+        var isRefusal = modalEl.dataset.markerKind === "refusal";
+        fetch(detailUrl, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        })
+          .then(function (r) { return isRefusal ? r.json() : r.text(); })
+          .then(function (payload) {
+            if (isRefusal) {
+              setHtml(bodyEl, (payload && payload.html) || "");
+            } else {
+              var detailHtml = detailHtmlFromPage(payload);
+              if (!detailHtml) throw new Error("Empty detail content");
+              setHtml(bodyEl, detailHtml);
+              initDynamicContent(bodyEl);
+            }
+            load();
+          })
+          .catch(function () {
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo actualizar el detalle.</div>');
+          });
+      });
+    }
     var counterEl = document.getElementById("physical-ad-map-count");
     var filterCounterEl = document.getElementById("physical-ad-filter-count");
     var filterTriggerEls = document.querySelectorAll(".physical-ad-map-filter-trigger");
@@ -520,6 +816,9 @@
     var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
     var refusalCreateUrl = el.dataset.refusalCreateUrl || "";
+    var createGateMeters = 100;
+    var locationTargetMeters = 50;
+    var scaleReferenceWidthPx = 120;
 
     // Default view: tenant settings, then Macas (Morona Santiago) as fallback.
     var tenantCenter = window.TENANT_MAP_CENTER || {};
@@ -676,6 +975,33 @@
     }
     map.on("zoomend", applyPreferredBasemapForZoom);
 
+    // Attach URL-hash state sync. ``mapStateRestored`` lets us skip the
+    // automatic fitBounds() when the user came in with a saved view.
+    var mapState = window.MapState && window.MapState.attach
+      ? window.MapState.attach(map, {
+          defaultBasemap: "carto",
+          getBasemap: function () { return preferredBasemap; },
+          setBasemap: function (name) {
+            if (name === "satellite" || name === "carto") {
+              preferredBasemap = name;
+              if (basemapRefs && basemapRefs.satellite && basemapRefs.carto) {
+                if (name === "satellite" && map.getZoom() <= satelliteMaxZoom) {
+                  setBasemap("satellite");
+                } else {
+                  setBasemap("carto");
+                }
+              }
+            }
+          }
+        })
+      : null;
+    var mapStateRestored = mapState ? mapState.restore() : false;
+    // Track whether the user has interacted with the map (or restored from the
+    // URL hash). Once true, subsequent ``load()`` calls must not refit the
+    // bounds, since that would yank the user away from where they were.
+    var userOwnsView = mapStateRestored;
+    map.on("movestart zoomstart", function () { userOwnsView = true; });
+
     var filters = document.getElementById("physical-ad-map-filters");
     var panelApi = setupPanel(shell, panel, panelTriggers, map);
 
@@ -735,9 +1061,13 @@
             });
             bounds.push([ad.lat, ad.lng]);
           });
-          if (bounds.length) {
+          // Only auto-fit on the very first load, and only if the user hasn't
+          // taken over the view (URL hash or any pan/zoom). Otherwise reloads
+          // triggered by inline edit/delete would yank the map away.
+          if (bounds.length && !userOwnsView) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
           }
+          userOwnsView = true;
           // Marker icons are injected via Leaflet divIcon HTML; the Lucide
           // library only scans for [data-lucide] on DOMContentLoaded, so we
           // re-trigger it here to materialise the new <i> elements as SVG.
@@ -795,7 +1125,14 @@
           permanent: false
         }).addTo(locationLayer);
 
-        map.setView([lat, lng], Math.max(map.getZoom(), 16));
+        var targetLatLng = window.L.latLng(lat, lng);
+        var locationZoom = findZoomForTargetMeters(
+          map,
+          targetLatLng,
+          locationTargetMeters,
+          scaleReferenceWidthPx
+        );
+        map.setView(targetLatLng, Math.max(map.getZoom(), locationZoom));
         setLocationButton(myLocationButton, "Mi ubicación", false);
         showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
       };
@@ -842,6 +1179,33 @@
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
         );
       });
+    }
+
+    function getCreateGateDistanceMeters() {
+      var size = map.getSize();
+      if (!size || size.x <= 0 || size.y <= 0) {
+        return null;
+      }
+      var referenceWidth = Math.min(scaleReferenceWidthPx, size.x);
+      var centerY = size.y / 2;
+      var start = map.containerPointToLatLng([0, centerY]);
+      var end = map.containerPointToLatLng([referenceWidth, centerY]);
+      return map.distance(start, end);
+    }
+
+    function canOpenCreateFromMap() {
+      var distanceMeters = getCreateGateDistanceMeters();
+      return distanceMeters !== null && distanceMeters <= createGateMeters;
+    }
+
+    function showCreateZoomGateMessage() {
+      var distanceMeters = getCreateGateDistanceMeters();
+      var roundedMeters = roundMetersForUi(distanceMeters);
+      var message = "Acerca el mapa hasta 100 m o menos para abrir este menu.";
+      if (roundedMeters !== null && roundedMeters > createGateMeters) {
+        message = "Acerca el mapa: ahora esta en aprox. " + roundedMeters + " m. Debe estar en 100 m o menos.";
+      }
+      showLocationStatus(locationStatusEl, message, "danger", 3500);
     }
 
     function openChoiceModal(latlng) {
@@ -891,6 +1255,10 @@
         window.matchMedia("(max-width: 767.98px)").matches
       ) {
         panelApi.close();
+        return;
+      }
+      if (!canOpenCreateFromMap()) {
+        showCreateZoomGateMessage();
         return;
       }
       openChoiceModal(event.latlng);

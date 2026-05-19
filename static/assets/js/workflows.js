@@ -37,6 +37,24 @@
     return el ? el.value : "";
   }
 
+  // After a successful transition, we either refresh the surrounding context
+  // (when called from inside a map's detail modal) or reload the page. The
+  // map modal listens for ``workflow:transitioned`` and re-fetches the body
+  // HTML so the user stays on the same map view with the modal open.
+  function reloadAfterTransition(triggerEl, res) {
+    var inMapModal = triggerEl && triggerEl.closest("[data-modal-body]");
+    if (inMapModal) {
+      var event = new CustomEvent("workflow:transitioned", {
+        bubbles: true,
+        cancelable: true,
+        detail: { response: res || {} },
+      });
+      var prevented = !triggerEl.dispatchEvent(event);
+      if (prevented) return; // Map JS handled the refresh in place.
+    }
+    window.location.reload();
+  }
+
   function notify(type, message) {
     if (window.Swal) {
       Swal.fire({
@@ -271,7 +289,7 @@
             try {
               const res = await postTransition(url, fd);
               notify("success", res.message || "Transición ejecutada.");
-              setTimeout(() => window.location.reload(), 600);
+              setTimeout(() => reloadAfterTransition(triggerEl, res), 600);
               return true;
             } catch (err) {
               if (err.formHtml) {
@@ -299,7 +317,7 @@
         fd.append("value", value);
         const res = await postTransition(url, fd);
         notify("success", res.message || "Transición ejecutada.");
-        setTimeout(() => window.location.reload(), 600);
+        setTimeout(() => reloadAfterTransition(triggerEl, res), 600);
         return;
       }
 
@@ -313,7 +331,7 @@
       fd.append("transition", transitionName);
       const res = await postTransition(url, fd);
       notify("success", res.message || "Transición ejecutada.");
-      setTimeout(() => window.location.reload(), 600);
+      setTimeout(() => reloadAfterTransition(triggerEl, res), 600);
     } catch (err) {
       notify("error", err.message || String(err));
     }

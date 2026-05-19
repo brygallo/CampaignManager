@@ -178,6 +178,15 @@
 
 {# Modal shown when a pin is clicked. Body is filled via fetch. #}
 {% include "base/_sheet_modal.html" with modal_id="physical-ad-modal" variant="detail" tone="primary" icon="flag" title="Publicidad" title_attrs="data-modal-title" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_detail_modal_body.html" footer_template="territorial_ads/_detail_modal_footer.html" %}
+
+{# Modal: edit existing publicidad inline (mirrors the create modal). #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-update-modal" variant="form" tone="warning" icon="pencil" title="Editar publicidad" subtitle="Actualiza los datos del lugar" title_attrs="data-update-modal-title" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_update_modal_body.html" footer_template="territorial_ads/_update_modal_footer.html" %}
+
+{# Modal: confirm delete inline. Shared by publicidad and rechazos. #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-delete-modal" variant="confirm" tone="danger" icon="trash-2" title="Eliminar registro" subtitle="Confirma la eliminación" size="md" scrollable=False backdrop_static=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_delete_modal_body.html" footer_template="territorial_ads/_delete_modal_footer.html" %}
+
+{# Modal: edit refusal inline (refusal form is different from publicidad form). #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-refusal-update-modal" variant="form" tone="warning" icon="pencil" title="Editar rechazo" subtitle="Actualiza los datos del rechazo" title_attrs="data-refusal-update-modal-title" size="lg" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_refusal_update_modal_body.html" footer_template="territorial_ads/_refusal_update_modal_footer.html" %}
 {% endblock %}
 
 {% block extra_css %}
@@ -188,7 +197,7 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260508-gate"></script>
+<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260519-zoom-gate"></script>
 <script>
   // Gate suave: a veces se planifica desde la oficina. Solo pedimos ubicación
   // una vez por sesión; si la ignoran, queda el banner persistente.

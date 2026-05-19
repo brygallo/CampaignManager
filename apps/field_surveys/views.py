@@ -9,7 +9,16 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from superadmin.shortcuts import get_urls_of_site
+from superadmin.sites import site as superadmin_site
+
 from apps.campaigns.models import Campaign
+
+from core.map_mixins import (
+    MapAjaxCreateMixin,
+    MapAjaxUpdateMixin,
+    MapInitialLocationMixin,
+)
 
 from .models import (
     Competitor,
@@ -77,6 +86,60 @@ def advertising_color(response):
     if not response:
         return DEFAULT_VISIT_COLOR
     return response.color or ADVERTISING_FALLBACK_COLORS.get(response.code, DEFAULT_VISIT_COLOR)
+
+
+class FieldSurveyMapInitialLocationMixin(MapInitialLocationMixin):
+    """Prefill GPS coordinates when the create form is opened from the map."""
+
+    coordinate_initial_fields = ("latitude", "longitude")
+
+
+class FieldSurveyMapAjaxCreateMixin(MapAjaxCreateMixin):
+    """Render and submit the create form inside the map modal."""
+
+    map_form_template_name = "field_surveys/_map_create_form.html"
+    map_detail_url_name = "site:field_surveys_fieldsurvey_"
+
+
+class FieldSurveyMapAjaxUpdateMixin(MapAjaxUpdateMixin):
+    """Render and submit the update form inside the map modal."""
+
+    map_form_template_name = "field_surveys/_map_create_form.html"
+
+
+class CompetitorDetectionMapAjaxCreateMixin(FieldSurveyMapAjaxCreateMixin):
+    map_detail_url_name = "site:field_surveys_competitoradvertisingdetection_"
+
+
+class CompetitorDetectionMapAjaxUpdateMixin(FieldSurveyMapAjaxUpdateMixin):
+    pass
+
+
+class FieldSurveyOwnershipMixin:
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if can_view_all_field_surveys(self.request.user):
+            return queryset
+        return queryset.filter(brigadier=self.request.user)
+
+
+class CompetitorDetectionOwnershipMixin:
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if can_view_all_field_surveys(self.request.user):
+            return queryset
+        return queryset.filter(brigadier=self.request.user)
+
+
+class BrigadierAutoAssignMixin:
+    """Stamp request.user fields that are intentionally absent from map forms."""
+
+    def form_valid(self, form):
+        if not form.instance.brigadier_id:
+            form.instance.brigadier = self.request.user
+        if hasattr(form.instance, "created_by_id") and not form.instance.created_by_id:
+            form.instance.created_by = self.request.user
+        return super().form_valid(form)
 
 
 class FieldSurveySpecialViewMixin(LoginRequiredMixin):
@@ -334,44 +397,57 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
             surveys = surveys.order_by("-created_date")[:survey_cap]
             competitor_ads = competitor_ads.order_by("-created_date")[:competitor_cap]
 
+        # Same perm gating the list views use: ``get_urls_of_site`` only returns
+        # update/delete keys when the user has the matching change_/delete_ perm.
+        survey_site = superadmin_site.get_modelsite(FieldSurvey)
+        competitor_site = superadmin_site.get_modelsite(CompetitorAdvertisingDetection)
+
         visits = []
         for survey in surveys:
             level = survey.support_level
             response = survey.advertising_response
-            visits.append(
-                {
-                    "id": survey.id,
-                    "kind": "visit",
-                    "lat": float(survey.latitude),
-                    "lng": float(survey.longitude),
-                    "label": str(survey),
-                    "support_code": level.code if level else "",
-                    "support_label": level.name if level else "",
-                    "advertising_code": response.code if response else "",
-                    "advertising_label": response.name if response else "",
-                    "voters": survey.voters_count,
-                    "color": support_color(level),
-                    "url": fieldsurvey_detail_url(survey.pk),
-                }
-            )
+            survey_urls = get_urls_of_site(survey_site, object=survey, user=request.user)
+            item = {
+                "id": survey.id,
+                "kind": "visit",
+                "lat": float(survey.latitude),
+                "lng": float(survey.longitude),
+                "label": str(survey),
+                "support_code": level.code if level else "",
+                "support_label": level.name if level else "",
+                "advertising_code": response.code if response else "",
+                "advertising_label": response.name if response else "",
+                "voters": survey.voters_count,
+                "color": support_color(level),
+                "url": fieldsurvey_detail_url(survey.pk),
+            }
+            if "update" in survey_urls:
+                item["update_url"] = survey_urls["update"]
+            if "delete" in survey_urls:
+                item["delete_url"] = survey_urls["delete"]
+            visits.append(item)
 
         competitor_data = []
         for ad in competitor_ads:
-            competitor_data.append(
-                {
-                    "id": ad.id,
-                    "kind": "competitor",
-                    "lat": float(ad.latitude),
-                    "lng": float(ad.longitude),
-                    "label": str(ad.competitor),
-                    "type_label": ad.advertising_type.name if ad.advertising_type_id else "",
-                    "type_icon": ad.advertising_type.icon
-                    if ad.advertising_type_id
-                    else "element-12",
-                    "color": ad.competitor.color or "#d9214e",
-                    "url": competitor_detection_detail_url(ad.id),
-                }
-            )
+            ad_urls = get_urls_of_site(competitor_site, object=ad, user=request.user)
+            item = {
+                "id": ad.id,
+                "kind": "competitor",
+                "lat": float(ad.latitude),
+                "lng": float(ad.longitude),
+                "label": str(ad.competitor),
+                "type_label": ad.advertising_type.name if ad.advertising_type_id else "",
+                "type_icon": ad.advertising_type.icon
+                if ad.advertising_type_id
+                else "element-12",
+                "color": ad.competitor.color or "#d9214e",
+                "url": competitor_detection_detail_url(ad.id),
+            }
+            if "update" in ad_urls:
+                item["update_url"] = ad_urls["update"]
+            if "delete" in ad_urls:
+                item["delete_url"] = ad_urls["delete"]
+            competitor_data.append(item)
 
         return JsonResponse(
             {

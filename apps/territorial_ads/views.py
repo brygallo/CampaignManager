@@ -14,10 +14,39 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import TemplateView
 
+from superadmin.shortcuts import get_urls_of_site
+from superadmin.sites import site as superadmin_site
+
 from apps.campaigns.models import Campaign
+
+from core.map_mixins import (
+    MapAjaxCreateMixin,
+    MapAjaxUpdateMixin,
+    MapInitialLocationMixin,
+)
 
 from .forms import AdvertisingRefusalForm
 from .models import AdvertisingRefusal, PhysicalAdvertisement
+
+
+class PhysicalAdMapInitialLocationMixin(MapInitialLocationMixin):
+    """Prefill offered coordinates when the create form is opened from the map."""
+
+    coordinate_initial_fields = ("offered_latitude", "offered_longitude")
+    map_location_field = "offered_location"
+
+
+class PhysicalAdMapAjaxCreateMixin(MapAjaxCreateMixin):
+    map_form_template_name = "territorial_ads/_map_create_form.html"
+    map_detail_url_name = "site:territorial_ads_physicaladvertisement_"
+
+
+class PhysicalAdMapAjaxUpdateMixin(MapAjaxUpdateMixin):
+    map_form_template_name = "territorial_ads/_map_create_form.html"
+
+
+class RefusalMapAjaxUpdateMixin(MapAjaxUpdateMixin):
+    map_form_template_name = "territorial_ads/_map_refusal_form.html"
 
 
 STATE_COLORS = {
@@ -112,51 +141,65 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
             if refusal_qs is not None:
                 refusal_qs = refusal_qs.order_by("-id")[:refusal_cap]
 
+        # Reuse the superadmin URL-building helper so the perm checks match what
+        # the list view applies (it returns ``update``/``delete`` only when the
+        # user has the corresponding ``change_`` / ``delete_`` perm).
+        ad_site = superadmin_site.get_modelsite(PhysicalAdvertisement)
+        refusal_site = superadmin_site.get_modelsite(AdvertisingRefusal)
+
         ads = []
         for ad in queryset:
             if ad.installed_latitude is not None and ad.installed_longitude is not None:
                 lat, lng, kind = ad.installed_latitude, ad.installed_longitude, "instalada"
             else:
                 lat, lng, kind = ad.offered_latitude, ad.offered_longitude, "ofrecida"
-            ads.append(
-                {
-                    "id": ad.id,
-                    "lat": float(lat),
-                    "lng": float(lng),
-                    "kind": kind,
-                    "label": ad.code or str(ad),
-                    "state_code": ad.state,
-                    "state_label": ad.get_state_display(),
-                    "color": STATE_COLORS.get(ad.state, "#3388ff"),
-                    "type_icon": ad.advertisement_type.icon if ad.advertisement_type_id else "element-12",
-                    "type_label": ad.advertisement_type.name if ad.advertisement_type_id else "",
-                    "url": physicalad_detail_url(ad.id),
-                    "campaign": ad.campaign.name if ad.campaign_id else "",
-                    "address": ad.address or "",
-                    "marker_kind": "ad",
-                }
-            )
+            ad_urls = get_urls_of_site(ad_site, object=ad, user=request.user)
+            item = {
+                "id": ad.id,
+                "lat": float(lat),
+                "lng": float(lng),
+                "kind": kind,
+                "label": ad.code or str(ad),
+                "state_code": ad.state,
+                "state_label": ad.get_state_display(),
+                "color": STATE_COLORS.get(ad.state, "#3388ff"),
+                "type_icon": ad.advertisement_type.icon if ad.advertisement_type_id else "element-12",
+                "type_label": ad.advertisement_type.name if ad.advertisement_type_id else "",
+                "url": physicalad_detail_url(ad.id),
+                "campaign": ad.campaign.name if ad.campaign_id else "",
+                "address": ad.address or "",
+                "marker_kind": "ad",
+            }
+            if "update" in ad_urls:
+                item["update_url"] = ad_urls["update"]
+            if "delete" in ad_urls:
+                item["delete_url"] = ad_urls["delete"]
+            ads.append(item)
 
         if refusal_qs is not None:
             for refusal in refusal_qs:
-                ads.append(
-                    {
-                        "id": refusal.id,
-                        "lat": float(refusal.latitude),
-                        "lng": float(refusal.longitude),
-                        "kind": "rechazo",
-                        "label": refusal.owner_reference or f"Rechazo #{refusal.id}",
-                        "state_code": None,
-                        "state_label": "No quiere publicidad",
-                        "color": REFUSAL_COLOR,
-                        "type_icon": REFUSAL_ICON,
-                        "type_label": "Rechazo",
-                        "url": reverse("territorial_ads:refusal_popup", kwargs={"pk": refusal.id}),
-                        "campaign": refusal.campaign.name if refusal.campaign_id else "",
-                        "address": refusal.owner_reference or "",
-                        "marker_kind": "refusal",
-                    }
-                )
+                refusal_urls = get_urls_of_site(refusal_site, object=refusal, user=request.user)
+                item = {
+                    "id": refusal.id,
+                    "lat": float(refusal.latitude),
+                    "lng": float(refusal.longitude),
+                    "kind": "rechazo",
+                    "label": refusal.owner_reference or f"Rechazo #{refusal.id}",
+                    "state_code": None,
+                    "state_label": "No quiere publicidad",
+                    "color": REFUSAL_COLOR,
+                    "type_icon": REFUSAL_ICON,
+                    "type_label": "Rechazo",
+                    "url": reverse("territorial_ads:refusal_popup", kwargs={"pk": refusal.id}),
+                    "campaign": refusal.campaign.name if refusal.campaign_id else "",
+                    "address": refusal.owner_reference or "",
+                    "marker_kind": "refusal",
+                }
+                if "update" in refusal_urls:
+                    item["update_url"] = refusal_urls["update"]
+                if "delete" in refusal_urls:
+                    item["delete_url"] = refusal_urls["delete"]
+                ads.append(item)
 
         return JsonResponse(
             {

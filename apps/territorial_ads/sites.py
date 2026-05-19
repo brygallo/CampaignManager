@@ -9,27 +9,23 @@ from core.base import (
 )
 from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import OrderingMixin, WorkflowStateFilterMixin
-from core.map_mixins import MapAjaxCreateMixin, MapInitialLocationMixin
+from core.map_mixins import MapAjaxDeleteMixin
 
 from .forms import AdvertisingRefusalForm, PhysicalAdvertisementForm
-
-
-class PhysicalAdMapInitialLocationMixin(MapInitialLocationMixin):
-    """Prefill offered coordinates when the create form is opened from the map."""
-
-    coordinate_initial_fields = ("offered_latitude", "offered_longitude")
-    map_location_field = "offered_location"
-
-
-class PhysicalAdMapAjaxCreateMixin(MapAjaxCreateMixin):
-    map_form_template_name = "territorial_ads/_map_create_form.html"
-    map_detail_url_name = "site:territorial_ads_physicaladvertisement_"
+from .views import (
+    PhysicalAdMapAjaxCreateMixin,
+    PhysicalAdMapAjaxUpdateMixin,
+    PhysicalAdMapInitialLocationMixin,
+    RefusalMapAjaxUpdateMixin,
+)
 
 
 @register("territorial_ads.AdvertisingRefusal")
 class AdvertisingRefusalSite(BaseSite):
     form_class = AdvertisingRefusalForm
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
+    update_mixins = (RefusalMapAjaxUpdateMixin,)
+    delete_mixins = (MapAjaxDeleteMixin,)
 
     list_fields = (
         "id",
@@ -96,7 +92,8 @@ class PhysicalAdvertisementSite(BaseSite):
         PhysicalAdMapAjaxCreateMixin,
         SaveOptionsMixin,
     )
-    update_mixins = (BlockEditOnReadOnlyStateMixin,)
+    update_mixins = (PhysicalAdMapAjaxUpdateMixin, BlockEditOnReadOnlyStateMixin)
+    delete_mixins = (MapAjaxDeleteMixin,)
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
 
     always_visible_fieldsets = (

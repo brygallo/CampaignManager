@@ -176,6 +176,38 @@
     }
   }
 
+  function roundMetersForUi(value) {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    if (value <= 100) {
+      return Math.max(10, Math.round(value / 10) * 10);
+    }
+    return Math.round(value / 50) * 50;
+  }
+
+  function distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) {
+    var point = map.project(latlng, zoom);
+    var shifted = window.L.point(point.x + widthPx, point.y);
+    var shiftedLatLng = map.unproject(shifted, zoom);
+    return latlng.distanceTo(shiftedLatLng);
+  }
+
+  function findZoomForTargetMeters(map, latlng, targetMeters, widthPx) {
+    var minZoom = Number.isFinite(map.getMinZoom()) ? map.getMinZoom() : 0;
+    var maxZoom = Number.isFinite(map.getMaxZoom()) ? map.getMaxZoom() : 20;
+    var chosenZoom = maxZoom;
+    var zoom;
+    for (zoom = maxZoom; zoom >= minZoom; zoom -= 1) {
+      if (distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) <= targetMeters) {
+        chosenZoom = zoom;
+      } else {
+        break;
+      }
+    }
+    return chosenZoom;
+  }
+
   function geolocationErrorMessage(error) {
     if (!window.isSecureContext) {
       return "Para usar ubicación abre el sitio con HTTPS.";
@@ -333,6 +365,162 @@
     }
   }
 
+  function applyActionLink(modalEl, selector, url) {
+    var el = modalEl.querySelector(selector);
+    if (!el) return;
+    if (url) {
+      el.href = url;
+      el.dataset.actionUrl = url;
+      el.classList.remove("d-none");
+      el.classList.add("d-flex");
+    } else {
+      el.removeAttribute("href");
+      delete el.dataset.actionUrl;
+      el.classList.add("d-none");
+      el.classList.remove("d-flex");
+    }
+  }
+
+  // Opens the inline update modal: fetches the form via AJAX, submits via
+  // AJAX, then triggers an onSaved callback so the caller can refresh markers.
+  function openUpdateModal(modalEl, detailModalEl, updateUrl, label, onSaved) {
+    if (!modalEl || !window.bootstrap || !updateUrl) return;
+    var bodyEl = modalEl.querySelector("[data-update-modal-body]");
+    var submitButton = modalEl.querySelector("[data-update-submit]");
+    var titleEl = modalEl.querySelector("[data-update-modal-title]");
+    if (titleEl && label) titleEl.textContent = "Editar " + label;
+    setHtml(bodyEl, loadingHtml("Cargando formulario..."));
+
+    if (detailModalEl) {
+      var detail = window.bootstrap.Modal.getInstance(detailModalEl);
+      if (detail) detail.hide();
+    }
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    function bindForm() {
+      var form = modalEl.querySelector("[data-map-update-form]");
+      if (!form) return;
+      initDynamicForm(form);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (submitButton) submitButton.disabled = true;
+        fetch(updateUrl, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Map-Update": "1"
+          },
+          credentials: "same-origin"
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.ok) {
+              modal.hide();
+              if (onSaved) onSaved(result.data);
+              return;
+            }
+            setHtml(bodyEl, result.data.html || "");
+            bindForm();
+          })
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("field-surveys map update failed", error);
+            }
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar los cambios.</div>');
+          })
+          .finally(function () {
+            if (submitButton) submitButton.disabled = false;
+          });
+      });
+    }
+
+    fetch(updateUrl, {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Map-Update": "1"
+      },
+      credentials: "same-origin"
+    })
+      .then(function (response) {
+        return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok && result.data && result.data.error) {
+          setHtml(bodyEl, '<div class="alert alert-warning">' + result.data.error + '</div>');
+          return;
+        }
+        setHtml(bodyEl, result.data.html || "");
+        bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
+      })
+      .catch(function () {
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
+      });
+  }
+
+  function openDeleteModal(modalEl, detailModalEl, deleteUrl, label, onDeleted) {
+    if (!modalEl || !window.bootstrap || !deleteUrl) return;
+    var labelEl = modalEl.querySelector("[data-delete-label]");
+    var confirmBtn = modalEl.querySelector("[data-delete-confirm]");
+    if (labelEl) labelEl.textContent = label || "";
+    if (detailModalEl) {
+      var detail = window.bootstrap.Modal.getInstance(detailModalEl);
+      if (detail) detail.hide();
+    }
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    if (!confirmBtn) return;
+    var freshBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(freshBtn, confirmBtn);
+    freshBtn.addEventListener("click", function () {
+      freshBtn.disabled = true;
+      var csrf = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value
+        || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+        || "";
+      fetch(deleteUrl, {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "X-Map-Delete": "1",
+          "X-CSRFToken": csrf
+        },
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (result.ok && result.data.ok) {
+            modal.hide();
+            if (onDeleted) onDeleted(result.data);
+            return;
+          }
+          if (window.console && window.console.error) {
+            window.console.error("field-surveys map delete rejected", result);
+          }
+        })
+        .catch(function (error) {
+          if (window.console && window.console.error) {
+            window.console.error("field-surveys map delete failed", error);
+          }
+        })
+        .finally(function () {
+          freshBtn.disabled = false;
+        });
+    });
+  }
+
   function openDetailModal(modalEl, item, fallbackTitle) {
     if (!modalEl || !window.bootstrap || !item.url) {
       if (item.url) {
@@ -347,9 +535,13 @@
     if (titleEl) {
       titleEl.textContent = item.label || fallbackTitle || "Detalle";
     }
+    modalEl.dataset.currentLabel = item.label || fallbackTitle || "";
+    modalEl.dataset.currentDetailUrl = item.url || "";
     if (detailLink) {
       detailLink.href = item.url;
     }
+    applyActionLink(modalEl, "[data-edit-link]", item.update_url);
+    applyActionLink(modalEl, "[data-delete-link]", item.delete_url);
     setHtml(bodyEl, loadingHtml("Cargando..."));
 
     var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -495,7 +687,65 @@
     var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
     var detailModalEl = document.getElementById("field-survey-detail-modal");
     var createModalEl = document.getElementById("field-survey-create-modal");
+    var updateModalEl = document.getElementById("field-survey-update-modal");
+    var deleteModalEl = document.getElementById("field-survey-delete-modal");
     var chooseModalEl = document.getElementById("field-survey-choose-modal");
+
+    // Wire the detail modal's Edit/Delete buttons once on init. The URL and
+    // label live on the modal's dataset (set in openDetailModal).
+    if (detailModalEl) {
+      var editLinkEl = detailModalEl.querySelector("[data-edit-link]");
+      var deleteLinkEl = detailModalEl.querySelector("[data-delete-link]");
+      if (editLinkEl) {
+        editLinkEl.addEventListener("click", function (event) {
+          event.preventDefault();
+          var url = editLinkEl.dataset.actionUrl;
+          if (!url) return;
+          openUpdateModal(updateModalEl, detailModalEl, url, detailModalEl.dataset.currentLabel || "", function () {
+            load();
+          });
+        });
+      }
+      if (deleteLinkEl) {
+        deleteLinkEl.addEventListener("click", function (event) {
+          event.preventDefault();
+          var url = deleteLinkEl.dataset.actionUrl;
+          if (!url) return;
+          openDeleteModal(deleteModalEl, detailModalEl, url, detailModalEl.dataset.currentLabel || "", function () {
+            load();
+          });
+        });
+      }
+
+      // Workflow transitions (workflows.js) used to reload the whole page.
+      // While our detail modal is open we re-fetch the body instead so the
+      // user stays in place and sees the new state.
+      detailModalEl.addEventListener("workflow:transitioned", function (event) {
+        event.preventDefault();
+        var detailUrl = detailModalEl.dataset.currentDetailUrl;
+        var bodyEl = detailModalEl.querySelector("[data-modal-body]");
+        if (!detailUrl || !bodyEl) {
+          load();
+          return;
+        }
+        setHtml(bodyEl, loadingHtml("Actualizando..."));
+        fetch(detailUrl, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        })
+          .then(function (r) { return r.text(); })
+          .then(function (html) {
+            var detailHtml = detailHtmlFromPage(html);
+            if (!detailHtml) throw new Error("Empty detail content");
+            setHtml(bodyEl, detailHtml);
+            initDynamicContent(bodyEl);
+            load();
+          })
+          .catch(function () {
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo actualizar el detalle.</div>');
+          });
+      });
+    }
     var counterEl = document.getElementById("field-survey-map-count");
     var filterCounterEl = document.getElementById("field-survey-filter-count");
     var filterTriggerEls = document.querySelectorAll(".field-survey-map-filter-trigger");
@@ -506,6 +756,9 @@
     var legendToggleEl = document.getElementById("field-survey-map-legend-toggle");
     var createUrl = el.dataset.createUrl || "";
     var createCompetitorUrl = el.dataset.createCompetitorUrl || "";
+    var createGateMeters = 100;
+    var locationTargetMeters = 50;
+    var scaleReferenceWidthPx = 120;
 
     var tenantCenter = window.TENANT_MAP_CENTER || {};
     var defaultLat = parseFloat(el.dataset.defaultLat) || tenantCenter.lat || -2.3046;
@@ -672,6 +925,28 @@
     }
     map.on("zoomend", applyPreferredBasemapForZoom);
 
+    var mapState = window.MapState && window.MapState.attach
+      ? window.MapState.attach(map, {
+          defaultBasemap: "carto",
+          getBasemap: function () { return preferredBasemap; },
+          setBasemap: function (name) {
+            if (name === "satellite" || name === "carto") {
+              preferredBasemap = name;
+              if (basemapRefs && basemapRefs.satellite && basemapRefs.carto) {
+                if (name === "satellite" && map.getZoom() <= satelliteMaxZoom) {
+                  setBasemap("satellite");
+                } else {
+                  setBasemap("carto");
+                }
+              }
+            }
+          }
+        })
+      : null;
+    var mapStateRestored = mapState ? mapState.restore() : false;
+    var userOwnsView = mapStateRestored;
+    map.on("movestart zoomstart", function () { userOwnsView = true; });
+
     var filters = document.getElementById("field-survey-map-filters");
     var panelApi = setupPanel(shell, panel, panelTriggers, map);
 
@@ -750,9 +1025,10 @@
             bounds.push([item.lat, item.lng]);
           });
 
-          if (bounds.length) {
+          if (bounds.length && !userOwnsView) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
           }
+          userOwnsView = true;
           // Pin HTML contains <i data-lucide="..."> placeholders — render
           // them now that Leaflet has placed the markers in the DOM.
           if (window.cmRenderIcons) window.cmRenderIcons();
@@ -808,7 +1084,14 @@
           permanent: false
         }).addTo(locationLayer);
 
-        map.setView([lat, lng], Math.max(map.getZoom(), 16));
+        var targetLatLng = window.L.latLng(lat, lng);
+        var locationZoom = findZoomForTargetMeters(
+          map,
+          targetLatLng,
+          locationTargetMeters,
+          scaleReferenceWidthPx
+        );
+        map.setView(targetLatLng, Math.max(map.getZoom(), locationZoom));
         setLocationButton(myLocationButton, "Mi ubicación", false);
         showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
       };
@@ -859,6 +1142,33 @@
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
         );
       });
+    }
+
+    function getCreateGateDistanceMeters() {
+      var size = map.getSize();
+      if (!size || size.x <= 0 || size.y <= 0) {
+        return null;
+      }
+      var referenceWidth = Math.min(scaleReferenceWidthPx, size.x);
+      var centerY = size.y / 2;
+      var start = map.containerPointToLatLng([0, centerY]);
+      var end = map.containerPointToLatLng([referenceWidth, centerY]);
+      return map.distance(start, end);
+    }
+
+    function canOpenCreateFromMap() {
+      var distanceMeters = getCreateGateDistanceMeters();
+      return distanceMeters !== null && distanceMeters <= createGateMeters;
+    }
+
+    function showCreateZoomGateMessage() {
+      var distanceMeters = getCreateGateDistanceMeters();
+      var roundedMeters = roundMetersForUi(distanceMeters);
+      var message = "Acerca el mapa hasta 100 m o menos para abrir este menu.";
+      if (roundedMeters !== null && roundedMeters > createGateMeters) {
+        message = "Acerca el mapa: ahora esta en aprox. " + roundedMeters + " m. Debe estar en 100 m o menos.";
+      }
+      showLocationStatus(locationStatusEl, message, "danger", 3500);
     }
 
     var CREATE_PRESETS = {
@@ -1002,6 +1312,10 @@
         window.matchMedia("(max-width: 767.98px)").matches
       ) {
         panelApi.close();
+        return;
+      }
+      if (!canOpenCreateFromMap()) {
+        showCreateZoomGateMessage();
         return;
       }
       chooseAndCreate(event.latlng);

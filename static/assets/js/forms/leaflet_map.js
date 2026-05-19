@@ -73,6 +73,28 @@
     }
   }
 
+  function distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) {
+    var point = map.project(latlng, zoom);
+    var shifted = window.L.point(point.x + widthPx, point.y);
+    var shiftedLatLng = map.unproject(shifted, zoom);
+    return latlng.distanceTo(shiftedLatLng);
+  }
+
+  function findZoomForTargetMeters(map, latlng, targetMeters, widthPx) {
+    var minZoom = Number.isFinite(map.getMinZoom()) ? map.getMinZoom() : 0;
+    var maxZoom = Number.isFinite(map.getMaxZoom()) ? map.getMaxZoom() : 20;
+    var chosenZoom = maxZoom;
+    var zoom;
+    for (zoom = maxZoom; zoom >= minZoom; zoom -= 1) {
+      if (distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) <= targetMeters) {
+        chosenZoom = zoom;
+      } else {
+        break;
+      }
+    }
+    return chosenZoom;
+  }
+
   function setPoint(container, marker, latField, lngField, latlng, map, options) {
     options = options || {};
     latField.value = latlng.lat.toFixed(6);
@@ -115,6 +137,8 @@
     var lat = parseNumber(latField.value, defaultLat);
     var lng = parseNumber(lngField.value, defaultLng);
     var hasPoint = latField.value !== "" && lngField.value !== "";
+    var locationTargetMeters = 50;
+    var scaleReferenceWidthPx = 120;
 
     var map = window.L.map(canvas).setView([lat, lng], zoom);
     buildBasemaps(map, null, {
@@ -140,7 +164,13 @@
       locationButton.addEventListener("click", function () {
         var onGranted = function (position) {
           var current = window.L.latLng(position.coords.latitude, position.coords.longitude);
-          map.setView(current, 17);
+          var locationZoom = findZoomForTargetMeters(
+            map,
+            current,
+            locationTargetMeters,
+            scaleReferenceWidthPx
+          );
+          map.setView(current, Math.max(map.getZoom(), locationZoom));
           setPoint(container, marker, latField, lngField, current, map, {
             manualField: manualField,
             manual: false,

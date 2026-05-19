@@ -3,7 +3,7 @@ import json
 
 from django.contrib import messages
 from django.db.models import ProtectedError
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 
 from superadmin.options import ModelSite
 
@@ -100,10 +100,15 @@ class BlockEditOnReadOnlyStateMixin:
             current = obj.get_current_state() if hasattr(obj, "get_current_state") else None
             if current is not None:
                 state_label = f" ({current.label})"
-            messages.error(
-                request,
-                f"Este registro está en un estado de solo lectura{state_label} y no puede editarse.",
+            error_msg = (
+                f"Este registro está en un estado de solo lectura{state_label} "
+                "y no puede editarse."
             )
+            # Map AJAX requests can't follow a redirect — surface the rejection
+            # as JSON so the modal can render a clean error.
+            if request.headers.get("X-Map-Update") == "1":
+                return JsonResponse({"ok": False, "error": error_msg}, status=409)
+            messages.error(request, error_msg)
             target = (
                 obj.get_absolute_url()
                 if hasattr(obj, "get_absolute_url")
