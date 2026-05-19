@@ -68,7 +68,7 @@ class PhysicalAdTransitions:
             icon="user",
             color="primary",
             title="Asignar instalación",
-            text="Selecciona instalador o registra el equipo responsable.",
+            text="Selecciona instalador o registra un instalador externo.",
             form="apps.territorial_ads.forms.AssignInstallationForm",
         ),
     )

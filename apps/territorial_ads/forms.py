@@ -266,12 +266,12 @@ class AssignInstallationForm(forms.Form):
             },
         ),
     )
-    installer_team = forms.CharField(label="Equipo instalador", max_length=180, required=False)
+    installer_team = forms.CharField(label="Instalador externo", max_length=180, required=False)
 
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get("assigned_installer") and not cleaned_data.get("installer_team"):
-            raise forms.ValidationError("Selecciona un instalador o registra un equipo instalador.")
+            raise forms.ValidationError("Selecciona un instalador o registra un instalador externo.")
         return cleaned_data
 
 

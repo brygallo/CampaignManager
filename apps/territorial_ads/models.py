@@ -133,7 +133,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         null=True,
         blank=True,
     )
-    installer_team = models.CharField("Equipo instalador", max_length=180, blank=True)
+    installer_team = models.CharField("Instalador externo", max_length=180, blank=True)
     assigned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
