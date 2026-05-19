@@ -6,7 +6,8 @@
     var carto = window.L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
       {
-        maxZoom: 20,
+        maxZoom: 21,
+        maxNativeZoom: 20,
         subdomains: "abcd",
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -20,10 +21,14 @@
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }
     );
+    // Esri World Imagery only has native tiles up to z18 in many small Ecuadorian
+    // cities (e.g. Macas). Above maxNativeZoom Leaflet upscales z18 tiles instead of
+    // requesting non-existent ones, avoiding the "Map data not yet available" tiles.
     var satellite = window.L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
-        maxZoom: 19,
+        maxZoom: 21,
+        maxNativeZoom: 18,
         attribution:
           'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
       }
