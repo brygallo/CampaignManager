@@ -13,6 +13,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import UpdateView
+from tracing.middleware import TracingMiddleware
 
 from .forms import EmailOrUsernameAuthenticationForm, MyProfileEditForm, UserPermissionForm
 from .permissions import build_user_permission_context, resolve_posted_permissions
@@ -54,7 +55,12 @@ def login_view(request):
         return redirect(_safe_redirect_target(request, request.GET.get("next")))
     form = EmailOrUsernameAuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
-        auth_login(request, form.get_user())
+        user = form.get_user()
+        # Django updates ``last_login`` during ``auth_login()``, and the
+        # tracing package audits that save. Seed the request-local tracing
+        # context with the authenticated user before the save happens.
+        TracingMiddleware.thread_local.user = user
+        auth_login(request, user)
         # Honor the "Mantenerme conectado por 30 días" checkbox: when checked,
         # extend the session cookie to 30 days; otherwise tie its lifetime to
         # the browser session (expires when the user closes the browser).

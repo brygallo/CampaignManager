@@ -8,12 +8,35 @@ from types import SimpleNamespace
 
 from django.http import HttpResponse
 
-from core.middleware import TenantPathRoutingMiddleware
+from core.middleware import (
+    TenantAwareSessionMiddleware,
+    TenantPathRoutingMiddleware,
+)
 from core.templatetags.menu_tags import url_active
 
 
 def _mw():
     return TenantPathRoutingMiddleware(get_response=lambda r: HttpResponse())
+
+
+class _DummySession:
+    def __init__(self, session_key="tenant-key", empty=False):
+        self.session_key = session_key
+        self.accessed = True
+        self.modified = True
+        self._empty = empty
+
+    def is_empty(self):
+        return self._empty
+
+    def get_expire_at_browser_close(self):
+        return True
+
+    def get_expiry_age(self):
+        return 1200
+
+    def save(self):
+        return None
 
 
 def test_cookie_path_rewritten_to_tenant_prefix():
@@ -52,3 +75,36 @@ def test_url_active_accepts_path_routed_tenant_prefix():
         "/alpha/publicidad-territorial/mapa/",
         "/publicidad-territorial/mapa/",
     )
+
+
+def test_tenant_session_cookie_name_is_slug_specific():
+    request = SimpleNamespace(
+        tenant_path_prefix="/alpha",
+        COOKIES={},
+        _session_cookie_name="sessionid_alpha",
+        _session_cookie_path="/alpha/",
+        session=_DummySession(),
+    )
+    response = TenantAwareSessionMiddleware(lambda req: HttpResponse()).process_response(
+        request,
+        HttpResponse(),
+    )
+
+    assert "sessionid_alpha" in response.cookies
+    assert response.cookies["sessionid_alpha"]["path"] == "/alpha/"
+
+
+def test_tenant_session_cookie_clears_legacy_shared_name():
+    request = SimpleNamespace(
+        tenant_path_prefix="/alpha",
+        COOKIES={"sessionid": "legacy"},
+        _session_cookie_name="sessionid_alpha",
+        _session_cookie_path="/alpha/",
+        session=_DummySession(),
+    )
+    response = TenantAwareSessionMiddleware(lambda req: HttpResponse()).process_response(
+        request,
+        HttpResponse(),
+    )
+
+    assert response.cookies["sessionid"]["max-age"] == 0 or response.cookies["sessionid"]["max-age"] == "0"

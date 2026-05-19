@@ -18,10 +18,16 @@ Recommended only for trial/demo tenants. Premium tenants should use mode 1
 or 2.
 """
 from importlib import import_module
+import time
 
 from django.conf import settings
+from django.contrib.sessions.exceptions import SessionInterrupted
+from django.contrib.sessions.middleware import SessionMiddleware
+from django.contrib.sessions.backends.base import UpdateError
 from django.db import connection
 from django.urls import get_script_prefix, set_script_prefix
+from django.utils.cache import patch_vary_headers
+from django.utils.http import http_date
 from django_tenants.utils import get_public_schema_name, get_tenant_model
 
 # Importing this module is enough to install the multi-tenant patch on
@@ -29,6 +35,113 @@ from django_tenants.utils import get_public_schema_name, get_tenant_model
 # here because Django imports ``core.middleware`` before processing any
 # request, which guarantees the patch is in place before signals fire.
 from core import tracing_patches  # noqa: F401
+
+
+def _tenant_cookie_slug(request):
+    prefix = getattr(request, "tenant_path_prefix", "") or ""
+    if not prefix:
+        return ""
+    return prefix.strip("/").replace("/", "_")
+
+
+def _session_cookie_name_for_request(request):
+    slug = _tenant_cookie_slug(request)
+    if not slug:
+        return settings.SESSION_COOKIE_NAME
+    return f"{settings.SESSION_COOKIE_NAME}_{slug}"
+
+
+def _session_cookie_path_for_request(request):
+    prefix = getattr(request, "tenant_path_prefix", "") or ""
+    if not prefix:
+        return settings.SESSION_COOKIE_PATH
+    return f"{prefix}/"
+
+
+class TenantAwareSessionMiddleware(SessionMiddleware):
+    """Use one session cookie per path-routed tenant.
+
+    Path-routed tenants (``/slug/...``) share the same host with the public
+    landing. Reusing a single cookie name (``sessionid``) can leave the
+    browser with multiple cookies of the same name but different paths, which
+    makes the next request ambiguous and can bounce an apparently successful
+    login back to ``/login/``. Naming the cookie per slug removes that clash.
+    """
+
+    def process_request(self, request):
+        cookie_name = _session_cookie_name_for_request(request)
+        cookie_path = _session_cookie_path_for_request(request)
+        session_key = request.COOKIES.get(cookie_name)
+
+        # Backward-compatible fallback for pre-fix cookies. The response will
+        # re-issue the session under the tenant-specific name.
+        if session_key is None and cookie_name != settings.SESSION_COOKIE_NAME:
+            session_key = request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+
+        request._session_cookie_name = cookie_name
+        request._session_cookie_path = cookie_path
+        request.session = self.SessionStore(session_key)
+
+    def process_response(self, request, response):
+        try:
+            accessed = request.session.accessed
+            modified = request.session.modified
+            empty = request.session.is_empty()
+        except AttributeError:
+            return response
+
+        cookie_name = getattr(request, "_session_cookie_name", settings.SESSION_COOKIE_NAME)
+        cookie_path = getattr(request, "_session_cookie_path", settings.SESSION_COOKIE_PATH)
+        legacy_cookie_name = settings.SESSION_COOKIE_NAME
+
+        if cookie_name in request.COOKIES and empty:
+            response.delete_cookie(
+                cookie_name,
+                path=cookie_path,
+                domain=settings.SESSION_COOKIE_DOMAIN,
+                samesite=settings.SESSION_COOKIE_SAMESITE,
+            )
+            patch_vary_headers(response, ("Cookie",))
+        else:
+            if accessed:
+                patch_vary_headers(response, ("Cookie",))
+            if (modified or settings.SESSION_SAVE_EVERY_REQUEST) and not empty:
+                if request.session.get_expire_at_browser_close():
+                    max_age = None
+                    expires = None
+                else:
+                    max_age = request.session.get_expiry_age()
+                    expires = http_date(time.time() + max_age)
+                if response.status_code < 500:
+                    try:
+                        request.session.save()
+                    except UpdateError:
+                        raise SessionInterrupted(
+                            "The request's session was deleted before the "
+                            "request completed. The user may have logged "
+                            "out in a concurrent request, for example."
+                        )
+                    response.set_cookie(
+                        cookie_name,
+                        request.session.session_key,
+                        max_age=max_age,
+                        expires=expires,
+                        domain=settings.SESSION_COOKIE_DOMAIN,
+                        path=cookie_path,
+                        secure=settings.SESSION_COOKIE_SECURE or None,
+                        httponly=settings.SESSION_COOKIE_HTTPONLY or None,
+                        samesite=settings.SESSION_COOKIE_SAMESITE,
+                    )
+
+        if cookie_name != legacy_cookie_name:
+            response.delete_cookie(
+                legacy_cookie_name,
+                path=settings.SESSION_COOKIE_PATH,
+                domain=settings.SESSION_COOKIE_DOMAIN,
+                samesite=settings.SESSION_COOKIE_SAMESITE,
+            )
+
+        return response
 
 
 class PublicSchemaSessionRoutingMiddleware:

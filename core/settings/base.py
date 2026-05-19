@@ -102,7 +102,7 @@ MIDDLEWARE = [
     "core.middleware.TenantPathRoutingMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    "core.middleware.TenantAwareSessionMiddleware",
     "core.middleware.PublicSchemaSessionRoutingMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
