@@ -79,6 +79,9 @@ class CampaignTransitions:
                 f"{deps['scheduled_events']} evento(s) AGENDADO(s) y "
                 f"{deps['active_ads']} publicidad(es) activa(s)."
             )
+        # A closed campaign must not remain the tenant-wide default; new
+        # users would otherwise be silently auto-resolved into it.
+        self.is_default = False
 
     @transition(
         field="state",
@@ -104,3 +107,6 @@ class CampaignTransitions:
                 f"{deps['scheduled_events']} evento(s) AGENDADO(s) y retira las "
                 f"{deps['active_ads']} publicidad(es) activa(s)."
             )
+        # A canceled campaign must not remain the tenant-wide default;
+        # see the rationale in ``close`` above.
+        self.is_default = False

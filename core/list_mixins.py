@@ -45,6 +45,54 @@ def default_lookup_for_type(field_type):
     return DEFAULT_LOOKUP_BY_TYPE.get(field_type, "exact")
 
 
+class ActiveCampaignScopeMixin:
+    """Restrict list/detail querysets to the active campaign.
+
+    Opt-out per site with ``respect_active_campaign = False`` (default is
+    ``True``). The mixin auto-detects whether the bound model exposes the
+    expected FK and is a no-op for models without it (e.g. ``Election``,
+    ``PoliticalMovement``) or when no active campaign is set.
+
+    Plug into ``BaseSite.list_mixins`` and ``BaseSite.detail_mixins`` so
+    every CRUD view inherits the scope without per-site wiring.
+
+    NOT an authorization control.
+        The active campaign is a per-session UX preference the user picks
+        from the navbar. Any logged-in user in the tenant can switch it to
+        any campaign at will, so this filter must not be the only thing
+        keeping a user away from records they shouldn't see. Per-user /
+        per-role authorization belongs in a separate mixin (cf.
+        ``FieldSurveyOwnershipMixin``).
+    """
+
+    active_campaign_field = "campaign"
+
+    def _scope_field_name(self):
+        return getattr(self.site, "active_campaign_field", self.active_campaign_field)
+
+    def _scope_enabled(self) -> bool:
+        if not getattr(self.site, "respect_active_campaign", True):
+            return False
+        field_name = self._scope_field_name()
+        model = getattr(self.site, "model", None) or getattr(self, "model", None)
+        if model is None:
+            return False
+        try:
+            model._meta.get_field(field_name)
+        except Exception:
+            return False
+        return True
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self._scope_enabled():
+            return qs
+        active = getattr(self.request, "active_campaign", None)
+        if active is None:
+            return qs
+        return qs.filter(**{self._scope_field_name(): active.pk})
+
+
 class OrderingMixin:
     """Honor ``?ordering=<field>`` in the URL so list sort is shareable.
 
@@ -267,11 +315,18 @@ class WorkflowStateFilterMixin:
         return "abstract-26", "info"
 
     def _base_queryset_for_counts(self):
-        """Re-run parent ``get_queryset`` ignoring the state filter param."""
+        """Re-run ``self.get_queryset`` ignoring the state filter param.
+
+        Uses ``self.get_queryset()`` (not ``super().get_queryset()``) so the
+        full MRO chain runs — most importantly ``ActiveCampaignScopeMixin``,
+        which sits above this mixin in the bases tuple (it is prepended by
+        ``BaseSite``). Calling ``super()`` here would skip that scope and
+        produce tab counts that don't match the table below them.
+        """
         original = self.request.GET
         self.request.GET = self._request_params_without_state()
         try:
-            return super().get_queryset()
+            return self.get_queryset()
         finally:
             self.request.GET = original
 

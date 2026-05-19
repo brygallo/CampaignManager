@@ -345,6 +345,17 @@
     if (activateBtn) activateBtn.addEventListener("click", function () { self._activate(); });
     var retryBtn = modal.querySelector("[data-gate-retry]");
     if (retryBtn) retryBtn.addEventListener("click", function () { self._activate(); });
+    // The shared sheet modal renders a Bootstrap close button with
+    // ``data-bs-dismiss="modal"`` that does NOT pass through ``data-gate-close``.
+    // Without this hook, dismissing via the X (or backdrop click / Escape)
+    // would close the modal without persisting the "skipped" preference, so
+    // the modal would re-open on every map visit. Hook the Bootstrap event
+    // so every dismissal path behaves the same as "Continuar sin ubicación".
+    modal.addEventListener("hidden.bs.modal", function () {
+      var prev = readPreference();
+      if (prev !== "granted" && prev !== "denied") writePreference("skipped");
+      markNaggedThisSession();
+    });
   };
 
   GateController.prototype._handleSkip = function () {
