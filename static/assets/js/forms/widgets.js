@@ -54,6 +54,10 @@
   window.initFormWidgets = function (selector) {
     var scope = getScope(selector);
 
+    if (window.cmRenderIcons) {
+      window.cmRenderIcons();
+    }
+
     if (window.initSelect2) {
       window.initSelect2(scope);
     }

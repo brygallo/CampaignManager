@@ -145,6 +145,7 @@
       Array.prototype.forEach.call(filterForm.elements, function (input) {
         if (input.tagName === "SELECT" || input.tagName === "INPUT") {
           input.value = "";
+          input.dispatchEvent(new Event("change", { bubbles: true }));
         }
       });
       refetchAndUpdateCount();

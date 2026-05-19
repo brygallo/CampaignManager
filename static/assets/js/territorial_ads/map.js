@@ -532,6 +532,7 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         setHtml(bodyEl, data.html || "");
+        initDynamicContent(bodyEl);
       })
       .catch(function () {
         setHtml(
@@ -795,6 +796,7 @@
           .then(function (payload) {
             if (isRefusal) {
               setHtml(bodyEl, (payload && payload.html) || "");
+              initDynamicContent(bodyEl);
             } else {
               var detailHtml = detailHtmlFromPage(payload);
               if (!detailHtml) throw new Error("Empty detail content");
@@ -816,7 +818,7 @@
     var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
     var refusalCreateUrl = el.dataset.refusalCreateUrl || "";
-    var createGateMeters = 100;
+    var createGateMeters = 50;
     var locationTargetMeters = 50;
     var scaleReferenceWidthPx = 120;
 
@@ -1201,9 +1203,9 @@
     function showCreateZoomGateMessage() {
       var distanceMeters = getCreateGateDistanceMeters();
       var roundedMeters = roundMetersForUi(distanceMeters);
-      var message = "Acerca el mapa hasta 100 m o menos para abrir este menu.";
+      var message = "Acerca el mapa hasta " + createGateMeters + " m o menos para abrir este menu.";
       if (roundedMeters !== null && roundedMeters > createGateMeters) {
-        message = "Acerca el mapa: ahora esta en aprox. " + roundedMeters + " m. Debe estar en 100 m o menos.";
+        message = "Acerca el mapa: ahora esta en aprox. " + roundedMeters + " m. Debe estar en " + createGateMeters + " m o menos.";
       }
       showLocationStatus(locationStatusEl, message, "danger", 3500);
     }

@@ -92,7 +92,7 @@ Variant cheat-sheet:
             <span class="cm-sheet-modal__icon symbol symbol-circle bg-light-{{ sm_tone }}{% if sm_v == 'gate' %} symbol-80px{% else %} symbol-65px{% endif %}">
               <span class="symbol-label">
                 {% if sm_lib == "keenicons" %}
-                  <i class="ki-outline ki-{{ sm_icon }} text-{{ sm_tone }} fs-2x" aria-hidden="true"></i>
+                  <i data-lucide="{{ sm_icon|lucide }}" class="text-{{ sm_tone }} fs-2x" aria-hidden="true"></i>
                 {% else %}
                   <i data-lucide="{{ sm_icon }}" class="text-{{ sm_tone }} fs-2x" aria-hidden="true"></i>
                 {% endif %}
@@ -113,7 +113,7 @@ Variant cheat-sheet:
               <span class="symbol symbol-40px symbol-circle flex-shrink-0" data-tone="{{ sm_tone }}"{% if sm_icon_wrap_attrs %} {{ sm_icon_wrap_attrs|safe }}{% endif %}>
                 <span class="symbol-label bg-light-{{ sm_tone }} text-{{ sm_tone }}"{% if sm_icon_bg_attrs %} {{ sm_icon_bg_attrs|safe }}{% endif %}>
                   {% if sm_lib == "keenicons" %}
-                    <i class="ki-outline ki-{{ sm_icon }} fs-2" aria-hidden="true"{% if sm_icon_attrs %} {{ sm_icon_attrs|safe }}{% endif %}></i>
+                    <i data-lucide="{{ sm_icon|lucide }}" class="fs-2" aria-hidden="true"{% if sm_icon_attrs %} {{ sm_icon_attrs|safe }}{% endif %}></i>
                   {% else %}
                     <i data-lucide="{{ sm_icon }}" class="fs-2" aria-hidden="true"{% if sm_icon_attrs %} {{ sm_icon_attrs|safe }}{% endif %}></i>
                   {% endif %}

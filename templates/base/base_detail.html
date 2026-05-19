@@ -236,7 +236,7 @@
       <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2 text-muted small w-100">
         {% if object.created_date %}
           <span class="d-flex flex-wrap align-items-center gap-2" style="min-width:0;">
-            <i class="ki-outline ki-add-files fs-5 flex-shrink-0"></i>
+            <i data-lucide="file-plus-2" class="fs-5 flex-shrink-0"></i>
             <span class="fw-semibold">Creado:</span>
             <span>{{ object.created_date|date:"d/m/Y H:i" }}</span>
             {% if object.created_user %}
@@ -248,7 +248,7 @@
         {% endif %}
         {% if object.modified_date %}
           <span class="d-flex flex-wrap align-items-center gap-2 ms-md-auto" style="min-width:0;">
-            <i class="ki-outline ki-pencil fs-5 flex-shrink-0"></i>
+            <i data-lucide="pencil" class="fs-5 flex-shrink-0"></i>
             <span class="fw-semibold">Modificado:</span>
             <span>{{ object.modified_date|date:"d/m/Y H:i" }}</span>
             {% if object.modified_user %}
@@ -276,7 +276,7 @@
             <span class="text-muted fs-7" id="pdf-preview-subtitle">Vista rápida del documento</span>
           </div>
           <button type="button" class="btn btn-icon btn-sm btn-active-light-primary ms-2" data-bs-dismiss="modal" aria-label="Cerrar">
-            <i class="ki-outline ki-cross fs-1"></i>
+            <i data-lucide="x" class="fs-1"></i>
           </button>
         </div>
         <div class="modal-body p-0 position-relative bg-body" style="height: 80vh;">
@@ -291,10 +291,10 @@
         </div>
         <div class="modal-footer">
           <a id="pdf-preview-open" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-light-primary btn-sm">
-            <i class="ki-outline ki-exit-up fs-3"></i>Abrir en otra pestaña
+            <i data-lucide="external-link" class="fs-3"></i>Abrir en otra pestaña
           </a>
           <button type="button" class="btn btn-light-danger btn-sm" data-bs-dismiss="modal">
-            <i class="ki-outline ki-cross fs-3"></i>Cerrar
+            <i data-lucide="x" class="fs-3"></i>Cerrar
           </button>
         </div>
       </div>

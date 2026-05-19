@@ -255,6 +255,7 @@
 
   $(document).on("click", "a.transition, button.transition", async function (e) {
     e.preventDefault();
+    const triggerEl = this;
     const $btn = $(this);
     const url = $btn.data("url");
     const transitionName = $btn.data("transition");

@@ -176,7 +176,7 @@
         <span class="text-gray-500 fw-semibold fs-9 fs-md-7 mt-1 lh-sm">Publicidad</span>
         <span class="cm-kpi-trend mt-2 align-self-start fs-9 fs-md-8 d-inline-flex align-items-center gap-1
                      {% if stats.ads_week %}cm-kpi-trend--up{% else %}cm-kpi-trend--flat{% endif %}">
-          <i class="ki-outline {% if stats.ads_week %}ki-arrow-up-right{% else %}ki-minus{% endif %}" aria-hidden="true"></i>
+          <i data-lucide="{% if stats.ads_week %}arrow-up-right{% else %}minus{% endif %}" aria-hidden="true"></i>
           {% if stats.ads_week %}+{{ stats.ads_week }} esta semana{% else %}Sin novedades{% endif %}
         </span>
       </div>
@@ -197,7 +197,7 @@
         <span class="text-gray-500 fw-semibold fs-9 fs-md-7 mt-1 lh-sm">Visitas</span>
         <span class="cm-kpi-trend mt-2 align-self-start fs-9 fs-md-8 d-inline-flex align-items-center gap-1
                      {% if stats.visits_today %}cm-kpi-trend--up{% else %}cm-kpi-trend--flat{% endif %}">
-          <i class="ki-outline {% if stats.visits_today %}ki-arrow-up-right{% else %}ki-minus{% endif %}" aria-hidden="true"></i>
+          <i data-lucide="{% if stats.visits_today %}arrow-up-right{% else %}minus{% endif %}" aria-hidden="true"></i>
           {% if stats.visits_today %}+{{ stats.visits_today }} hoy{% else %}Sin visitas hoy{% endif %}
         </span>
       </div>
