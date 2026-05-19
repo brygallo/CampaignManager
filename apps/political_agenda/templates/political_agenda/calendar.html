@@ -33,16 +33,22 @@
     <form id="agenda-calendar-filters" class="row g-3 mb-5 collapse show">
       <div class="col-12 col-md-3">
         <label for="ag-cal-campaign" class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
-        <select id="ag-cal-campaign" name="campaign" class="form-select form-select-sm form-select-solid">
+        <select id="ag-cal-campaign"
+                name="campaign"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todas</option>
           {% for campaign in campaigns %}
-            <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+            <option value="{{ campaign.id }}" {% if selected_campaign_id == campaign.id|stringformat:"s" %}selected{% endif %}>{{ campaign.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-12 col-md-3">
         <label for="ag-cal-event-type" class="form-label fs-7 fw-semibold text-gray-700">Tipo</label>
-        <select id="ag-cal-event-type" name="event_type" class="form-select form-select-sm form-select-solid">
+        <select id="ag-cal-event-type"
+                name="event_type"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos los tipos</option>
           {% for et in event_types %}
             <option value="{{ et.id }}">{{ et.name }}</option>
@@ -51,7 +57,10 @@
       </div>
       <div class="col-12 col-md-3">
         <label for="ag-cal-state" class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
-        <select id="ag-cal-state" name="state" class="form-select form-select-sm form-select-solid">
+        <select id="ag-cal-state"
+                name="state"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos excepto cancelados</option>
           {% for value, label in states %}
             <option value="{{ value }}">{{ label }}</option>
@@ -60,7 +69,10 @@
       </div>
       <div class="col-12 col-md-3">
         <label for="ag-cal-responsible" class="form-label fs-7 fw-semibold text-gray-700">Responsable</label>
-        <select id="ag-cal-responsible" name="responsible" class="form-select form-select-sm form-select-solid">
+        <select id="ag-cal-responsible"
+                name="responsible"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos</option>
           {% for u in responsibles %}
             <option value="{{ u.id }}">{{ u }}</option>
@@ -102,4 +114,24 @@
 {{ block.super }}
 <script src="{% static 'assets/plugins/custom/fullcalendar/fullcalendar.bundle.js' %}"></script>
 <script src="{% static 'assets/js/political_agenda/calendar.js' %}"></script>
+<script>
+  // Cascade: changing the campaign reloads the page so the responsible
+  // dropdown re-renders scoped to people who have events in that campaign.
+  document.addEventListener("DOMContentLoaded", function () {
+    var sel = document.getElementById("ag-cal-campaign");
+    if (!sel) return;
+    sel.addEventListener("change", function () {
+      var params = new URLSearchParams(window.location.search);
+      if (sel.value) {
+        params.set("campaign", sel.value);
+      } else {
+        params.delete("campaign");
+      }
+      // Drop campaign-scoped child filters so they reset on reload.
+      params.delete("responsible");
+      var query = params.toString();
+      window.location.search = query ? "?" + query : "";
+    });
+  });
+</script>
 {% endblock %}

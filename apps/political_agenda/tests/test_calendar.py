@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
+from django.test.utils import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -15,6 +16,16 @@ from apps.political_agenda.models import (
 )
 
 
+@override_settings(
+    # ``test.py`` flattens django-tenants into the public schema, but
+    # ``PublicSchemaSessionRoutingMiddleware`` still swaps the session store
+    # to signed_cookies on that schema. Aligning ``SESSION_ENGINE`` here
+    # makes ``client.force_login()`` write a session both sides can read.
+    SESSION_ENGINE="django.contrib.sessions.backends.signed_cookies",
+    # Route the public schema through the tenant URLConf so the calendar
+    # routes resolve under ``testserver`` (no tenant slug).
+    PUBLIC_SCHEMA_URLCONF="core.urls",
+)
 class PoliticalAgendaCalendarFeedTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -38,11 +49,13 @@ class PoliticalAgendaCalendarFeedTests(TestCase):
             movement=movement,
             position=position,
         )
-        self.type_reunion = AgendaEventType.objects.create(
-            code="REUNION", name="Reunión", order=10, color="#3e97ff", icon="people"
+        self.type_reunion, _ = AgendaEventType.objects.get_or_create(
+            code="REUNION",
+            defaults={"name": "Reunión", "order": 10, "color": "#3e97ff", "icon": "people"},
         )
-        self.type_mitin = AgendaEventType.objects.create(
-            code="MITIN", name="Mitin", order=40, color="#f1416c", icon="flag"
+        self.type_mitin, _ = AgendaEventType.objects.get_or_create(
+            code="MITIN",
+            defaults={"name": "Mitin", "order": 40, "color": "#f1416c", "icon": "flag"},
         )
         now = timezone.now().replace(microsecond=0)
         self.start = now + timedelta(days=2)

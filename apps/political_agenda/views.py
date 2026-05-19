@@ -17,7 +17,8 @@ from django.utils.dateparse import parse_datetime
 from django.views import View
 from django.views.generic import TemplateView
 
-from apps.campaigns.models import Campaign
+from apps.campaigns.active import scope_queryset_to_active_campaign
+from apps.campaigns.querysets import visible_campaign_choices
 
 from .models import AgendaEventType, PoliticalAgendaEvent
 
@@ -69,18 +70,29 @@ class PoliticalAgendaCalendarView(LoginRequiredMixin, PermissionRequiredMixin, T
             ("Agenda política", None),
             ("Calendario", None),
         ]
-        context["campaigns"] = Campaign.objects.filter(is_active=True).order_by("name")
+        context["campaigns"] = visible_campaign_choices(self.request.user)
+        context["selected_campaign_id"] = (
+            self.request.GET.get("campaign")
+            or (
+                str(self.request.active_campaign.pk)
+                if getattr(self.request, "active_campaign", None)
+                else ""
+            )
+        )
         context["event_types"] = AgendaEventType.objects.filter(is_active=True).order_by(
             "order", "name"
         )
         context["states"] = PoliticalAgendaEvent.workflow.choices
         User = get_user_model()
-        context["responsibles"] = (
-            User.objects.filter(
-                is_active=True, responsible_agenda_events__isnull=False
+        responsibles = User.objects.filter(
+            is_active=True, responsible_agenda_events__isnull=False
+        )
+        if context["selected_campaign_id"]:
+            responsibles = responsibles.filter(
+                responsible_agenda_events__campaign_id=context["selected_campaign_id"]
             )
-            .distinct()
-            .order_by("first_name", "last_name", "username")
+        context["responsibles"] = responsibles.distinct().order_by(
+            "first_name", "last_name", "username"
         )
         return context
 
@@ -92,6 +104,11 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
         queryset = PoliticalAgendaEvent.objects.select_related(
             "campaign", "event_type", "responsible"
         )
+        campaign_id = request.GET.get("campaign")
+        if not campaign_id and getattr(request, "active_campaign", None):
+            campaign_id = str(request.active_campaign.pk)
+        if campaign_id:
+            queryset = queryset.filter(campaign_id=campaign_id)
         if not _can_view_private_events(request.user):
             queryset = queryset.filter(is_public=True)
 
@@ -100,9 +117,6 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
         if start and end:
             queryset = queryset.filter(start_at__lt=end, end_at__gt=start)
 
-        campaign_id = request.GET.get("campaign")
-        if campaign_id:
-            queryset = queryset.filter(campaign_id=campaign_id)
         event_type_id = request.GET.get("event_type")
         if event_type_id:
             queryset = queryset.filter(event_type_id=event_type_id)
@@ -158,13 +172,17 @@ class PoliticalAgendaEventPopupView(LoginRequiredMixin, PermissionRequiredMixin,
     permission_required = "political_agenda.view_politicalagendaevent"
 
     def get(self, request, pk, *args, **kwargs):
-        event = get_object_or_404(
+        queryset = scope_queryset_to_active_campaign(
             PoliticalAgendaEvent.objects.select_related(
                 "campaign",
                 "event_type",
                 "responsible",
                 "source_request",
             ),
+            request,
+        )
+        event = get_object_or_404(
+            queryset,
             pk=pk,
         )
         if not event.is_public and not _can_view_private_events(request.user):

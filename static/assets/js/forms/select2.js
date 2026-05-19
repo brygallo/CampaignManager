@@ -169,7 +169,10 @@
 
     $field.on("select2:select.campaign-select2", function (event) {
       var name = $(event.currentTarget).attr("name");
-      $("[data-select2-dependent-fields=" + name + "]").each(function () {
+      // ``~=`` matches the field name as a whitespace-separated word so that
+      // dependent selects declaring multiple parents (``data-select2-dependent-fields="a b"``)
+      // are still cleared when any one of their parents changes.
+      $("[data-select2-dependent-fields~='" + name + "']").each(function () {
         $(this).val("").trigger("change");
       });
     });

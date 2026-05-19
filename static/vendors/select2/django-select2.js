@@ -75,7 +75,9 @@
       }
       $element.on("select2:select", function (event) {
         var name = $(event.currentTarget).attr("name");
-        $("[data-select2-dependent-fields=" + name + "]").each(function () {
+        // ``~=`` matches the field name as a whitespace-separated word so
+        // dependent fields with multiple parents still get cleared.
+        $("[data-select2-dependent-fields~='" + name + "']").each(function () {
           $(this).val("").trigger("change");
         });
       });

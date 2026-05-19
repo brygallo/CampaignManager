@@ -12,7 +12,7 @@ from django.views.generic import TemplateView
 from superadmin.shortcuts import get_urls_of_site
 from superadmin.sites import site as superadmin_site
 
-from apps.campaigns.models import Campaign
+from apps.campaigns.querysets import visible_campaign_choices
 
 from core.map_mixins import (
     MapAjaxCreateMixin,
@@ -150,8 +150,14 @@ class FieldSurveySpecialViewMixin(LoginRequiredMixin):
 class FieldSurveyFilterMixin:
     def apply_filters(self, queryset):
         params = self.request.GET
-        if params.get("campaign"):
-            queryset = queryset.filter(campaign_id=params["campaign"])
+        # Active-campaign fallback: explicit ``?campaign=`` in the URL wins
+        # (deep links / charts keep working), otherwise the navbar's active
+        # campaign is applied so dashboard KPIs match the rest of the UI.
+        campaign_id = params.get("campaign")
+        if not campaign_id and getattr(self.request, "active_campaign", None):
+            campaign_id = str(self.request.active_campaign.pk)
+        if campaign_id:
+            queryset = queryset.filter(campaign_id=campaign_id)
         if params.get("brigadier") and can_view_all_field_surveys(self.request.user):
             queryset = queryset.filter(brigadier_id=params["brigadier"])
         if params.get("support_level"):
@@ -349,7 +355,11 @@ class FieldSurveyMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVi
         ]
         context.update(get_filter_context(self.request))
         context["can_view_all"] = can_view_all_field_surveys(self.request.user)
-        context["competitors"] = Competitor.objects.filter(is_active=True).order_by(
+        competitors = Competitor.objects.filter(is_active=True)
+        active_campaign_id = context.get("active_campaign_filter_id")
+        if active_campaign_id:
+            competitors = competitors.filter(campaign_id=active_campaign_id)
+        context["competitors"] = competitors.order_by(
             "campaign__name", "list_number", "political_organization"
         )
         return context
@@ -364,6 +374,15 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
     MAX_POINTS = 5000
 
     def get(self, request, *args, **kwargs):
+        # Active-campaign fallback: explicit ``?campaign=`` in the URL wins,
+        # otherwise the navbar's active campaign is applied. Visits use the
+        # filter mixin (which already reads ``?campaign=`` from GET), so we
+        # rewrite GET in place before the filter mixin sees it.
+        if not request.GET.get("campaign") and getattr(request, "active_campaign", None):
+            params = request.GET.copy()
+            params["campaign"] = str(request.active_campaign.pk)
+            request.GET = params
+
         surveys = self.filtered_queryset().select_related(
             "campaign", "brigadier", "support_level", "advertising_response"
         )
@@ -554,10 +573,19 @@ def build_competitor_breakdown(competitor_ads):
 
 
 def get_filter_context(request):
-    campaigns = Campaign.objects.filter(is_active=True).order_by("name")
+    campaigns = visible_campaign_choices(request.user)
     if not can_view_all_field_surveys(request.user):
         campaigns = campaigns.filter(field_surveys__brigadier=request.user).distinct()
+    active_campaign_id = request.GET.get("campaign") or (
+        str(request.active_campaign.pk)
+        if getattr(request, "active_campaign", None)
+        else ""
+    )
+    brigadiers_qs = FieldSurvey.objects.all()
+    if active_campaign_id:
+        brigadiers_qs = brigadiers_qs.filter(campaign_id=active_campaign_id)
     return {
+        "active_campaign_filter_id": active_campaign_id,
         "filter_campaigns": campaigns,
         "filter_support_levels": SurveySupportLevel.objects.filter(is_active=True).order_by(
             "order", "name"
@@ -565,7 +593,7 @@ def get_filter_context(request):
         "filter_advertising_responses": SurveyAdvertisingResponse.objects.filter(
             is_active=True
         ).order_by("order", "name"),
-        "filter_brigadiers": FieldSurvey.objects.values(
+        "filter_brigadiers": brigadiers_qs.values(
             "brigadier_id", "brigadier__username", "brigadier__first_name", "brigadier__last_name"
         )
         .distinct()

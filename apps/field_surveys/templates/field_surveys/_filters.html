@@ -32,7 +32,7 @@ to preserve selected values.
   {% if active_filters.campaign or active_filters.brigadier or active_filters.support_level or active_filters.advertising_response or active_filters.date_from or active_filters.date_to %}
     <div class="card-body pt-0 pb-3 d-flex flex-wrap gap-2">
       {% for campaign in filter_campaigns %}
-        {% if active_filters.campaign == campaign.id|stringformat:"s" %}
+        {% if active_campaign_filter_id == campaign.id|stringformat:"s" %}
           <span class="badge badge-light-primary fs-7 d-flex align-items-center gap-1">
             <i data-lucide="flag" class="fs-7"></i>{{ campaign.name }}
           </span>
@@ -79,10 +79,12 @@ to preserve selected values.
       <form method="get" class="row g-4 align-items-end">
         <div class="col-12 col-md-6 col-lg-3">
           <label class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
-          <select name="campaign" class="form-select form-select-sm">
+          <select name="campaign"
+                  class="form-select form-select-sm django-select2"
+                  data-allow-clear="true">
             <option value="">Todas</option>
             {% for campaign in filter_campaigns %}
-              <option value="{{ campaign.id }}" {% if active_filters.campaign == campaign.id|stringformat:"s" %}selected{% endif %}>
+              <option value="{{ campaign.id }}" {% if active_campaign_filter_id == campaign.id|stringformat:"s" %}selected{% endif %}>
                 {{ campaign.name }}
               </option>
             {% endfor %}
@@ -92,7 +94,9 @@ to preserve selected values.
         {% if can_view_all %}
         <div class="col-12 col-md-6 col-lg-3">
           <label class="form-label fs-7 fw-semibold text-gray-700">Brigadista</label>
-          <select name="brigadier" class="form-select form-select-sm">
+          <select name="brigadier"
+                  class="form-select form-select-sm django-select2"
+                  data-allow-clear="true">
             <option value="">Todos</option>
             {% for brigadier in filter_brigadiers %}
               <option value="{{ brigadier.brigadier_id }}" {% if active_filters.brigadier == brigadier.brigadier_id|stringformat:"s" %}selected{% endif %}>
@@ -105,7 +109,9 @@ to preserve selected values.
 
         <div class="col-12 col-md-6 col-lg-2">
           <label class="form-label fs-7 fw-semibold text-gray-700">Apoyo</label>
-          <select name="support_level" class="form-select form-select-sm">
+          <select name="support_level"
+                  class="form-select form-select-sm django-select2"
+                  data-allow-clear="true">
             <option value="">Todos</option>
             {% for level in filter_support_levels %}
               <option value="{{ level.id }}" {% if active_filters.support_level == level.id|stringformat:"s" %}selected{% endif %}>{{ level.name }}</option>
@@ -115,7 +121,9 @@ to preserve selected values.
 
         <div class="col-12 col-md-6 col-lg-2">
           <label class="form-label fs-7 fw-semibold text-gray-700">Publicidad</label>
-          <select name="advertising_response" class="form-select form-select-sm">
+          <select name="advertising_response"
+                  class="form-select form-select-sm django-select2"
+                  data-allow-clear="true">
             <option value="">Todas</option>
             {% for response in filter_advertising_responses %}
               <option value="{{ response.id }}" {% if active_filters.advertising_response == response.id|stringformat:"s" %}selected{% endif %}>{{ response.name }}</option>
@@ -171,6 +179,19 @@ to preserve selected values.
       } else {
         form.submit();
       }
+    });
+  })();
+</script>
+
+<script>
+  // Cascade: when the campaign changes, reload the page so brigadier and
+  // other campaign-scoped dropdowns re-render with the correct queryset.
+  (function () {
+    var sel = document.querySelector('#field_surveys_filters_body select[name="campaign"]');
+    if (!sel) return;
+    sel.addEventListener('change', function () {
+      var form = sel.closest('form');
+      if (form) form.submit();
     });
   })();
 </script>

@@ -81,17 +81,23 @@
           class="card-body px-0 py-3 field-survey-map-panel__form">
       <div class="field-survey-map-field">
         <label for="fs-map-filter-campaign" class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
-        <select id="fs-map-filter-campaign" name="campaign" class="form-select form-select-sm form-select-solid">
+        <select id="fs-map-filter-campaign"
+                name="campaign"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todas las campañas</option>
           {% for campaign in filter_campaigns %}
-            <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+            <option value="{{ campaign.id }}" {% if active_campaign_filter_id == campaign.id|stringformat:"s" %}selected{% endif %}>{{ campaign.name }}</option>
           {% endfor %}
         </select>
       </div>
       {% if can_view_all %}
       <div class="field-survey-map-field">
         <label for="fs-map-filter-brigadier" class="form-label fs-7 fw-semibold text-gray-700">Brigadista</label>
-        <select id="fs-map-filter-brigadier" name="brigadier" class="form-select form-select-sm form-select-solid">
+        <select id="fs-map-filter-brigadier"
+                name="brigadier"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos</option>
           {% for brigadier in filter_brigadiers %}
             <option value="{{ brigadier.brigadier_id }}">
@@ -103,7 +109,10 @@
       {% endif %}
       <div class="field-survey-map-field">
         <label for="fs-map-filter-support" class="form-label fs-7 fw-semibold text-gray-700">Apoyo</label>
-        <select id="fs-map-filter-support" name="support_level" class="form-select form-select-sm form-select-solid">
+        <select id="fs-map-filter-support"
+                name="support_level"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos</option>
           {% for level in filter_support_levels %}
             <option value="{{ level.id }}">{{ level.name }}</option>
@@ -112,7 +121,10 @@
       </div>
       <div class="field-survey-map-field">
         <label for="fs-map-filter-advertising" class="form-label fs-7 fw-semibold text-gray-700">Publicidad</label>
-        <select id="fs-map-filter-advertising" name="advertising_response" class="form-select form-select-sm form-select-solid">
+        <select id="fs-map-filter-advertising"
+                name="advertising_response"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todas</option>
           {% for response in filter_advertising_responses %}
             <option value="{{ response.id }}">{{ response.name }}</option>
@@ -121,7 +133,10 @@
       </div>
       <div class="field-survey-map-field">
         <label for="fs-map-filter-competitor" class="form-label fs-7 fw-semibold text-gray-700">Competidor</label>
-        <select id="fs-map-filter-competitor" name="competitor" class="form-select form-select-sm form-select-solid">
+        <select id="fs-map-filter-competitor"
+                name="competitor"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos</option>
           {% for competitor in competitors %}
             <option value="{{ competitor.id }}">{{ competitor }}</option>
@@ -310,6 +325,29 @@
       reason: "Para registrar visitas en tu posición actual.",
       onGranted: triggerLocate,
       onSkipped: function () { /* mapa queda en centro del tenant */ }
+    });
+  });
+</script>
+<script>
+  // Cascade: when campaign changes, navigate so brigadier and competitor
+  // dropdowns re-render scoped to the chosen campaign. The map's filter JS
+  // would otherwise just refetch pins, leaving the option lists stale.
+  document.addEventListener("DOMContentLoaded", function () {
+    var sel = document.getElementById("fs-map-filter-campaign");
+    if (!sel) return;
+    sel.addEventListener("change", function () {
+      var params = new URLSearchParams(window.location.search);
+      if (sel.value) {
+        params.set("campaign", sel.value);
+      } else {
+        params.delete("campaign");
+      }
+      // Cascading parents reset their dependents — drop stale campaign-scoped
+      // filters from the URL too so the reloaded page does not over-filter.
+      params.delete("brigadier");
+      params.delete("competitor");
+      var query = params.toString();
+      window.location.search = query ? "?" + query : "";
     });
   });
 </script>

@@ -33,8 +33,10 @@ class PoliticalAgendaRulesTests(TestCase):
             movement=movement,
             position=position,
         )
-        self.event_type = AgendaEventType.objects.create(
-            code="REUNION", name="Reunión", order=10, color="#3e97ff", icon="people"
+        # ``REUNION`` is also seeded by data migration 0003, so reuse it.
+        self.event_type, _ = AgendaEventType.objects.get_or_create(
+            code="REUNION",
+            defaults={"name": "Reunión", "order": 10, "color": "#3e97ff", "icon": "people"},
         )
         self.start = timezone.now().replace(microsecond=0) + timedelta(days=1)
         self.end = self.start + timedelta(hours=2)
