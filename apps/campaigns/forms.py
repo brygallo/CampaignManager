@@ -77,6 +77,9 @@ class CampaignForm(Select2ModelFormMixin, ModelForm):
             "Vigencia": (
                 ("start_date", "end_date"),
             ),
+            "Preferencias": (
+                ("is_default",),
+            ),
             "Detalle": (
                 ("description",),
             ),

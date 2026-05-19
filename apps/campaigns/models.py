@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Q
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
@@ -116,6 +117,15 @@ class Campaign(BaseModel, CampaignTransitions, TransitionRequirementsMixin):
     start_date = models.DateField("Inicio", null=True, blank=True)
     end_date = models.DateField("Fin", null=True, blank=True)
     description = models.TextField("Descripción", blank=True)
+    is_default = models.BooleanField(
+        "Predeterminada",
+        default=False,
+        help_text=(
+            "Cuando hay más de una campaña, esta es la que el sistema carga "
+            "automáticamente al iniciar sesión. Solo una campaña puede estar "
+            "marcada como predeterminada a la vez."
+        ),
+    )
 
     state = FSMIntegerField(
         "Estado",
@@ -128,15 +138,43 @@ class Campaign(BaseModel, CampaignTransitions, TransitionRequirementsMixin):
         verbose_name = "Campaña electoral"
         verbose_name_plural = "Campañas electorales"
         ordering = ["-created_date"]
+        permissions = (
+            ("view_historical_campaigns", "Puede ver campañas históricas e inactivas"),
+        )
         constraints = [
             models.UniqueConstraint(
                 fields=["election", "candidate", "position"],
                 name="campaigns_unique_election_candidate_position",
             ),
+            # Partial unique index: at most one default per tenant schema.
+            # The condition is Postgres-only and works in lockstep with the
+            # ``save()`` override below, which is the user-friendly path
+            # (auto-unset previous default).
+            models.UniqueConstraint(
+                fields=["is_default"],
+                condition=Q(is_default=True),
+                name="campaigns_unique_default",
+            ),
         ]
 
     def __str__(self):
         return f"{self.name} — {self.candidate}"
+
+    def save(self, *args, **kwargs):
+        """Enforce single-default by demoting siblings when needed.
+
+        The partial unique index guards the invariant at the DB level;
+        this override is the ergonomic path so users don't have to manually
+        uncheck the previous default before saving the new one.
+        """
+        if self.is_default:
+            with transaction.atomic():
+                Campaign.objects.filter(is_default=True).exclude(pk=self.pk).update(
+                    is_default=False
+                )
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     def get_active_dependencies(self):
         """Return counts of dependent records that block close/cancel.

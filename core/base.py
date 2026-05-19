@@ -8,8 +8,8 @@ from django.http import HttpResponseRedirect, JsonResponse
 from superadmin.options import ModelSite
 
 from core.audit import AuditContextMixin
-from core.form_mixins import SaveOptionsMixin
-from core.list_mixins import OrderingMixin
+from core.form_mixins import ActiveCampaignFormMixin, SaveOptionsMixin
+from core.list_mixins import ActiveCampaignScopeMixin, OrderingMixin
 
 
 class ProtectedDeleteMixin:
@@ -186,13 +186,16 @@ class BaseSite(ModelSite):
     # column headers reorder the queryset server-side and the URL stays in
     # sync (shareable / bookmarkable). Sites that override ``list_mixins``
     # must re-include it (or any helper they expose, see DropdownFilterMixin).
-    list_mixins = (OrderingMixin,)
+    # ``ActiveCampaignScopeMixin`` scopes querysets to ``request.active_campaign``
+    # for any model that has a ``campaign`` FK (opt out with
+    # ``respect_active_campaign = False``).
+    list_mixins = (ActiveCampaignScopeMixin, OrderingMixin)
     # ``AuditContextMixin`` populates ``processed_traces`` so the detail
     # template can show the "Auditoría" tab whenever the model has Trace
     # rows. Sites without traces just won't render the tab — the template
     # is already conditional on the context key.
-    detail_mixins = (AuditContextMixin, DetailMapsMixin)
-    delete_mixins = (ProtectedDeleteMixin,)
+    detail_mixins = (ActiveCampaignScopeMixin, AuditContextMixin, DetailMapsMixin)
+    delete_mixins = (ActiveCampaignScopeMixin, ProtectedDeleteMixin)
     detail_maps = ()
 
     create_success_url = "detail"
@@ -205,7 +208,51 @@ class BaseSite(ModelSite):
     url_delete_suffix = "eliminar"
 
     paginate_by = 25
-    form_mixins = (SaveOptionsMixin,)
+    # ``ActiveCampaignFormMixin`` auto-fills + locks the ``campaign`` FK from
+    # ``request.active_campaign`` on create / update forms. Same opt-out flag.
+    form_mixins = (ActiveCampaignFormMixin, SaveOptionsMixin)
+    # When True (default), CRUD views for models with a ``campaign`` FK are
+    # scoped to ``request.active_campaign``. Sites for global catalogs
+    # (Election, PoliticalMovement, Position, Candidate, the Campaign list
+    # itself) should set this to ``False``.
+    respect_active_campaign = True
+
+    # Subclasses commonly redefine ``list_mixins`` / ``detail_mixins`` /
+    # ``form_mixins`` / ``create_mixins`` / ``update_mixins`` / ``delete_mixins``
+    # to add their own behavior, which would drop our defaults. We re-merge
+    # the active-campaign mixins (and ``SaveOptionsMixin``) automatically so
+    # every site participates without having to remember them. Set
+    # ``respect_active_campaign = False`` to skip the merge entirely (used
+    # by the Campaign site itself and global-catalog sites that opt out).
+    _QUERYSET_MIXIN_ATTRS = ("list_mixins", "detail_mixins", "delete_mixins")
+    _FORM_MIXIN_ATTRS = ("form_mixins", "create_mixins", "update_mixins")
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if not getattr(cls, "respect_active_campaign", True):
+            return
+
+        def _prepend_unique(attr, mixin):
+            if attr not in cls.__dict__:
+                return  # Subclass didn't redefine this tuple → BaseSite default applies.
+            current = tuple(cls.__dict__[attr] or ())
+            if any(m is mixin for m in current):
+                return
+            setattr(cls, attr, (mixin,) + current)
+
+        def _append_unique(attr, mixin):
+            if attr not in cls.__dict__:
+                return
+            current = tuple(cls.__dict__[attr] or ())
+            if any(m is mixin for m in current):
+                return
+            setattr(cls, attr, current + (mixin,))
+
+        for attr in cls._QUERYSET_MIXIN_ATTRS:
+            _prepend_unique(attr, ActiveCampaignScopeMixin)
+        for attr in cls._FORM_MIXIN_ATTRS:
+            _prepend_unique(attr, ActiveCampaignFormMixin)
+            _append_unique(attr, SaveOptionsMixin)
 
     def get_urls(self):
         # superadmin registers a ``<pk>/duplicate/`` route unconditionally,

@@ -19,6 +19,7 @@ urlpatterns = [
         name="protected_media",
     ),
     path("", include("apps.authentication.urls")),
+    path("", include("apps.campaigns.urls")),
     path("", include("apps.insoles.urls")),
     path("", include("apps.workflows.urls")),
     path("", include("apps.field_surveys.urls")),

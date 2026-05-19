@@ -19,6 +19,10 @@
     <div class="app-navbar flex-lg-grow-1" id="kt_app_header_navbar">
       <div class="app-navbar-item d-flex flex-lg-grow-1 me-1 me-lg-0"></div>
 
+      {% if user.is_authenticated and available_campaigns %}
+        {% include "base/_active_campaign_selector.html" %}
+      {% endif %}
+
       {% if user.is_authenticated %}
       <div class="app-navbar-item ms-1 ms-md-3">
         <button type="button"

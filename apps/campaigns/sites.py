@@ -1,9 +1,11 @@
 """Register campaign models in superadmin."""
 from superadmin.decorators import register
 
-from core.base import BaseSite, BlockEditOnReadOnlyStateMixin
+from core.audit import AuditContextMixin
+from core.base import BaseSite, BlockEditOnReadOnlyStateMixin, DetailMapsMixin, ProtectedDeleteMixin
 from core.list_mixins import DropdownFilterMixin, OrderingMixin, WorkflowStateFilterMixin
 
+from .list_mixins import VisibleCampaignsMixin
 from .forms import (
     CampaignForm,
     CandidateForm,
@@ -60,8 +62,15 @@ class CandidateSite(BaseSite):
 @register("campaigns.Campaign")
 class CampaignSite(BaseSite):
     form_class = CampaignForm
-    list_mixins = (OrderingMixin, WorkflowStateFilterMixin, DropdownFilterMixin)
-    update_mixins = (BlockEditOnReadOnlyStateMixin,)
+    # The Campaign site manages the campaigns themselves: scoping its own
+    # queryset to the active campaign would hide every other campaign in
+    # the list and break the picker. Same for the form, which obviously
+    # doesn't have a "campaign" FK on itself.
+    respect_active_campaign = False
+    list_mixins = (VisibleCampaignsMixin, OrderingMixin, WorkflowStateFilterMixin, DropdownFilterMixin)
+    detail_mixins = (VisibleCampaignsMixin, AuditContextMixin, DetailMapsMixin)
+    delete_mixins = (VisibleCampaignsMixin, ProtectedDeleteMixin)
+    update_mixins = (VisibleCampaignsMixin, BlockEditOnReadOnlyStateMixin)
     list_fields = (
         "name",
         "election",
@@ -69,6 +78,7 @@ class CampaignSite(BaseSite):
         "movement",
         "position",
         "get_state_display:Estado",
+        "is_default:Predeterminada",
     )
     detail_fields = CampaignForm.Meta.fieldsets
     search_params = (

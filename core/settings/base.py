@@ -73,7 +73,6 @@ TENANT_APPS = [
     "django_filters",
     "corsheaders",
     "mathfilters",
-    "ckeditor",
     "notifications",
     "apps.authentication",
     "apps.insoles",
@@ -109,6 +108,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.campaigns.active.ActiveCampaignMiddleware",
     "tracing.middleware.TracingMiddleware",
 ]
 
@@ -135,6 +135,7 @@ TEMPLATES = [
                 "core.context_processors.tenant_path_menu",
                 "core.context_processors.brand",
                 "core.context_processors.tenant_features",
+                "core.context_processors.active_campaign",
             ],
             "libraries": {
                 # `core` is not in INSTALLED_APPS, so its template tags
@@ -287,7 +288,6 @@ TEMPLATE_WIDGETS = {
     "email": "widgets/textinput.html",
     "number": "widgets/textinput.html",
     "password": "widgets/textinput.html",
-    "ckeditor": "widgets/ckeditorinput.html",
     "leafletmap": "widgets/textinput.html",
     "colorpicker": "widgets/colorpickerinput.html",
 }
@@ -309,15 +309,6 @@ TEMPLATE_WIDGETS_DETAIL = {
     "SmallIntegerField": "detail_widgets/numberinput.html",
     "DecimalField": "detail_widgets/numberinput.html",
     "FloatField": "detail_widgets/numberinput.html",
-}
-
-# ----- CKEditor -----
-CKEDITOR_CONFIGS = {
-    "default": {
-        "toolbar": "full",
-        "height": 200,
-        "width": "100%",
-    },
 }
 
 # ----- Notifications -----

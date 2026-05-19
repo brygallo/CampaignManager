@@ -87,16 +87,22 @@
           class="card-body px-0 py-3 physical-ad-map-panel__form">
       <div class="physical-ad-map-field">
         <label for="pa-map-filter-campaign" class="form-label fs-7 fw-semibold text-gray-700">Campaña</label>
-        <select id="pa-map-filter-campaign" name="campaign" class="form-select form-select-sm form-select-solid">
+        <select id="pa-map-filter-campaign"
+                name="campaign"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todas las campañas</option>
           {% for campaign in campaigns %}
-            <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+            <option value="{{ campaign.id }}" {% if selected_campaign_id == campaign.id|stringformat:"s" %}selected{% endif %}>{{ campaign.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="physical-ad-map-field">
         <label for="pa-map-filter-state" class="form-label fs-7 fw-semibold text-gray-700">Estado</label>
-        <select id="pa-map-filter-state" name="state" class="form-select form-select-sm form-select-solid">
+        <select id="pa-map-filter-state"
+                name="state"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
           <option value="">Todos los estados</option>
           {% for value, label in states %}
             <option value="{{ value }}">{{ label }}</option>
@@ -197,7 +203,7 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260519-zoom-gate"></script>
+<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260519-create-gate-50m"></script>
 <script>
   // Gate suave: a veces se planifica desde la oficina. Solo pedimos ubicación
   // una vez por sesión; si la ignoran, queda el banner persistente.

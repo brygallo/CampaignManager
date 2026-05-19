@@ -94,6 +94,7 @@ def inicio(request):
     """Mobile-first quick-access landing for any authenticated user."""
     from django.utils import timezone
 
+    from apps.campaigns.active import scope_queryset_to_active_campaign
     from apps.field_surveys.models import FieldSurvey
     from apps.political_agenda.models import PoliticalAgendaEvent
     from apps.territorial_ads.models import PhysicalAdvertisement
@@ -103,17 +104,21 @@ def inicio(request):
     week_ago = today - timedelta(days=7)
     week_ahead = now + timedelta(days=7)
 
-    ads_total = PhysicalAdvertisement.objects.count()
-    ads_week = PhysicalAdvertisement.objects.filter(created_date__date__gte=week_ago).count()
+    # All counts respect the navbar's active campaign. In "Todas" mode,
+    # only users with the explicit historical-campaign permission see the
+    # tenant's full history; everyone else is limited to active campaigns.
+    ads_qs = scope_queryset_to_active_campaign(PhysicalAdvertisement.objects.all(), request)
+    ads_total = ads_qs.count()
+    ads_week = ads_qs.filter(created_date__date__gte=week_ago).count()
 
-    visits_total = FieldSurvey.objects.count()
-    visits_today = FieldSurvey.objects.filter(created_date__date=today).count()
+    visits_qs = scope_queryset_to_active_campaign(FieldSurvey.objects.all(), request)
+    visits_total = visits_qs.count()
+    visits_today = visits_qs.filter(created_date__date=today).count()
 
-    upcoming_events_qs = (
-        PoliticalAgendaEvent.objects.filter(start_at__gte=now)
-        .select_related("event_type", "campaign")
-        .order_by("start_at")
-    )
+    upcoming_events_qs = scope_queryset_to_active_campaign(
+        PoliticalAgendaEvent.objects.filter(start_at__gte=now),
+        request,
+    ).select_related("event_type", "campaign").order_by("start_at")
     upcoming_events = list(upcoming_events_qs[:3])
     upcoming_count = upcoming_events_qs.filter(start_at__lt=week_ahead).count()
 
@@ -162,7 +167,9 @@ def home(request):
     from django.db.models import Count
     from django.db.models.functions import TruncMonth
 
+    from apps.campaigns.active import scope_queryset_to_active_campaign
     from apps.campaigns.models import Campaign, Candidate, Election
+    from apps.campaigns.querysets import visible_campaign_choices
     from apps.campaigns.workflows import CampaignWorkflow
     from apps.territorial_ads.models import PhysicalAdvertisement
     from apps.territorial_ads.workflows import PhysicalAdWorkflow
@@ -174,21 +181,26 @@ def home(request):
         election_date__gte=today, election_date__lte=horizon
     ).order_by("election_date")
 
+    # When the user has an active campaign, the ads KPI reflects that
+    # campaign only. ``Campaign`` and ``Candidate`` totals are intentionally
+    # tenant-wide — they are the catalog that the navbar picker reads.
+    ads_qs = scope_queryset_to_active_campaign(PhysicalAdvertisement.objects.all(), request)
+    visible_campaigns = visible_campaign_choices(request.user)
     stats = {
-        "campaigns": Campaign.objects.count(),
+        "campaigns": visible_campaigns.count(),
         "candidates": Candidate.objects.count(),
-        "ads": PhysicalAdvertisement.objects.count(),
+        "ads": ads_qs.count(),
         "elections_upcoming": upcoming_elections_qs.count(),
     }
 
-    recent_campaigns = Campaign.objects.select_related(
+    recent_campaigns = visible_campaigns.select_related(
         "candidate", "election", "movement"
     ).order_by("-created_date")[:5]
 
     # Trend: campaigns created per month, last 6 months (oldest -> newest).
     six_months_ago = (today.replace(day=1) - timedelta(days=180)).replace(day=1)
     monthly = (
-        Campaign.objects.filter(created_date__gte=six_months_ago)
+        visible_campaigns.filter(created_date__gte=six_months_ago)
         .annotate(month=TruncMonth("created_date"))
         .values("month")
         .annotate(total=Count("id"))
@@ -210,7 +222,7 @@ def home(request):
     # Distribution: physical ads by state (workflow choices order).
     ad_workflow = PhysicalAdWorkflow()
     ad_state_counts = dict(
-        PhysicalAdvertisement.objects.values_list("state")
+        ads_qs.values_list("state")
         .annotate(total=Count("id"))
         .values_list("state", "total")
     )
@@ -222,7 +234,7 @@ def home(request):
     # Distribution: campaigns by visible state.
     campaign_workflow = CampaignWorkflow()
     campaign_state_counts = dict(
-        Campaign.objects.values_list("state")
+        visible_campaigns.values_list("state")
         .annotate(total=Count("id"))
         .values_list("state", "total")
     )

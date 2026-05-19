@@ -113,6 +113,30 @@ def tenant_features(request):
     }
 
 
+def active_campaign(request):
+    """Expose ``active_campaign`` and ``available_campaigns`` to all templates.
+
+    ``request.active_campaign`` is set by ``ActiveCampaignMiddleware``. We
+    list candidates lazily so the navbar can show a selector when there is
+    more than one campaign in the tenant. No-op on the public schema.
+    """
+    tenant = getattr(request, "tenant", None)
+    if not tenant or getattr(tenant, "schema_name", None) == get_public_schema_name():
+        return {}
+
+    try:
+        from apps.campaigns.active import list_available_campaigns
+
+        campaigns = list(list_available_campaigns(request))
+    except DatabaseError:
+        return {}
+
+    return {
+        "active_campaign": getattr(request, "active_campaign", None),
+        "available_campaigns": campaigns,
+    }
+
+
 def tenant_path_menu(request):
     """Prefix sidebar menu URLs when tenants are routed by path.
 

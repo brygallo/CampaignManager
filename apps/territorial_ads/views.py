@@ -5,6 +5,7 @@ installed coordinates when present, otherwise the offered coordinates. The
 same map also surfaces ``AdvertisingRefusal`` pins so canvassers can see
 spots where owners have already declined.
 """
+from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Q
 from django.http import JsonResponse
@@ -14,10 +15,10 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import TemplateView
 
+from apps.campaigns.active import scope_queryset_to_active_campaign
+from apps.campaigns.querysets import visible_campaign_choices
 from superadmin.shortcuts import get_urls_of_site
 from superadmin.sites import site as superadmin_site
-
-from apps.campaigns.models import Campaign
 
 from core.map_mixins import (
     MapAjaxCreateMixin,
@@ -89,7 +90,15 @@ class PhysicalAdMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
             ("Publicidad territorial", None),
             ("Mapa", None),
         ]
-        context["campaigns"] = Campaign.objects.filter(is_active=True).order_by("name")
+        context["campaigns"] = visible_campaign_choices(self.request.user)
+        context["selected_campaign_id"] = (
+            self.request.GET.get("campaign")
+            or (
+                str(self.request.active_campaign.pk)
+                if getattr(self.request, "active_campaign", None)
+                else ""
+            )
+        )
         context["states"] = PhysicalAdvertisement.workflow.choices
         return context
 
@@ -109,7 +118,12 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 | Q(offered_latitude__isnull=False, offered_longitude__isnull=False)
             )
         )
+        # Active-campaign fallback: explicit ``?campaign=`` in the URL wins
+        # (deep links keep working), otherwise the navbar's active campaign
+        # is applied so the map matches the rest of the UI.
         campaign_id = request.GET.get("campaign")
+        if not campaign_id and getattr(request, "active_campaign", None):
+            campaign_id = str(request.active_campaign.pk)
         if campaign_id:
             queryset = queryset.filter(campaign_id=campaign_id)
         state = request.GET.get("state")
@@ -218,7 +232,7 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = "territorial_ads.view_physicaladvertisement"
 
     def get(self, request, pk, *args, **kwargs):
-        ad = get_object_or_404(
+        queryset = scope_queryset_to_active_campaign(
             PhysicalAdvertisement.objects.select_related(
                 "campaign",
                 "advertisement_type",
@@ -231,6 +245,10 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "damage_reported_by",
                 "retired_by",
             ),
+            request,
+        )
+        ad = get_object_or_404(
+            queryset,
             pk=pk,
         )
         steps = [
@@ -298,18 +316,46 @@ class AdvertisingRefusalCreateView(LoginRequiredMixin, PermissionRequiredMixin, 
             request=request,
         )
 
+    def _bind_form(self, request, *args, **kwargs):
+        if args:
+            data = args[0].copy()
+            active = getattr(request, "active_campaign", None)
+            if active is not None:
+                data["campaign"] = str(active.pk)
+            args = (data,) + args[1:]
+        form = AdvertisingRefusalForm(*args, **kwargs)
+        active = getattr(request, "active_campaign", None)
+        if active is None:
+            return form
+        field = form.fields.get("campaign")
+        if field is None:
+            return form
+        field.queryset = field.queryset.filter(pk=active.pk)
+        if hasattr(field.widget, "queryset"):
+            field.widget.queryset = field.queryset
+        field.initial = active.pk
+        field.widget = forms.HiddenInput()
+        field.required = True
+        return form
+
     def get(self, request, *args, **kwargs):
-        form = AdvertisingRefusalForm(initial=self._initial_from_query(request))
+        initial = self._initial_from_query(request)
+        active = getattr(request, "active_campaign", None)
+        if active is not None:
+            initial.setdefault("campaign", active.pk)
+        form = self._bind_form(request, initial=initial)
         return JsonResponse({"html": self._render_form(request, form)})
 
     def post(self, request, *args, **kwargs):
-        form = AdvertisingRefusalForm(request.POST)
+        form = self._bind_form(request, request.POST)
         if not form.is_valid():
             return JsonResponse(
                 {"ok": False, "html": self._render_form(request, form)},
                 status=400,
             )
         refusal = form.save(commit=False)
+        if getattr(request, "active_campaign", None) is not None:
+            refusal.campaign = request.active_campaign
         if request.user.is_authenticated:
             refusal.reported_by = request.user
         refusal.save()
@@ -329,8 +375,12 @@ class AdvertisingRefusalPopupView(LoginRequiredMixin, PermissionRequiredMixin, V
     permission_required = "territorial_ads.view_advertisingrefusal"
 
     def get(self, request, pk, *args, **kwargs):
-        refusal = get_object_or_404(
+        queryset = scope_queryset_to_active_campaign(
             AdvertisingRefusal.objects.select_related("campaign", "reported_by"),
+            request,
+        )
+        refusal = get_object_or_404(
+            queryset,
             pk=pk,
         )
         html = render_to_string(
