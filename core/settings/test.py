@@ -8,6 +8,10 @@ DATABASES["default"]["ENGINE"] = "django_tenants.postgresql_backend"  # noqa: F4
 DATABASES["default"]["TEST"] = {  # noqa: F405
     "NAME": env("TEST_DATABASE_NAME", default="test_campaignmanager"),  # noqa: F405
 }
+# When running pytest from the host (e.g. Playwright suite needs a host-side
+# `live_server`), DATABASE_URL still points to the docker service name. Allow
+# overriding the host explicitly via TEST_DATABASE_HOST without touching .env.
+DATABASES["default"]["HOST"] = env("TEST_DATABASE_HOST", default=DATABASES["default"].get("HOST") or "localhost")  # noqa: F405
 
 # Existing Django TestCase tests are not tenant-aware yet, so run their schema
 # in public while keeping the django-tenants PostgreSQL backend active.

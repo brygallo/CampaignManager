@@ -55,8 +55,6 @@ def is_wide_form_widget(bound_field):
     widget_class_name = widget.__class__.__name__ if widget else ""
     return widget_class_name in {
         "Textarea",
-        "CKEditorWidget",
-        "CKEditor5Widget",
         "ClearableFileInput",
         "FileInput",
         "LeafletMapWidget",
