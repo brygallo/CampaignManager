@@ -201,6 +201,24 @@ class TerritorialAdsViewHelperTests(TestCase):
         self.assertIn("update_url", marker)
         self.assertIn("delete_url", marker)
 
+    def test_map_data_hides_edit_url_outside_initial_state(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="change_physicaladvertisement"))
+        ad = PhysicalAdvertisement.objects.create(
+            campaign=self.campaign,
+            advertisement_type=self.ad_type,
+            owner_name="Aprobada",
+            owner_phone="099",
+            address="Dir 4",
+            state=PhysicalAdvertisement.workflow.APROBADA,
+            offered_latitude=Decimal("-2.13"),
+            offered_longitude=Decimal("-79.93"),
+        )
+        request = self._request(reverse("territorial_ads:map_data"))
+        response = PhysicalAdMapDataView.as_view()(request)
+        payload = json.loads(response.content)
+        marker = next(item for item in payload["ads"] if item["id"] == ad.id)
+        self.assertNotIn("update_url", marker)
+
     def test_map_data_truncation_with_state_filter_skips_refusal_slice_branch(self):
         for idx in range(2):
             PhysicalAdvertisement.objects.create(

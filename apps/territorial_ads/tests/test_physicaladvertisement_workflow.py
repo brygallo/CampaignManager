@@ -57,6 +57,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
     def test_default_state_is_ofrecida(self):
         ad = self._build_ad()
         self.assertEqual(ad.state, PhysicalAdvertisement.workflow.OFRECIDA)
+        self.assertFalse(ad.is_state_read_only())
 
     def test_code_assigned_after_save(self):
         ad = self._build_ad()
@@ -67,6 +68,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad.approve(user=self.user)
         ad.save()
         self.assertEqual(ad.state, PhysicalAdvertisement.workflow.APROBADA)
+        self.assertTrue(ad.is_state_read_only())
         self.assertEqual(ad.approved_by, self.user)
         self.assertIsNotNone(ad.approved_at)
 

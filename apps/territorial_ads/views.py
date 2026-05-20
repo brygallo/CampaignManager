@@ -184,7 +184,7 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "address": ad.address or "",
                 "marker_kind": "ad",
             }
-            if "update" in ad_urls:
+            if "update" in ad_urls and not ad.is_state_read_only():
                 item["update_url"] = ad_urls["update"]
             if "delete" in ad_urls:
                 item["delete_url"] = ad_urls["delete"]
