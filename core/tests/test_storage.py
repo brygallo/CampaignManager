@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from core.storage import TenantS3Storage
+from core.storage import StaticS3Storage, TenantS3Storage
 
 
 def _fake_connection(schema_name):
@@ -37,3 +37,9 @@ def test_url_delegates_with_tenant_prefixed_name():
         result = storage.url("foo.jpg")
     parent_url.assert_called_once_with("tenants/alpha/foo.jpg")
     assert result == "http://example/tenants/alpha/foo.jpg"
+
+
+def test_static_storage_uses_shared_static_prefix():
+    storage = StaticS3Storage()
+    assert storage.location == "static"
+    assert storage.file_overwrite is True

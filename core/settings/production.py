@@ -39,9 +39,8 @@ SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# WhiteNoise compressed manifest storage (Django 4.2+: STORAGES dict).
-MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
-STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedManifestStaticFilesStorage"  # noqa: F405
+# Static files are collected to the S3/MinIO bucket via ``core.storage.StaticS3Storage``.
+STORAGES["staticfiles"]["BACKEND"] = "core.storage.StaticS3Storage"  # noqa: F405
 
 # ----- Content Security Policy -----
 # Initially deployed in report-only mode so we can collect violations from

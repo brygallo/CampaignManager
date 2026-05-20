@@ -1,31 +1,58 @@
 (function (window, document) {
   "use strict";
 
-  function pinIcon(color) {
+  // Legacy / seeded icon names from the DB mapped to Lucide equivalents.
+  // Stored values come from seed_territorial_ads_catalog (document, tag,
+  // picture, tablet, flag, element-12) plus historical aliases.
+  var ICON_ALIASES = {
+    "billboard":  "flag",
+    "sticker":    "tag",
+    "document":   "file-text",
+    "picture":    "image",
+    "tablet":     "tablet",
+    "element-12": "shapes",
+    "flag":       "flag",
+    "tag":        "tag"
+  };
+
+  function safeIconName(icon) {
+    var raw = (icon || "").toLowerCase();
+    if (ICON_ALIASES[raw]) {
+      return ICON_ALIASES[raw];
+    }
+    return /^[a-z0-9-]+$/i.test(icon || "") ? icon : "shapes";
+  }
+
+  function pinIcon(color, icon, markerKind) {
+    var iconName = safeIconName(icon);
+    var safeColor = /^#[0-9a-f]{3,8}$/i.test(color || "") ? color : "#3388ff";
+    var extraClass = markerKind === "refusal" ? " map-type-pin--refusal" : "";
     return window.L.divIcon({
-      className: "leaflet-detail-pin",
+      className: "map-type-pin" + extraClass,
       html:
-        '<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg">' +
-          '<path d="M15 0 C6.72 0 0 6.72 0 15 c0 11 15 27 15 27 s15 -16 15 -27 C30 6.72 23.28 0 15 0 z" ' +
-            'fill="' + color + '" stroke="#ffffff" stroke-width="2"/>' +
-          '<circle cx="15" cy="15" r="5.5" fill="#ffffff"/>' +
-        '</svg>',
-      iconSize: [30, 42],
-      iconAnchor: [15, 42],
-      popupAnchor: [0, -38]
+        '<span class="map-type-pin__inner" style="background:' + safeColor + ';color:#fff">' +
+          '<i data-lucide="' + iconName + '" style="color:#fff"></i>' +
+        '</span>',
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+      popupAnchor: [0, -18]
     });
   }
 
-  function buildCreateUrl(base, latlng) {
+  function buildCreateUrl(base, latlng, mapState) {
     var params = new URLSearchParams();
     params.set("offered_latitude", latlng.lat.toFixed(6));
     params.set("offered_longitude", latlng.lng.toFixed(6));
+    if (mapState && mapState.zoom !== undefined && mapState.zoom !== null) {
+      params.set("map_zoom", String(mapState.zoom));
+    }
+    if (mapState && mapState.layer) {
+      params.set("map_layer", mapState.layer);
+    }
     return base + (base.indexOf("?") === -1 ? "?" : "&") + params.toString();
   }
 
   function setHtml(node, html) {
-    // Content originates from our own Django template with autoescape on, so
-    // user-supplied fields are HTML-escaped before reaching the browser.
     node.innerHTML = html;
   }
 
@@ -33,39 +60,22 @@
     if (!counterEl) {
       return;
     }
-    counterEl.textContent = count === 1 ? "1 pin" : count + " pines";
-  }
-
-  function updateMapAriaLabel(mapEl, count, hasFilters) {
-    if (!mapEl) {
+    var numberEl = counterEl.querySelector("[data-pin-count-number]");
+    var labelEl = counterEl.querySelector("[data-pin-count-label]");
+    var label = count === 1 ? "ubicación" : "ubicaciones";
+    if (numberEl && labelEl) {
+      numberEl.textContent = String(count);
+      labelEl.textContent = label;
+      counterEl.setAttribute("aria-label", count + " " + label);
+      counterEl.classList.toggle("is-empty", count === 0);
       return;
     }
-    var label = "Mapa de publicidad física. ";
-    if (count === 0) {
-      label += "Sin publicidades para mostrar.";
-    } else if (count === 1) {
-      label += "1 publicidad visible.";
-    } else {
-      label += count + " publicidades visibles.";
-    }
-    if (hasFilters) {
-      label += " Filtros aplicados.";
-    }
-    mapEl.setAttribute("aria-label", label);
+    counterEl.textContent = count + " " + label;
   }
 
-  function announce(liveEl, message) {
-    if (!liveEl) {
-      return;
-    }
-    // Toggle to force re-announcement when the same string repeats.
-    liveEl.textContent = "";
-    window.setTimeout(function () { liveEl.textContent = message; }, 50);
-  }
-
-  function updateFilterCount(badgeEl, triggerEls, filters, srEl) {
+  function updateFilterCount(badgeEl, triggerEls, filters) {
     if (!filters) {
-      return 0;
+      return;
     }
     var count = 0;
     Array.prototype.forEach.call(filters.elements, function (input) {
@@ -81,21 +91,11 @@
         badgeEl.setAttribute("hidden", "");
       }
     }
-    if (srEl) {
-      if (count === 0) {
-        srEl.textContent = "Sin filtros activos";
-      } else if (count === 1) {
-        srEl.textContent = "1 filtro activo";
-      } else {
-        srEl.textContent = count + " filtros activos";
-      }
-    }
     if (triggerEls) {
       Array.prototype.forEach.call(triggerEls, function (btn) {
         btn.classList.toggle("has-active-filters", count > 0);
       });
     }
-    return count;
   }
 
   function setLocationButton(button, label, disabled) {
@@ -104,10 +104,94 @@
     }
     button.disabled = !!disabled;
     button.setAttribute("aria-label", label);
-    var labelEl = button.querySelector(".physical-ad-map-fab__label");
-    if (labelEl) {
-      labelEl.textContent = label;
+    button.setAttribute("title", label);
+    button.classList.toggle("is-busy", !!disabled);
+  }
+
+  function showLocationStatus(statusEl, message, tone, autoHideMs) {
+    if (!statusEl) {
+      return;
     }
+    statusEl.textContent = message;
+    statusEl.dataset.tone = tone || "info";
+    statusEl.removeAttribute("hidden");
+    if (statusEl._hideTimer) {
+      window.clearTimeout(statusEl._hideTimer);
+    }
+    if (autoHideMs) {
+      statusEl._hideTimer = window.setTimeout(function () {
+        statusEl.setAttribute("hidden", "");
+      }, autoHideMs);
+    }
+  }
+
+  function roundMetersForUi(value) {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    if (value <= 100) {
+      return Math.max(10, Math.round(value / 10) * 10);
+    }
+    return Math.round(value / 50) * 50;
+  }
+
+  function distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) {
+    var point = map.project(latlng, zoom);
+    var shifted = window.L.point(point.x + widthPx, point.y);
+    var shiftedLatLng = map.unproject(shifted, zoom);
+    return latlng.distanceTo(shiftedLatLng);
+  }
+
+  function findZoomForTargetMeters(map, latlng, targetMeters, widthPx) {
+    var minZoom = Number.isFinite(map.getMinZoom()) ? map.getMinZoom() : 0;
+    var maxZoom = Number.isFinite(map.getMaxZoom()) ? map.getMaxZoom() : 20;
+    var chosenZoom = maxZoom;
+    var zoom;
+    for (zoom = maxZoom; zoom >= minZoom; zoom -= 1) {
+      if (distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) <= targetMeters) {
+        chosenZoom = zoom;
+      } else {
+        break;
+      }
+    }
+    return chosenZoom;
+  }
+
+  function geolocationErrorMessage(error) {
+    if (!window.isSecureContext) {
+      return "Para usar ubicación abre el sitio con HTTPS.";
+    }
+    if (!error) {
+      return "No se pudo obtener tu ubicación.";
+    }
+    if (error.code === error.PERMISSION_DENIED) {
+      return "Activa el permiso de ubicación en el navegador.";
+    }
+    if (error.code === error.POSITION_UNAVAILABLE) {
+      return "Tu celular no entregó una ubicación.";
+    }
+    if (error.code === error.TIMEOUT) {
+      return "La ubicación tardó demasiado. Intenta de nuevo.";
+    }
+    return "No se pudo obtener tu ubicación.";
+  }
+
+  function buildClusterIcon(cluster) {
+    var n = cluster.getChildCount();
+    var size = n < 10 ? 36 : n < 50 ? 44 : 52;
+    return window.L.divIcon({
+      html: '<span class="map-cluster-bubble">' + n + '</span>',
+      className: "map-cluster",
+      iconSize: [size, size]
+    });
+  }
+
+  function getLayerMaxZoom(layer, fallback) {
+    if (!layer || !layer.options || layer.options.maxZoom === undefined) {
+      return fallback;
+    }
+    var maxZoom = parseInt(layer.options.maxZoom, 10);
+    return Number.isFinite(maxZoom) ? maxZoom : fallback;
   }
 
   function setupPanel(shell, panel, triggers, map) {
@@ -125,7 +209,6 @@
         }
       });
       if (map) {
-        // Re-measure once the slide/fade transition has settled.
         window.setTimeout(function () { map.invalidateSize(); }, 320);
       }
     }
@@ -178,19 +261,163 @@
     }
   }
 
-  function focusFirstHeadingOrBody(bodyEl, fallbackEl) {
-    if (!bodyEl) {
-      return;
+  function applyActionLink(modalEl, selector, url) {
+    var el = modalEl.querySelector(selector);
+    if (!el) return;
+    if (url) {
+      el.href = url;
+      el.dataset.actionUrl = url;
+      el.classList.remove("d-none");
+      el.classList.add("d-flex");
+    } else {
+      el.removeAttribute("href");
+      delete el.dataset.actionUrl;
+      el.classList.add("d-none");
+      el.classList.remove("d-flex");
     }
-    var heading = bodyEl.querySelector("h1, h2, h3, [data-modal-focus]");
-    var target = heading || fallbackEl || bodyEl;
-    if (!target) {
-      return;
+  }
+
+  function openUpdateModal(modalEl, detailModalEl, updateUrl, label, onSaved, opts) {
+    if (!modalEl || !window.bootstrap || !updateUrl) return;
+    opts = opts || {};
+    var bodySelector = opts.bodySelector || "[data-update-modal-body]";
+    var submitSelector = opts.submitSelector || "[data-update-submit]";
+    var titleSelector = opts.titleSelector || "[data-update-modal-title]";
+    var formSelector = opts.formSelector || "[data-map-update-form]";
+    var bodyEl = modalEl.querySelector(bodySelector);
+    var submitButton = modalEl.querySelector(submitSelector);
+    var titleEl = modalEl.querySelector(titleSelector);
+    if (titleEl && label) titleEl.textContent = "Editar " + label;
+    setHtml(bodyEl, loadingHtml("Cargando formulario..."));
+
+    if (detailModalEl) {
+      var detail = window.bootstrap.Modal.getInstance(detailModalEl);
+      if (detail) detail.hide();
     }
-    if (!target.hasAttribute("tabindex")) {
-      target.setAttribute("tabindex", "-1");
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    function bindForm() {
+      var form = modalEl.querySelector(formSelector);
+      if (!form) return;
+      initDynamicForm(form);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (submitButton) submitButton.disabled = true;
+        fetch(updateUrl, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Map-Update": "1"
+          },
+          credentials: "same-origin"
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.ok) {
+              modal.hide();
+              if (onSaved) onSaved(result.data);
+              return;
+            }
+            setHtml(bodyEl, result.data.html || "");
+            bindForm();
+          })
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("territorial-ads map update failed", error);
+            }
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar los cambios.</div>');
+          })
+          .finally(function () {
+            if (submitButton) submitButton.disabled = false;
+          });
+      });
     }
-    try { target.focus({ preventScroll: false }); } catch (e) { target.focus(); }
+
+    fetch(updateUrl, {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Map-Update": "1"
+      },
+      credentials: "same-origin"
+    })
+      .then(function (response) {
+        return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok && result.data && result.data.error) {
+          setHtml(bodyEl, '<div class="alert alert-warning">' + result.data.error + '</div>');
+          return;
+        }
+        setHtml(bodyEl, result.data.html || "");
+        bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
+      })
+      .catch(function () {
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
+      });
+  }
+
+  function openDeleteModal(modalEl, detailModalEl, deleteUrl, label, onDeleted) {
+    if (!modalEl || !window.bootstrap || !deleteUrl) return;
+    var labelEl = modalEl.querySelector("[data-delete-label]");
+    var confirmBtn = modalEl.querySelector("[data-delete-confirm]");
+    if (labelEl) labelEl.textContent = label || "";
+    if (detailModalEl) {
+      var detail = window.bootstrap.Modal.getInstance(detailModalEl);
+      if (detail) detail.hide();
+    }
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    if (!confirmBtn) return;
+    var freshBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(freshBtn, confirmBtn);
+    freshBtn.addEventListener("click", function () {
+      freshBtn.disabled = true;
+      var csrf = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value
+        || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+        || "";
+      fetch(deleteUrl, {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "X-Map-Delete": "1",
+          "X-CSRFToken": csrf
+        },
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (result.ok && result.data.ok) {
+            modal.hide();
+            if (onDeleted) onDeleted(result.data);
+            return;
+          }
+          if (window.console && window.console.error) {
+            window.console.error("territorial-ads map delete rejected", result);
+          }
+        })
+        .catch(function (error) {
+          if (window.console && window.console.error) {
+            window.console.error("territorial-ads map delete failed", error);
+          }
+        })
+        .finally(function () {
+          freshBtn.disabled = false;
+        });
+    });
   }
 
   function openModal(modalEl, ad) {
@@ -201,8 +428,18 @@
     var titleEl = modalEl.querySelector("[data-modal-title]");
     var bodyEl = modalEl.querySelector("[data-modal-body]");
     var detailLink = modalEl.querySelector("[data-detail-link]");
-    titleEl.textContent = ad.label || "Publicidad";
-    detailLink.href = ad.url;
+    if (titleEl) {
+      titleEl.textContent = ad.label || "Publicidad";
+    }
+    modalEl.dataset.currentLabel = ad.label || "";
+    modalEl.dataset.currentDetailUrl = ad.url || "";
+    modalEl.dataset.markerKind = "ad";
+    if (detailLink) {
+      detailLink.href = ad.url;
+      detailLink.style.display = "";
+    }
+    applyActionLink(modalEl, "[data-edit-link]", ad.update_url);
+    applyActionLink(modalEl, "[data-delete-link]", ad.delete_url);
     setHtml(
       bodyEl,
       '<div class="text-center text-muted py-10">' +
@@ -255,15 +492,138 @@
     }
   }
 
-  function openCreateModal(modalEl, createUrl, latlng, onSaved) {
+  function openRefusalPopup(modalEl, ad) {
+    if (!modalEl || !window.bootstrap) {
+      return;
+    }
+    var titleEl = modalEl.querySelector("[data-modal-title]");
+    var bodyEl = modalEl.querySelector("[data-modal-body]");
+    var detailLink = modalEl.querySelector("[data-detail-link]");
+    if (titleEl) {
+      titleEl.textContent = ad.label || "Rechazo";
+    }
+    modalEl.dataset.currentLabel = ad.label || "";
+    modalEl.dataset.currentDetailUrl = ad.url || "";
+    modalEl.dataset.markerKind = "refusal";
+    if (detailLink) {
+      detailLink.style.display = "none";
+    }
+    applyActionLink(modalEl, "[data-edit-link]", ad.update_url);
+    applyActionLink(modalEl, "[data-delete-link]", ad.delete_url);
+    setHtml(bodyEl, loadingHtml("Cargando..."));
+
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    fetch(ad.url, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin"
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        setHtml(bodyEl, data.html || "");
+        initDynamicContent(bodyEl);
+      })
+      .catch(function () {
+        setHtml(
+          bodyEl,
+          '<div class="alert alert-danger">No se pudo cargar la información del rechazo.</div>'
+        );
+      });
+  }
+
+  function openRefusalCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
     if (!modalEl || !window.bootstrap || !createUrl) {
-      window.location.href = buildCreateUrl(createUrl, latlng);
+      return;
+    }
+
+    var bodyEl = modalEl.querySelector("[data-refusal-modal-body]");
+    var submitButton = modalEl.querySelector("[data-refusal-submit]");
+    var url = buildCreateUrl(createUrl, latlng, mapState);
+    setHtml(bodyEl, loadingHtml("Cargando formulario..."));
+
+    var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    function bindForm() {
+      var form = modalEl.querySelector("[data-map-refusal-form]");
+      if (!form) {
+        return;
+      }
+      initDynamicForm(form);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+        fetch(url, {
+          method: "POST",
+          body: new FormData(form),
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Map-Create": "1"
+          },
+          credentials: "same-origin"
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data.ok) {
+              modal.hide();
+              if (onSaved) {
+                onSaved(result.data);
+              }
+              return;
+            }
+            setHtml(bodyEl, result.data.html || "");
+            bindForm();
+          })
+          .catch(function (error) {
+            if (window.console && window.console.error) {
+              window.console.error("territorial-ads refusal create failed", error);
+            }
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar el rechazo.</div>');
+          })
+          .finally(function () {
+            if (submitButton) {
+              submitButton.disabled = false;
+            }
+          });
+      });
+    }
+
+    fetch(url, {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-Map-Create": "1"
+      },
+      credentials: "same-origin"
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        setHtml(bodyEl, data.html || "");
+        bindForm();
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
+      })
+      .catch(function () {
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
+      });
+  }
+
+  function openCreateModal(modalEl, createUrl, latlng, mapState, onSaved) {
+    if (!modalEl || !window.bootstrap || !createUrl) {
+      window.location.href = buildCreateUrl(createUrl, latlng, mapState);
       return;
     }
 
     var bodyEl = modalEl.querySelector("[data-create-modal-body]");
     var submitButton = modalEl.querySelector("[data-create-submit]");
-    var url = buildCreateUrl(createUrl, latlng);
+    var url = buildCreateUrl(createUrl, latlng, mapState);
     setHtml(bodyEl, loadingHtml("Cargando formulario..."));
 
     var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -306,7 +666,7 @@
             bindForm();
           })
           .catch(function () {
-            setHtml(bodyEl, '<div class="alert alert-danger" role="alert">No se pudo guardar el aviso.</div>');
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo guardar el aviso.</div>');
           })
           .finally(function () {
             if (submitButton) {
@@ -327,10 +687,12 @@
       .then(function (data) {
         setHtml(bodyEl, data.html || "");
         bindForm();
-        focusFirstHeadingOrBody(bodyEl, modalEl.querySelector(".modal-title"));
+        if (window.cmSheetModal && window.cmSheetModal.focusFirstInput) {
+          window.cmSheetModal.focusFirstInput(modalEl);
+        }
       })
       .catch(function () {
-        setHtml(bodyEl, '<div class="alert alert-danger" role="alert">No se pudo cargar el formulario.</div>');
+        setHtml(bodyEl, '<div class="alert alert-danger">No se pudo cargar el formulario.</div>');
       });
   }
 
@@ -345,26 +707,113 @@
     var panelTriggers = document.querySelectorAll("[data-panel-toggle]");
     var modalEl = document.getElementById("physical-ad-modal");
     var createModalEl = document.getElementById("physical-ad-create-modal");
+    var updateModalEl = document.getElementById("physical-ad-update-modal");
+    var deleteModalEl = document.getElementById("physical-ad-delete-modal");
+    var refusalUpdateModalEl = document.getElementById("physical-ad-refusal-update-modal");
+    var refusalModalEl = document.getElementById("physical-ad-refusal-modal");
+    var choiceModalEl = document.getElementById("physical-ad-choice-modal");
+
+    if (modalEl) {
+      var editLinkEl = modalEl.querySelector("[data-edit-link]");
+      var deleteLinkEl = modalEl.querySelector("[data-delete-link]");
+      if (editLinkEl) {
+        editLinkEl.addEventListener("click", function (event) {
+          event.preventDefault();
+          var url = editLinkEl.dataset.actionUrl;
+          if (!url) return;
+          var targetModal = modalEl.dataset.markerKind === "refusal"
+            ? refusalUpdateModalEl
+            : updateModalEl;
+          var formSelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-map-refusal-update-form]"
+            : "[data-map-update-form]";
+          var bodySelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-refusal-update-modal-body]"
+            : "[data-update-modal-body]";
+          var submitSelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-refusal-update-submit]"
+            : "[data-update-submit]";
+          var titleSelector = modalEl.dataset.markerKind === "refusal"
+            ? "[data-refusal-update-modal-title]"
+            : "[data-update-modal-title]";
+          openUpdateModal(
+            targetModal,
+            modalEl,
+            url,
+            modalEl.dataset.currentLabel || "",
+            function () { load(); },
+            { bodySelector: bodySelector, submitSelector: submitSelector, titleSelector: titleSelector, formSelector: formSelector }
+          );
+        });
+      }
+      if (deleteLinkEl) {
+        deleteLinkEl.addEventListener("click", function (event) {
+          event.preventDefault();
+          var url = deleteLinkEl.dataset.actionUrl;
+          if (!url) return;
+          openDeleteModal(deleteModalEl, modalEl, url, modalEl.dataset.currentLabel || "", function () {
+            load();
+          });
+        });
+      }
+
+      modalEl.addEventListener("workflow:transitioned", function (event) {
+        event.preventDefault();
+        var detailUrl = modalEl.dataset.currentDetailUrl;
+        var bodyEl = modalEl.querySelector("[data-modal-body]");
+        if (!detailUrl || !bodyEl) {
+          load();
+          return;
+        }
+        setHtml(bodyEl, loadingHtml("Actualizando..."));
+        var isRefusal = modalEl.dataset.markerKind === "refusal";
+        fetch(detailUrl, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        })
+          .then(function (r) { return isRefusal ? r.json() : r.text(); })
+          .then(function (payload) {
+            if (isRefusal) {
+              setHtml(bodyEl, (payload && payload.html) || "");
+              initDynamicContent(bodyEl);
+            } else {
+              var detailHtml = detailHtmlFromPage(payload);
+              if (!detailHtml) throw new Error("Empty detail content");
+              setHtml(bodyEl, detailHtml);
+              initDynamicContent(bodyEl);
+            }
+            load();
+          })
+          .catch(function () {
+            setHtml(bodyEl, '<div class="alert alert-danger">No se pudo actualizar el detalle.</div>');
+          });
+      });
+    }
     var counterEl = document.getElementById("physical-ad-map-count");
     var filterCounterEl = document.getElementById("physical-ad-filter-count");
-    var filterCounterSrEl = document.getElementById("physical-ad-filter-count-sr");
     var filterTriggerEls = document.querySelectorAll(".physical-ad-map-filter-trigger");
     var resetButton = document.getElementById("physical-ad-map-reset");
     var myLocationButton = document.getElementById("physical-ad-my-location");
-    var liveEl = document.getElementById("physical-ad-map-live");
+    var locationStatusEl = document.querySelector("[data-location-status]");
     var createUrl = el.dataset.createUrl || "";
+    var refusalCreateUrl = el.dataset.refusalCreateUrl || "";
+    var createGateMeters = 50;
+    var locationTargetMeters = 50;
+    var scaleReferenceWidthPx = 120;
 
-    // Default view: Macas, Morona Santiago.
-    var defaultLat = parseFloat(el.dataset.defaultLat) || -2.3046;
-    var defaultLng = parseFloat(el.dataset.defaultLng) || -78.1175;
-    var defaultZoom = parseInt(el.dataset.defaultZoom || "13", 10);
-    var map = window.L.map(el, { zoomControl: false }).setView([defaultLat, defaultLng], defaultZoom);
-    var pinsLayer = window.L.layerGroup().addTo(map);
-    var locationLayer = window.L.layerGroup().addTo(map);
-    window.L.control.zoom({ position: "bottomleft" }).addTo(map);
+    var tenantCenter = window.TENANT_MAP_CENTER || {};
+    var defaultLat = parseFloat(el.dataset.defaultLat) || tenantCenter.lat || -2.3046;
+    var defaultLng = parseFloat(el.dataset.defaultLng) || tenantCenter.lng || -78.1175;
+    var defaultZoom = parseInt(el.dataset.defaultZoom || tenantCenter.zoom || "13", 10);
+    var map = window.L.map(el, {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([defaultLat, defaultLng], defaultZoom);
 
+    var basemapRefs = null;
     if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
-      window.LeafletBasemaps.build(map, { "Pines": pinsLayer });
+      var built = window.LeafletBasemaps.build(map, null, { skipNativeControl: true });
+      basemapRefs = built && built.refs ? built.refs : null;
     } else {
       window.L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
@@ -376,6 +825,153 @@
         }
       ).addTo(map);
     }
+
+    var pinsLayer = window.L.markerClusterGroup
+      ? window.L.markerClusterGroup({
+          showCoverageOnHover: false,
+          spiderfyOnMaxZoom: true,
+          disableClusteringAtZoom: 15,
+          maxClusterRadius: 22,
+          iconCreateFunction: buildClusterIcon
+        })
+      : window.L.layerGroup();
+    pinsLayer.addTo(map);
+
+    if (pinsLayer && typeof pinsLayer.on === "function") {
+      var reRenderPinIcons = function () {
+        if (window.cmRenderIcons) window.cmRenderIcons();
+      };
+      pinsLayer.on("animationend", reRenderPinIcons);
+      pinsLayer.on("spiderfied", reRenderPinIcons);
+      pinsLayer.on("unspiderfied", reRenderPinIcons);
+    }
+    var locationLayer = window.L.layerGroup().addTo(map);
+
+    window.L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+    window.L.control.scale({
+      position: "bottomleft",
+      metric: true,
+      imperial: false,
+      maxWidth: 120
+    }).addTo(map);
+
+    var zoomInBtn = document.querySelector("[data-zoom-in]");
+    var zoomOutBtn = document.querySelector("[data-zoom-out]");
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener("click", function () {
+        zoomToRespectingBasemap(map.getZoom() + 1);
+      });
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener("click", function () {
+        zoomToRespectingBasemap(map.getZoom() - 1);
+      });
+    }
+
+    var layerToggleBtn = document.querySelector("[data-layer-toggle]");
+    var layerLabelEl = document.querySelector("[data-layer-label]");
+    var layerThumbEl = document.querySelector("[data-layer-thumb]");
+    var activeBasemap = "carto";
+    var preferredBasemap = "carto";
+    var satelliteMaxZoom = basemapRefs ? getLayerMaxZoom(basemapRefs.satellite, 19) : 19;
+    var cartoMaxZoom = basemapRefs ? getLayerMaxZoom(basemapRefs.carto, 20) : 20;
+    if (basemapRefs) {
+      map.setMaxZoom(Math.max(cartoMaxZoom, satelliteMaxZoom));
+    }
+
+    function syncLayerControl() {
+      var isSatellite = activeBasemap === "satellite";
+      if (layerToggleBtn) {
+        layerToggleBtn.setAttribute("aria-pressed", isSatellite ? "true" : "false");
+      }
+      if (layerLabelEl) {
+        layerLabelEl.textContent = isSatellite ? "Mapa" : "Satélite";
+      }
+      if (layerThumbEl) {
+        layerThumbEl.classList.toggle("is-satellite", !isSatellite);
+      }
+    }
+
+    function setBasemap(next) {
+      if (!basemapRefs || activeBasemap === next) {
+        syncLayerControl();
+        return;
+      }
+      if (activeBasemap === "satellite" && basemapRefs.satellite) {
+        map.removeLayer(basemapRefs.satellite);
+      } else if (activeBasemap === "carto" && basemapRefs.carto) {
+        map.removeLayer(basemapRefs.carto);
+      }
+      if (next === "satellite") {
+        basemapRefs.satellite.addTo(map);
+      } else {
+        basemapRefs.carto.addTo(map);
+      }
+      activeBasemap = next;
+      syncLayerControl();
+    }
+
+    function applyPreferredBasemapForZoom() {
+      if (!basemapRefs) {
+        return;
+      }
+      if (preferredBasemap === "satellite" && map.getZoom() <= satelliteMaxZoom) {
+        setBasemap("satellite");
+      } else if (preferredBasemap === "satellite" && map.getZoom() > satelliteMaxZoom) {
+        setBasemap("carto");
+      }
+    }
+
+    function zoomToRespectingBasemap(targetZoom) {
+      if (
+        basemapRefs &&
+        preferredBasemap === "satellite" &&
+        targetZoom > satelliteMaxZoom
+      ) {
+        setBasemap("carto");
+      }
+      map.setZoom(targetZoom);
+    }
+
+    if (layerToggleBtn && basemapRefs && basemapRefs.carto && basemapRefs.satellite) {
+      syncLayerControl();
+      layerToggleBtn.addEventListener("click", function () {
+        if (preferredBasemap === "satellite") {
+          preferredBasemap = "carto";
+          setBasemap("carto");
+        } else {
+          preferredBasemap = "satellite";
+          if (map.getZoom() <= satelliteMaxZoom) {
+            setBasemap("satellite");
+          } else {
+            setBasemap("carto");
+          }
+        }
+      });
+    }
+    map.on("zoomend", applyPreferredBasemapForZoom);
+
+    var mapState = window.MapState && window.MapState.attach
+      ? window.MapState.attach(map, {
+          defaultBasemap: "carto",
+          getBasemap: function () { return preferredBasemap; },
+          setBasemap: function (name) {
+            if (name === "satellite" || name === "carto") {
+              preferredBasemap = name;
+              if (basemapRefs && basemapRefs.satellite && basemapRefs.carto) {
+                if (name === "satellite" && map.getZoom() <= satelliteMaxZoom) {
+                  setBasemap("satellite");
+                } else {
+                  setBasemap("carto");
+                }
+              }
+            }
+          }
+        })
+      : null;
+    var mapStateRestored = mapState ? mapState.restore() : false;
+    var userOwnsView = mapStateRestored;
+    map.on("movestart zoomstart", function () { userOwnsView = true; });
 
     var filters = document.getElementById("physical-ad-map-filters");
     var panelApi = setupPanel(shell, panel, panelTriggers, map);
@@ -394,49 +990,59 @@
       return qs ? base + (base.indexOf("?") === -1 ? "?" : "&") + qs : base;
     }
 
+    var truncationEl = document.getElementById("physical-ad-map-truncated");
+
+    function showTruncation(data) {
+      if (!truncationEl) return;
+      if (data && data.truncated) {
+        var shown = truncationEl.querySelector("[data-truncated-shown]");
+        var total = truncationEl.querySelector("[data-truncated-total]");
+        if (shown) shown.textContent = String(data.returned || 0);
+        if (total) total.textContent = String(data.total || 0);
+        truncationEl.classList.remove("d-none");
+      } else {
+        truncationEl.classList.add("d-none");
+      }
+    }
+
     function load() {
       pinsLayer.clearLayers();
       updateCount(counterEl, 0);
-      var activeFilters = updateFilterCount(filterCounterEl, filterTriggerEls, filters, filterCounterSrEl);
-      announce(liveEl, "Cargando publicidades…");
+      updateFilterCount(filterCounterEl, filterTriggerEls, filters);
       fetch(buildUrl(), { headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var bounds = [];
           var ads = data.ads || [];
           updateCount(counterEl, ads.length);
-          updateMapAriaLabel(el, ads.length, activeFilters > 0);
+          showTruncation(data);
           ads.forEach(function (ad) {
             var marker = window.L.marker([ad.lat, ad.lng], {
-              icon: pinIcon(ad.color),
-              bubblingMouseEvents: false,
-              keyboard: true,
-              alt: ad.label || "Publicidad",
-              title: ad.label || "Publicidad"
+              icon: pinIcon(ad.color, ad.type_icon, ad.marker_kind),
+              bubblingMouseEvents: false
             })
               .bindTooltip(ad.label, { direction: "top", offset: [0, -34] })
               .addTo(pinsLayer);
             marker.on("click", function () {
-              openModal(modalEl, ad);
+              if (ad.marker_kind === "refusal") {
+                openRefusalPopup(modalEl, ad);
+              } else {
+                openModal(modalEl, ad);
+              }
             });
             bounds.push([ad.lat, ad.lng]);
           });
-          if (bounds.length) {
+          if (bounds.length && !userOwnsView) {
             map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
           }
-          if (ads.length === 0) {
-            announce(liveEl, activeFilters > 0
-              ? "Sin resultados para los filtros aplicados."
-              : "No hay publicidades para mostrar.");
-          } else if (ads.length === 1) {
-            announce(liveEl, "1 publicidad cargada.");
-          } else {
-            announce(liveEl, ads.length + " publicidades cargadas.");
-          }
+          userOwnsView = true;
+          if (window.cmRenderIcons) window.cmRenderIcons();
         })
         .catch(function () {
-          updateMapAriaLabel(el, 0, activeFilters > 0);
-          announce(liveEl, "No se pudieron cargar las publicidades. Intenta de nuevo.");
+          updateCount(counterEl, 0);
+          if (window.console && window.console.error) {
+            window.console.error("Physical ad map data load failed");
+          }
         });
     }
 
@@ -447,7 +1053,6 @@
     }
     if (resetButton && filters) {
       resetButton.addEventListener("click", function () {
-        // ``form.reset()`` does not fire change events; emit one so select2 + load react.
         filters.reset();
         Array.prototype.forEach.call(filters.elements, function (input) {
           if (input.name) {
@@ -458,64 +1063,150 @@
       });
     }
     if (myLocationButton) {
+      var renderUserLocation = function (position) {
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+        var accuracy = position.coords.accuracy || 0;
+
+        locationLayer.clearLayers();
+        window.L.circle([lat, lng], {
+          radius: accuracy,
+          stroke: false,
+          fillColor: "#3e97ff",
+          fillOpacity: 0.12,
+          bubblingMouseEvents: false
+        }).addTo(locationLayer);
+        window.L.circleMarker([lat, lng], {
+          radius: 9,
+          color: "#ffffff",
+          fillColor: "#3e97ff",
+          fillOpacity: 1,
+          weight: 3,
+          bubblingMouseEvents: false
+        }).bindTooltip("Mi ubicación", {
+          direction: "top",
+          offset: [0, -10],
+          permanent: false
+        }).addTo(locationLayer);
+
+        var targetLatLng = window.L.latLng(lat, lng);
+        var locationZoom = findZoomForTargetMeters(
+          map,
+          targetLatLng,
+          locationTargetMeters,
+          scaleReferenceWidthPx
+        );
+        map.setView(targetLatLng, Math.max(map.getZoom(), locationZoom));
+        setLocationButton(myLocationButton, "Mi ubicación", false);
+        showLocationStatus(locationStatusEl, "Ubicación encontrada.", "success", 3000);
+      };
+
+      var renderLocationError = function (error) {
+        var message = geolocationErrorMessage(error);
+        setLocationButton(myLocationButton, message, false);
+        showLocationStatus(locationStatusEl, message, "danger", 7000);
+      };
+
       myLocationButton.addEventListener("click", function () {
-        if (!navigator.geolocation) {
-          setLocationButton(myLocationButton, "No disponible", false);
+        setLocationButton(myLocationButton, "Ubicando...", true);
+        showLocationStatus(locationStatusEl, "Buscando tu ubicación...", "info");
+
+        if (window.GeolocationGate) {
+          window.GeolocationGate.require({
+            mode: "soft",
+            reason: "Para mostrar tu posición actual en el mapa.",
+            onGranted: renderUserLocation,
+            onDenied: renderLocationError,
+            onSkipped: function () {
+              setLocationButton(myLocationButton, "Mi ubicación", false);
+              showLocationStatus(locationStatusEl, "Sin ubicación.", "info", 3000);
+            }
+          });
           return;
         }
 
-        setLocationButton(myLocationButton, "Ubicando...", true);
+        if (!window.isSecureContext || !navigator.geolocation) {
+          setLocationButton(myLocationButton, "Ubicación no disponible", false);
+          showLocationStatus(
+            locationStatusEl,
+            !window.isSecureContext
+              ? "Para usar ubicación abre el sitio con HTTPS."
+              : "Este navegador no soporta ubicación.",
+            "danger",
+            6000
+          );
+          return;
+        }
         navigator.geolocation.getCurrentPosition(
-          function (position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var accuracy = position.coords.accuracy || 0;
-
-            locationLayer.clearLayers();
-            window.L.circle([lat, lng], {
-              radius: accuracy,
-              stroke: false,
-              fillColor: "#3e97ff",
-              fillOpacity: 0.12,
-              bubblingMouseEvents: false
-            }).addTo(locationLayer);
-            window.L.circleMarker([lat, lng], {
-              radius: 9,
-              color: "#ffffff",
-              fillColor: "#3e97ff",
-              fillOpacity: 1,
-              weight: 3,
-              bubblingMouseEvents: false
-            }).bindTooltip("Mi ubicación", {
-              direction: "top",
-              offset: [0, -10],
-              permanent: false
-            }).addTo(locationLayer);
-
-            map.setView([lat, lng], Math.max(map.getZoom(), 16));
-            setLocationButton(myLocationButton, "Mi ubicación", false);
-          },
-          function () {
-            setLocationButton(myLocationButton, "Permiso denegado", false);
-            window.setTimeout(function () {
-              setLocationButton(myLocationButton, "Mi ubicación", false);
-            }, 2500);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 30000
-          }
+          renderUserLocation,
+          renderLocationError,
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
         );
       });
     }
 
-    map.on("click", function (event) {
-      if (!createUrl) {
+    function getCreateGateDistanceMeters() {
+      var size = map.getSize();
+      if (!size || size.x <= 0 || size.y <= 0) {
+        return null;
+      }
+      var referenceWidth = Math.min(scaleReferenceWidthPx, size.x);
+      var centerY = size.y / 2;
+      var start = map.containerPointToLatLng([0, centerY]);
+      var end = map.containerPointToLatLng([referenceWidth, centerY]);
+      return map.distance(start, end);
+    }
+
+    function canOpenCreateFromMap() {
+      var distanceMeters = getCreateGateDistanceMeters();
+      return distanceMeters !== null && distanceMeters <= createGateMeters;
+    }
+
+    function showCreateZoomGateMessage() {
+      var distanceMeters = getCreateGateDistanceMeters();
+      var roundedMeters = roundMetersForUi(distanceMeters);
+      var message = "Acerca el mapa hasta " + createGateMeters + " m o menos para abrir este menu.";
+      if (roundedMeters !== null && roundedMeters > createGateMeters) {
+        message = "Acerca el mapa: ahora esta en aprox. " + roundedMeters + " m. Debe estar en " + createGateMeters + " m o menos.";
+      }
+      showLocationStatus(locationStatusEl, message, "danger", 3500);
+    }
+
+    function openChoiceModal(latlng) {
+      var mapState = { zoom: map.getZoom(), layer: activeBasemap };
+      if (!choiceModalEl || !window.bootstrap) {
+        if (createUrl) {
+          openCreateModal(createModalEl, createUrl, latlng, mapState, load);
+        }
         return;
       }
-      // On phones the bottom-sheet may overlay part of the map — close it
-      // instead of opening the create flow on the first tap-through.
+      var modal = window.bootstrap.Modal.getOrCreateInstance(choiceModalEl);
+      var buttons = choiceModalEl.querySelectorAll("[data-choice]");
+      function pickHandler(event) {
+        var choice = event.currentTarget.getAttribute("data-choice");
+        modal.hide();
+        window.setTimeout(function () {
+          if (choice === "ad" && createUrl) {
+            openCreateModal(createModalEl, createUrl, latlng, mapState, load);
+          } else if (choice === "refusal" && refusalCreateUrl) {
+            openRefusalCreateModal(refusalModalEl, refusalCreateUrl, latlng, mapState, load);
+          }
+        }, 200);
+      }
+      Array.prototype.forEach.call(buttons, function (btn) {
+        btn.replaceWith(btn.cloneNode(true));
+      });
+      var fresh = choiceModalEl.querySelectorAll("[data-choice]");
+      Array.prototype.forEach.call(fresh, function (btn) {
+        btn.addEventListener("click", pickHandler);
+      });
+      modal.show();
+    }
+
+    map.on("click", function (event) {
+      if (!createUrl && !refusalCreateUrl) {
+        return;
+      }
       if (
         shell &&
         shell.getAttribute("data-panel-state") === "expanded" &&
@@ -524,10 +1215,13 @@
         panelApi.close();
         return;
       }
-      openCreateModal(createModalEl, createUrl, event.latlng, load);
+      if (!canOpenCreateFromMap()) {
+        showCreateZoomGateMessage();
+        return;
+      }
+      openChoiceModal(event.latlng);
     });
 
-    // Keep the Leaflet canvas accurate across viewport / orientation changes.
     window.addEventListener("resize", function () { map.invalidateSize(); });
 
     load();

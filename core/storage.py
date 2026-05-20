@@ -1,4 +1,7 @@
-"""Storage helpers for tenant-aware media paths."""
+"""Storage helpers for tenant-aware media and shared static paths."""
+from urllib.parse import quote
+
+from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django_tenants.utils import get_public_schema_name
 from storages.backends.s3boto3 import S3Boto3Storage
@@ -35,6 +38,23 @@ class TenantS3Storage(S3Boto3Storage):
         if name.startswith(f"tenants/{schema_name}/"):
             return name
         return f"tenants/{schema_name}/{name}"
+
+
+class StaticS3Storage(S3Boto3Storage):
+    """Shared static asset storage in the S3-compatible bucket."""
+
+    location = "static"
+    default_acl = None
+    file_overwrite = True
+    querystring_auth = False
+
+    def url(self, name, *args, **kwargs):
+        public_base = (getattr(settings, "AWS_S3_PUBLIC_URL", "") or "").rstrip("/")
+        if public_base:
+            bucket = settings.AWS_STORAGE_BUCKET_NAME.strip("/")
+            path = quote(str(name).lstrip("/"), safe="/")
+            return f"{public_base}/{bucket}/{self.location}/{path}"
+        return super().url(name, *args, **kwargs)
 
 
 class PublicFileSystemStorage(FileSystemStorage):
