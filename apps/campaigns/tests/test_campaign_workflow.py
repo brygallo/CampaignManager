@@ -111,6 +111,22 @@ class CampaignWorkflowTests(TestCase):
         campaign.save()
         self.assertEqual(campaign.state, Campaign.workflow.CLOSED)
 
+    def test_close_clears_is_default(self):
+        # A closed campaign must not remain the tenant-wide default; otherwise
+        # ``resolve_active_campaign`` would auto-select it for any user without
+        # a session key.
+        campaign = self._build_campaign(is_default=True)
+        campaign.activate()
+        campaign.save()
+        self.assertTrue(campaign.is_default)
+
+        campaign.close()
+        campaign.save()
+        # ``refresh_from_db`` is blocked by django-fsm on the state field; re-fetch
+        # the row via ``objects.get`` to confirm the persisted ``is_default`` flag.
+        reloaded = Campaign.objects.get(pk=campaign.pk)
+        self.assertFalse(reloaded.is_default)
+
     def test_cancel_blocked_when_active_dependencies(self):
         campaign = self._build_campaign()
         campaign.activate()
@@ -132,6 +148,17 @@ class CampaignWorkflowTests(TestCase):
         campaign.cancel()
         campaign.save()
         self.assertEqual(campaign.state, Campaign.workflow.CANCELED)
+
+    def test_cancel_clears_is_default(self):
+        # Same rationale as ``test_close_clears_is_default``: a canceled
+        # campaign should never remain the tenant default.
+        campaign = self._build_campaign(is_default=True)
+        self.assertTrue(campaign.is_default)
+
+        campaign.cancel()
+        campaign.save()
+        reloaded = Campaign.objects.get(pk=campaign.pk)
+        self.assertFalse(reloaded.is_default)
 
     def test_cannot_reactivate_closed_campaign(self):
         campaign = self._build_campaign()

@@ -301,6 +301,67 @@ class SwitchActiveCampaignViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("home"))
 
+    def test_safe_next_blocks_backslash_open_redirect(self):
+        # Browsers normalize backslashes to slashes in the path, which would
+        # otherwise turn ``/\\evil.com/path`` into a protocol-relative redirect.
+        request = self._request(
+            reverse("campaigns:switch_active", args=[self.first.pk]),
+            data={"next": "/\\evil.com/path"},
+        )
+        response = switch_active_campaign(request, self.first.pk)
+        self.assertEqual(response["Location"], reverse("home"))
+
+    def test_safe_next_downgrades_detail_url_to_list(self):
+        # A detail URL is downgraded to its parent list because the record
+        # is usually out of scope after a campaign switch.
+        request = self._request(
+            reverse("campaigns:switch_active", args=[self.first.pk]),
+            data={"next": "/political_agenda/politicalagendaevent/42/"},
+        )
+        response = switch_active_campaign(request, self.first.pk)
+        self.assertEqual(response["Location"], "/political_agenda/politicalagendaevent/")
+
+    def test_safe_next_downgrades_edit_url_to_list(self):
+        request = self._request(
+            reverse("campaigns:switch_active", args=[self.first.pk]),
+            data={"next": "/political_agenda/politicalagendaevent/42/editar/"},
+        )
+        response = switch_active_campaign(request, self.first.pk)
+        self.assertEqual(response["Location"], "/political_agenda/politicalagendaevent/")
+
+    def test_safe_next_downgrades_delete_url_to_list(self):
+        request = self._request(
+            reverse("campaigns:switch_active", args=[self.first.pk]),
+            data={"next": "/political_agenda/politicalagendaevent/42/eliminar/"},
+        )
+        response = switch_active_campaign(request, self.first.pk)
+        self.assertEqual(response["Location"], "/political_agenda/politicalagendaevent/")
+
+    def test_safe_next_preserves_querystring_on_downgrade(self):
+        # Query (sort, page) is on the LIST surface, so it must survive the
+        # downgrade from a detail URL.
+        request = self._request(
+            reverse("campaigns:switch_active", args=[self.first.pk]),
+            data={"next": "/political_agenda/politicalagendaevent/42/?ordering=name"},
+        )
+        response = switch_active_campaign(request, self.first.pk)
+        self.assertEqual(
+            response["Location"],
+            "/political_agenda/politicalagendaevent/?ordering=name",
+        )
+
+    def test_safe_next_keeps_list_url_unchanged(self):
+        # A list URL must NOT be downgraded — only detail/edit/delete tails.
+        request = self._request(
+            reverse("campaigns:switch_active", args=[self.first.pk]),
+            data={"next": "/political_agenda/politicalagendaevent/?page=2"},
+        )
+        response = switch_active_campaign(request, self.first.pk)
+        self.assertEqual(
+            response["Location"],
+            "/political_agenda/politicalagendaevent/?page=2",
+        )
+
     def test_get_is_rejected(self):
         wrapped = switch_active_campaign
         request = self._request(
@@ -521,6 +582,40 @@ class FormMixinTests(TestCase):
         from django.forms import HiddenInput
 
         self.assertNotIsInstance(form.fields["campaign"].widget, HiddenInput)
+
+    def test_terminal_campaign_leaves_field_visible(self):
+        # When the active campaign is CLOSED/CANCELED, the form must show
+        # the campaign field as a visible select so the user picks an
+        # operational campaign explicitly. Auto-fill would silently associate
+        # the new record with a terminal campaign.
+        from django.forms import HiddenInput
+
+        closed = _make_campaign("Cerrada")
+        _make_campaign("Operativa")
+        # Bypass FSM rules — we only need the persisted state for the mixin's check.
+        # ``refresh_from_db`` is blocked by django-fsm on the state field, so
+        # re-fetch through ``objects.get`` instead.
+        Campaign.objects.filter(pk=closed.pk).update(state=Campaign.workflow.CLOSED)
+        closed = Campaign.objects.get(pk=closed.pk)
+        request = self.factory.get("/")
+        request.active_campaign = closed
+        view = _FakeCreateView(FieldSurvey, request)
+        form = view.get_form()
+        field = form.fields["campaign"]
+        self.assertNotIsInstance(field.widget, HiddenInput)
+        # Queryset must NOT be narrowed to the closed campaign.
+        self.assertGreater(field.queryset.count(), 1)
+
+    def test_initial_skips_terminal_campaign(self):
+        # ``get_initial`` must not seed a closed campaign either — same
+        # rationale as the form widget check above.
+        canceled = _make_campaign("Anulada")
+        Campaign.objects.filter(pk=canceled.pk).update(state=Campaign.workflow.CANCELED)
+        canceled = Campaign.objects.get(pk=canceled.pk)
+        request = self.factory.get("/")
+        request.active_campaign = canceled
+        view = _FakeCreateView(FieldSurvey, request)
+        self.assertNotIn("campaign", view.get_initial())
 
 
 def test_module_exports_present():

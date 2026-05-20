@@ -24,7 +24,7 @@ from apps.campaigns.models import Campaign
 # the list view instead of a 404, which is what happens when the record is
 # no longer in the new campaign's scope (``ActiveCampaignScopeMixin``).
 _DETAIL_PATH_RE = re.compile(
-    r"^(?P<base>/[^?#]+?)/\d+/(?:editar|eliminar|change|delete)?/?(?P<query>\?.*)?$"
+    r"^(?P<base>/[^?#]+?)/\d+/(?:editar|eliminar|change|delete)?/?$"
 )
 
 
@@ -65,8 +65,7 @@ def _downgrade_detail_url(url: str) -> str:
     from urllib.parse import urlsplit, urlunsplit
 
     parts = urlsplit(url)
-    path = parts.path or "/"
-    match = _DETAIL_PATH_RE.match(path + (f"?{parts.query}" if parts.query else ""))
+    match = _DETAIL_PATH_RE.match(parts.path or "/")
     if not match:
         return url
     new_path = match.group("base") + "/"
