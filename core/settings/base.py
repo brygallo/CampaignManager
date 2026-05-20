@@ -175,10 +175,24 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# ----- Object storage (MinIO / S3) -----
+# Tenant media goes to an S3-compatible bucket. PublicFileSystemStorage
+# (TenantBranding logo/favicon) still writes to MEDIA_ROOT on disk.
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
+AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default="")
+AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="us-east-1")
+AWS_S3_ADDRESSING_STYLE = env("AWS_S3_ADDRESSING_STYLE", default="path")
+AWS_S3_SIGNATURE_VERSION = env("AWS_S3_SIGNATURE_VERSION", default="s3v4")
+AWS_QUERYSTRING_AUTH = env.bool("AWS_QUERYSTRING_AUTH", default=False)
+AWS_DEFAULT_ACL = env("AWS_DEFAULT_ACL", default="") or None
+AWS_S3_FILE_OVERWRITE = False
+
 # Django 4.2+: use STORAGES dict instead of DEFAULT_FILE_STORAGE / STATICFILES_STORAGE.
 STORAGES = {
     "default": {
-        "BACKEND": "core.storage.TenantFileSystemStorage",
+        "BACKEND": "core.storage.TenantS3Storage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",

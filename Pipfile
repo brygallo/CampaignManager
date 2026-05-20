@@ -39,6 +39,7 @@ qrcode = "~=7.4"
 whitenoise = "~=6.7"
 gunicorn = "~=23.0"
 setuptools = "*"
+django-storages = {extras = ["s3"], version = "~=1.14"}
 
 [dev-packages]
 ipdb = "~=0.13"

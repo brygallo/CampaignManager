@@ -11,6 +11,11 @@ until nc -z redis 6379; do
   sleep 1
 done
 
+echo "[entrypoint] Esperando MinIO..."
+until nc -z minio 9000; do
+  sleep 1
+done
+
 echo "[entrypoint] Migraciones..."
 python manage.py migrate --noinput
 

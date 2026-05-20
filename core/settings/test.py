@@ -26,6 +26,12 @@ CACHES = {
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+# Tests must not depend on a live MinIO/S3 server: route uploads to disk.
+STORAGES = {  # noqa: F405
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
