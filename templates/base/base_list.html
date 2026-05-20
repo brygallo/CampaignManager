@@ -1,19 +1,16 @@
 {% extends "base/base.html" %}
 {% load static %}
 {% load model_meta %}
-{% load list_format %}
-{% load list_sort %}
-{% load icons %}
 
-{% block title %}{% firstof site.title site|verbose_name_plural site.model_name|title as page_title %}{{ page_title|capfirst }} | {{ block.super }}{% endblock %}
+{% block title %}{% firstof site.title site|verbose_name_plural site.model_name|title %} | {{ block.super }}{% endblock %}
 
 {% block toolbar %}
   <div class="app-toolbar-wrapper d-flex flex-stack flex-wrap gap-4 w-100 mb-6">
     <div class="page-title d-flex flex-column justify-content-center gap-1 me-3">
       <h1 class="page-heading d-flex flex-column justify-content-center text-dark fw-bold fs-3 m-0">
-        {% firstof site.title site|verbose_name_plural site.model_name|title as heading_title %}{{ heading_title|capfirst }}
+        {% firstof site.title site|verbose_name_plural site.model_name|title %}
       </h1>
-      <ul class="breadcrumb breadcrumb-separatorless fw-semibold fs-7 my-0">
+      <ul class="breadcrumb breadcrumb-separatorless fw-semibold fs-7 my-0 cm-mobile-hide">
         <li class="breadcrumb-item text-muted">
           <a href="/" class="text-muted text-hover-primary">Inicio</a>
         </li>
@@ -21,24 +18,19 @@
           <span class="bullet bg-gray-400 w-5px h-2px"></span>
         </li>
         <li class="breadcrumb-item text-muted">
-          {% firstof site|verbose_name_plural site.model_name|title as crumb_title %}{{ crumb_title|capfirst }}
+          {% firstof site|verbose_name_plural site.model_name|title %}
         </li>
       </ul>
     </div>
     <div class="d-flex align-items-center gap-2 gap-lg-3">
       {% block list_extra_actions %}{% endblock %}
       {% if site.urls.create %}
-        <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1" aria-label="Crear nuevo registro">
-          <i data-lucide="plus" class="fs-3"></i><span class="d-none d-sm-inline">Nuevo</span>
+        <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm d-none d-md-flex align-items-center gap-1" aria-label="Crear nuevo registro">
+          <i class="ki-outline ki-plus fs-3"></i><span class="d-none d-sm-inline">Nuevo</span>
         </a>
       {% endif %}
     </div>
   </div>
-{% endblock %}
-
-{% block extra_css %}
-  {{ block.super }}
-  <link href="{% static 'assets/plugins/custom/datatables/datatables.bundle.css' %}" rel="stylesheet" type="text/css" />
 {% endblock %}
 
 {% block css %}
@@ -71,28 +63,11 @@
     table#datatable thead th.sorting,
     table#datatable thead th.sorting_asc,
     table#datatable thead th.sorting_desc { cursor: pointer; user-select: none; }
-
-    /* Horizontal scroll wrapper. Keeps the actions column reachable on narrow
-       viewports without resorting to the DataTables Responsive plugin. */
-    .cm-table-scroll {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* On very narrow phones, hide low-priority columns so the user sees the
-       essentials without horizontal scroll. The first column (record name) +
-       actions column stay visible at every breakpoint. */
-    @media (max-width: 575.98px) {
-      table#datatable thead th:not(:first-child):not(:last-child),
-      table#datatable tbody td:not(:first-child):not(:last-child) {
-        display: none;
-      }
-    }
   </style>
 {% endblock %}
 
 {% block content %}
-<div class="card">
+<div class="card cm-list"{% if site.urls.mass_delete %} data-has-bulk="true"{% endif %}>
   {% block list_filters %}
     {% if state_filter_items %}
       <div class="card-body py-3 border-bottom">
@@ -101,7 +76,7 @@
             <a href="{{ item.url }}"
                class="btn btn-sm {% if item.active %}btn-light-{{ item.css }} text-{{ item.css }}{% else %}btn-light btn-active-light-{{ item.css }} text-gray-700{% endif %} d-inline-flex align-items-center gap-2 flex-shrink-0 px-3"
                {% if item.active %}aria-current="page"{% endif %}>
-              <i data-lucide="{{ item.icon|default:'abstract-26'|lucide }}" class="fs-4"></i>
+              <i class="ki-outline ki-{{ item.icon|default:'abstract-26' }} fs-4"></i>
               <span class="fw-semibold">{{ item.label }}</span>
               <span class="badge {% if item.active %}badge-{{ item.css }}{% else %}badge-light{% endif %} fs-8">{{ item.count }}</span>
             </a>
@@ -118,15 +93,14 @@
           <input type="hidden" name="paginate_by" value="{{ request.GET.paginate_by }}">
         {% endif %}
         <div class="d-flex align-items-center position-relative my-1 w-100">
-          <i data-lucide="search" class="fs-3 position-absolute ms-5 z-index-1"></i>
+          <i class="ki-outline ki-magnifier fs-3 position-absolute ms-5 z-index-1"></i>
           <input id="id_table_search"
                  type="search"
-                 class="form-control form-control-sm form-control-solid w-100 ps-12"
+                 class="form-control form-control-solid w-100 ps-12"
                  name="search"
                  value="{{ request.GET.search|default:'' }}"
                  placeholder="Buscar en esta lista"
                  aria-label="Buscar en esta lista"
-                 enterkeyhint="search"
                  title="Puedes escribir varios términos separados por coma. Presiona Enter para buscar.">
         </div>
       </form>
@@ -147,7 +121,7 @@
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
                   aria-label="Opciones de vista">
-            <i data-lucide="sliders-horizontal" class="fs-3"></i>
+            <i class="ki-outline ki-setting-4 fs-3"></i>
             <span class="d-none d-md-inline">Vista</span>
           </button>
           <div class="dropdown-menu dropdown-menu-end p-4" style="min-width: 260px;">
@@ -175,7 +149,7 @@
               {% endfor %}
             </div>
             <button type="button" class="btn btn-sm btn-light-primary w-100" id="cm-view-reset">
-              <i data-lucide="rotate-cw" class="fs-4"></i>Restablecer
+              <i class="ki-outline ki-arrows-circle fs-4"></i>Restablecer
             </button>
           </div>
         </div>
@@ -190,7 +164,7 @@
       <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3"
            data-kt-filter-session-url="{% url 'site:session' site.app_name site.model_name %}">
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
-          <i data-lucide="filter" class="fs-3 text-primary"></i>
+          <i class="ki-outline ki-filter fs-3 text-primary"></i>
           <span class="text-gray-700 fw-bold fs-7">Filtros activos</span>
           <span class="badge badge-circle badge-light-primary text-primary">{{ site.current_filters|length }}</span>
         </div>
@@ -213,7 +187,7 @@
                       data-kt-filter-remove="true"
                       title="Quitar este filtro"
                       aria-label="Quitar filtro {{ filter.field_label }}">
-                <i data-lucide="x" class="fs-4"></i>
+                <i class="ki-outline ki-cross fs-4"></i>
               </button>
             </span>
           {% endfor %}
@@ -222,102 +196,172 @@
                 id="clear-filters-btn"
                 class="btn btn-sm btn-light-danger flex-shrink-0"
                 data-kt-filter-clear="true">
-          <i data-lucide="eraser" class="fs-3"></i>Limpiar todo
+          <i class="ki-outline ki-eraser fs-3"></i>Limpiar todo
         </button>
       </div>
     </div>
   {% endif %}
 
   <div class="card-body py-4">
-    {% with rows=site.rows %}
-    {% if rows %}
-      <div class="cm-table-scroll">
-      <table id="datatable" class="table table-sm align-middle table-row-dashed fs-7 gy-3" style="width:100%">
-        <caption class="visually-hidden">{% firstof site.title site.model_name|title "Listado" %}</caption>
-        <thead>
-          <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-            {% for field_name, label in site.fields %}
-              {% if forloop.first %}{% with prio="1" %}{% include "base/_list_header_cell.html" %}{% endwith %}
-              {% elif 'state' in field_name %}{% with prio="3" %}{% include "base/_list_header_cell.html" %}{% endwith %}
-              {% else %}{% with prio=forloop.counter|add:5 %}{% include "base/_list_header_cell.html" %}{% endwith %}{% endif %}
-            {% endfor %}
-            <th class="text-end min-w-125px all cm-actions-col" data-priority="1" aria-label="Acciones">
-              <span class="visually-hidden">Acciones</span>
+    {% if site.urls.mass_delete %}
+      <div id="bulk-toolbar"
+           class="d-none align-items-center justify-content-between bg-light-primary rounded p-3 mb-4"
+           data-mass-delete-url="{{ site.urls.mass_delete }}">
+        <div class="d-flex align-items-center gap-2">
+          <i class="ki-outline ki-check-circle fs-2 text-primary"></i>
+          <span class="fw-bold text-gray-800">
+            <span id="bulk-selected-count">0</span> seleccionado<span id="bulk-selected-plural">s</span>
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" id="bulk-clear-btn" class="btn btn-sm btn-light">
+            <i class="ki-outline ki-cross fs-3"></i>Cancelar
+          </button>
+          <button type="button" id="bulk-delete-btn" class="btn btn-sm btn-danger">
+            <i class="ki-outline ki-trash fs-3"></i>Eliminar seleccionados
+          </button>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="table-responsive">
+    <table id="datatable" class="table align-middle table-row-dashed fs-6 gy-5" style="width:100%">
+      <thead>
+        <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+          {% if site.urls.mass_delete %}
+            <th class="w-40px pe-0">
+              <div class="form-check form-check-sm form-check-custom form-check-solid">
+                <input class="form-check-input" type="checkbox" id="bulk-select-all" aria-label="Seleccionar todos">
+              </div>
             </th>
-          </tr>
-        </thead>
-        <tbody class="text-gray-700 fw-semibold">
-          {% for row in rows %}
-            <tr>
-              {% for value in row.values %}
-                {% if forloop.first %}
-                  <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:""|list_cell }}</span></td>
-                {% else %}
-                  <td>{{ value|default_if_none:""|list_cell }}</td>
-                {% endif %}
-              {% endfor %}
-              <td class="text-end text-nowrap">
+          {% endif %}
+          {% for field_name, label in site.fields %}
+            <th>{{ label }}</th>
+          {% endfor %}
+          <th class="text-end min-w-125px">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="text-gray-700 fw-semibold">
+        {% for row in site.rows %}
+          <tr>
+            {% if site.urls.mass_delete %}
+              <td class="pe-0">
+                <div class="form-check form-check-sm form-check-custom form-check-solid">
+                  <input class="form-check-input bulk-row-check" type="checkbox" value="{{ row.instance.pk }}" aria-label="Seleccionar fila">
+                </div>
+              </td>
+            {% endif %}
+            {% for value in row.values %}
+              {% if forloop.first and row.urls.detail %}
+                <td>
+                  <a href="{{ row.urls.detail }}" class="text-gray-800 text-hover-primary fw-bold">{{ value|default_if_none:"" }}</a>
+                </td>
+              {% else %}
+                <td>{{ value|default_if_none:"" }}</td>
+              {% endif %}
+            {% endfor %}
+            <td class="text-end text-nowrap cm-row-actions">
+              {# Desktop: explicit icon buttons. #}
+              <span class="d-none d-md-inline-flex align-items-center justify-content-end">
                 {% if row.urls.detail %}
                   <a href="{{ row.urls.detail }}" class="btn btn-icon btn-sm btn-light-primary me-1" data-bs-toggle="tooltip" title="Ver" aria-label="Ver detalle">
-                    <i data-lucide="eye" class="fs-4"></i>
+                    <i class="ki-outline ki-eye fs-2"></i>
                   </a>
                 {% endif %}
                 {% if row.urls.update %}
                   <a href="{{ row.urls.update }}" class="btn btn-icon btn-sm btn-light-warning me-1" data-bs-toggle="tooltip" title="Editar" aria-label="Editar registro">
-                    <i data-lucide="pencil" class="fs-4"></i>
+                    <i class="ki-outline ki-pencil fs-2"></i>
                   </a>
                 {% endif %}
                 {% if row.urls.delete %}
-                  <button type="button"
-                          class="btn btn-icon btn-sm btn-light-danger"
-                          data-bs-toggle="modal"
-                          data-bs-target="#cm-delete-modal"
-                          data-cm-delete-url="{{ row.urls.delete }}"
-                          data-cm-delete-label="{{ row.values.0|striptags }}"
-                          title="Eliminar"
-                          aria-label="Eliminar registro">
-                    <i data-lucide="trash-2" class="fs-4"></i>
-                  </button>
+                  <a href="{{ row.urls.delete }}" class="btn btn-icon btn-sm btn-light-danger" data-bs-toggle="tooltip" title="Eliminar" aria-label="Eliminar registro">
+                    <i class="ki-outline ki-trash fs-2"></i>
+                  </a>
                 {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>{# /.cm-table-scroll #}
-    {% else %}
-      <div class="text-center py-10">
-        <i data-lucide="folder-up" class="fs-3hx text-muted mb-3 d-block"></i>
-        {% if site.current_filters or request.GET.search %}
-          <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
-          <p class="text-muted fs-6 mb-4">No encontramos registros que cumplan los filtros aplicados.</p>
-          <a href="?" class="btn btn-light-primary btn-sm">
-            <i data-lucide="eraser" class="fs-3"></i>Limpiar filtros
-          </a>
-        {% else %}
-          <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
-          <p class="text-muted fs-6 mb-4">
-            Cuando registres el primer
-            {% firstof site|verbose_name site.model_name|lower %}
-            aparecerá aquí.
-          </p>
-          {% if site.urls.create %}
-            <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">
-              <i data-lucide="plus" class="fs-3"></i>Crear el primero
-            </a>
-          {% endif %}
-        {% endif %}
-      </div>
-    {% endif %}
-    {% endwith %}
+              </span>
+              {# Mobile: kebab menu. #}
+              <span class="d-md-none dropdown">
+                <button type="button"
+                        class="btn btn-icon btn-sm btn-light"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="Acciones del registro">
+                  <i class="ki-outline ki-dots-vertical fs-2"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% if row.urls.detail %}
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center gap-2" href="{{ row.urls.detail }}">
+                        <i class="ki-outline ki-eye fs-3 text-primary"></i>Ver
+                      </a>
+                    </li>
+                  {% endif %}
+                  {% if row.urls.update %}
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center gap-2" href="{{ row.urls.update }}">
+                        <i class="ki-outline ki-pencil fs-3 text-warning"></i>Editar
+                      </a>
+                    </li>
+                  {% endif %}
+                  {% if row.urls.delete %}
+                    {% if row.urls.detail or row.urls.update %}<li><hr class="dropdown-divider"></li>{% endif %}
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="{{ row.urls.delete }}">
+                        <i class="ki-outline ki-trash fs-3 text-danger"></i>Eliminar
+                      </a>
+                    </li>
+                  {% endif %}
+                </ul>
+              </span>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            {% if site.urls.mass_delete %}
+              <td colspan="{{ site.fields|length|add:2 }}" class="text-center py-10">
+            {% else %}
+              <td colspan="{{ site.fields|length|add:1 }}" class="text-center py-10">
+            {% endif %}
+              <i class="ki-outline ki-folder-up fs-3hx text-muted mb-3 d-block"></i>
+              {% if site.current_filters or request.GET.search %}
+                <h4 class="fs-4 fw-bold text-gray-900 mb-2">Sin coincidencias</h4>
+                <p class="text-muted fs-6 mb-4">No encontramos registros que cumplan los filtros aplicados.</p>
+                <a href="?" class="btn btn-light-primary btn-sm">
+                  <i class="ki-outline ki-eraser fs-3"></i>Limpiar filtros
+                </a>
+              {% else %}
+                <h4 class="fs-4 fw-bold text-gray-900 mb-2">Aún no hay registros</h4>
+                <p class="text-muted fs-6 mb-4">
+                  Comienza creando el primer registro de
+                  {% firstof site|verbose_name_plural site.model_name|title %}.
+                </p>
+                {% if site.urls.create %}
+                  <a href="{{ site.urls.create }}" class="btn btn-primary btn-sm">
+                    <i class="ki-outline ki-plus fs-3"></i>Crear el primero
+                  </a>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
 
     {% include "base/paginator.html" %}
   </div>
 </div>
+
+{% if site.urls.create %}
+  <a href="{{ site.urls.create }}"
+     class="btn btn-primary cm-fab d-md-none"
+     aria-label="Crear nuevo registro">
+    <i class="ki-outline ki-plus"></i>
+  </a>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'assets/plugins/custom/datatables/datatables.bundle.js' %}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     // --- View options (column picker + density), persisted in localStorage. ---
@@ -326,6 +370,7 @@
       const table = document.getElementById("datatable");
       if (!root || !table) return;
       const storageKey = root.dataset.cmStorageKey || "cm.list.default";
+      const offset = !!document.getElementById("bulk-toolbar") ? 1 : 0; // bulk-select column shifts indexes
 
       const readState = () => {
         try { return JSON.parse(localStorage.getItem(storageKey) || "{}") || {}; }
@@ -355,10 +400,13 @@
       // ---- Column picker ----
       const toggles = Array.from(root.querySelectorAll(".cm-col-toggle"));
       const applyColumn = (name, visible) => {
-        const colIndex = toggles.findIndex(t => t.dataset.colName === name);
-        if (colIndex < 0) return;
+        const idx = toggles.findIndex(t => t.dataset.colName === name);
+        if (idx < 0) return;
+        const colIndex = idx + offset; // skip bulk col when present
+        // headers
         const ths = table.querySelectorAll("thead tr > th");
         if (ths[colIndex]) ths[colIndex].style.display = visible ? "" : "none";
+        // body
         table.querySelectorAll("tbody tr").forEach(tr => {
           const cell = tr.querySelectorAll(":scope > td")[colIndex];
           if (cell) cell.style.display = visible ? "" : "none";
@@ -399,19 +447,15 @@
     if (window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
       const $tbl = jQuery("#datatable");
       if ($tbl.length) {
-        // No `responsive: true` here — we replaced the Responsive plugin with
-        // a CSS-only horizontal scroll wrapper (`.cm-table-scroll`) plus a
-        // narrow-viewport rule that hides low-priority columns. This removes
-        // the "ghost row" recalc bug we saw when the viewport changed mid-render.
+        const hasBulk = !!document.getElementById("bulk-toolbar");
+        const noSort = hasBulk ? [0, -1] : [-1];
+        // Disable responsive column-collapse: on mobile the table scrolls
+        // horizontally inside .table-responsive with sticky first/last cols.
         $tbl.DataTable({
+          responsive: false,
           paging: false,
           info: false,
-          // Server-side ordering owns sort now (see OrderingMixin +
-          // ``base/_list_header_cell.html``). DataTables is kept only for
-          // search box + responsive column hiding, so client-side ordering
-          // would create a conflicting visual state with the column arrows
-          // we render in the header.
-          ordering: false,
+          ordering: true,
           language: {
             search: "",
             searchPlaceholder: "Buscar...",
@@ -419,6 +463,115 @@
           },
           dom: 't',
           order: [],
+          columnDefs: [{ orderable: false, targets: noSort }]
+        });
+      }
+    }
+
+    // Row-action kebabs sit inside .table-responsive (overflow:auto). Force
+    // Popper to use the "fixed" strategy so the menu escapes the clip box.
+    if (window.bootstrap && bootstrap.Dropdown) {
+      document.querySelectorAll('.cm-row-actions [data-bs-toggle="dropdown"]').forEach(el => {
+        bootstrap.Dropdown.getInstance(el)?.dispose();
+        new bootstrap.Dropdown(el, {
+          popperConfig: (config) => ({ ...config, strategy: 'fixed' }),
+        });
+      });
+    }
+
+    // Bulk delete (mass_delete)
+    const bulkToolbar = document.getElementById("bulk-toolbar");
+    if (bulkToolbar) {
+      const selectAll = document.getElementById("bulk-select-all");
+      const countEl = document.getElementById("bulk-selected-count");
+      const pluralEl = document.getElementById("bulk-selected-plural");
+      const deleteBtn = document.getElementById("bulk-delete-btn");
+      const clearBtn = document.getElementById("bulk-clear-btn");
+      const massDeleteUrl = bulkToolbar.dataset.massDeleteUrl;
+
+      const getRowChecks = () => Array.from(document.querySelectorAll(".bulk-row-check"));
+      const getSelected = () => getRowChecks().filter(c => c.checked);
+
+      const refresh = () => {
+        const sel = getSelected();
+        const n = sel.length;
+        countEl.textContent = n;
+        pluralEl.textContent = n === 1 ? "" : "s";
+        bulkToolbar.classList.toggle("d-none", n === 0);
+        bulkToolbar.classList.toggle("d-flex", n > 0);
+        if (selectAll) {
+          const all = getRowChecks();
+          selectAll.checked = all.length > 0 && n === all.length;
+          selectAll.indeterminate = n > 0 && n < all.length;
+        }
+      };
+
+      if (selectAll) {
+        selectAll.addEventListener("change", () => {
+          getRowChecks().forEach(c => { c.checked = selectAll.checked; });
+          refresh();
+        });
+      }
+
+      document.addEventListener("change", (e) => {
+        if (e.target && e.target.classList.contains("bulk-row-check")) refresh();
+      });
+
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          getRowChecks().forEach(c => { c.checked = false; });
+          if (selectAll) selectAll.checked = false;
+          refresh();
+        });
+      }
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", async () => {
+          const ids = getSelected().map(c => c.value).filter(Boolean);
+          if (ids.length === 0) return;
+
+          const result = await Swal.fire({
+            title: `¿Eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"}?`,
+            text: "Esta acción no se puede deshacer.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sí, eliminar",
+            cancelButtonText: "Cancelar",
+            buttonsStyling: false,
+            customClass: {
+              confirmButton: "btn btn-sm btn-danger",
+              cancelButton: "btn btn-sm btn-light ms-2",
+            },
+          });
+          if (!result.isConfirmed) return;
+
+          const csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1];
+          const fd = new FormData();
+          ids.forEach(id => fd.append("ids", id));
+          deleteBtn.disabled = true;
+          try {
+            const resp = await fetch(massDeleteUrl, {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": csrf ? decodeURIComponent(csrf) : "",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: fd,
+              credentials: "same-origin",
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            window.location.reload();
+          } catch (err) {
+            console.error("bulk delete", err);
+            Swal.fire({
+              title: "No se pudo eliminar",
+              text: "Intenta de nuevo en unos segundos.",
+              icon: "error",
+              buttonsStyling: false,
+              customClass: { confirmButton: "btn btn-sm btn-primary" },
+            });
+            deleteBtn.disabled = false;
+          }
         });
       }
     }
