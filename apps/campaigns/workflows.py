@@ -11,5 +11,5 @@ class CampaignWorkflow(Workflow):
     class Choices(WorkflowChoices):
         CANCELED = 0, "Anulada", dict(visible=False, read_only=True)
         DRAFT = 1, "Borrador"
-        ACTIVE = 2, "Activa"
+        ACTIVE = 2, "Activa", dict(read_only=True)
         CLOSED = 3, "Cerrada", dict(read_only=True)

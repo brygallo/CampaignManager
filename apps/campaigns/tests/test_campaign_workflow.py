@@ -54,12 +54,14 @@ class CampaignWorkflowTests(TestCase):
     def test_default_state_is_draft(self):
         campaign = self._build_campaign()
         self.assertEqual(campaign.state, Campaign.workflow.DRAFT)
+        self.assertFalse(campaign.is_state_read_only())
 
     def test_activate_moves_draft_to_active(self):
         campaign = self._build_campaign()
         campaign.activate()
         campaign.save()
         self.assertEqual(campaign.state, Campaign.workflow.ACTIVE)
+        self.assertTrue(campaign.is_state_read_only())
 
     def test_close_blocked_when_scheduled_event_exists(self):
         campaign = self._build_campaign()

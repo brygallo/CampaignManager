@@ -53,6 +53,21 @@ class PoliticalAgendaRulesTests(TestCase):
         )
 
         self.assertFalse(request.blocks_candidate_agenda)
+        self.assertFalse(request.is_state_read_only())
+
+    def test_request_non_initial_states_are_read_only(self):
+        request = PoliticalAgendaRequest.objects.create(
+            campaign=self.campaign,
+            title="Solicitud en revisión",
+            event_type=self.event_type,
+            requester_name="Dirigente barrial",
+            proposed_start_at=self.start,
+            proposed_end_at=self.end,
+            state=PoliticalAgendaRequest.workflow.IN_REVIEW,
+            created_by=self.user,
+        )
+
+        self.assertTrue(request.is_state_read_only())
 
     def test_draft_event_does_not_block_candidate_agenda(self):
         event = PoliticalAgendaEvent.objects.create(
@@ -65,6 +80,7 @@ class PoliticalAgendaRulesTests(TestCase):
         )
 
         self.assertFalse(event.blocks_candidate_agenda)
+        self.assertFalse(event.is_state_read_only())
 
     def test_scheduled_event_blocks_candidate_agenda(self):
         event = PoliticalAgendaEvent(
@@ -79,6 +95,7 @@ class PoliticalAgendaRulesTests(TestCase):
         event.save()
 
         self.assertTrue(event.blocks_candidate_agenda)
+        self.assertTrue(event.is_state_read_only())
 
     def test_scheduled_event_rejects_overlap_for_same_candidate(self):
         scheduled = PoliticalAgendaEvent(
