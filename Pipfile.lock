@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2c8c55a345b8370efc53335a2fc19e52d11568baac8edbf086767e6fbbe0cb14"
+            "sha256": "b7baea3bb53b94bd02e6cb61a638eb51e324cbd19c3b16525a94ddc9c12c45ad"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -46,6 +46,23 @@
             ],
             "markers": "python_version >= '3.9'",
             "version": "==26.1.0"
+        },
+        "boto3": {
+            "hashes": [
+                "sha256:3567c6a1f31d8e6bf151c95f76a2b1f239cce243a768a31747c2ba141c9a0570",
+                "sha256:8b166545ca2d6ea49d308db38b9a4f2c54ff718f3d6a55b3fed0184dc2c21597"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10'",
+            "version": "==1.43.11"
+        },
+        "botocore": {
+            "hashes": [
+                "sha256:0108b5604df5a26918936c845e1e761866ee9ea8d1c1f9358ed3c69afdc37436",
+                "sha256:d7d479cc2809ec2728f2898521003adfb79bfe6a4615c59dfd222ec52b0cee6b"
+            ],
+            "markers": "python_version >= '3.10'",
+            "version": "==1.43.11"
         },
         "brotli": {
             "hashes": [
@@ -754,6 +771,14 @@
             ],
             "markers": "python_version >= '3.5'",
             "version": "==0.5.1"
+        },
+        "jmespath": {
+            "hashes": [
+                "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d",
+                "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==1.1.0"
         },
         "jsonfield": {
             "hashes": [
@@ -1620,6 +1645,14 @@
             ],
             "markers": "python_version >= '3.10'",
             "version": "==0.30.0"
+        },
+        "s3transfer": {
+            "hashes": [
+                "sha256:9edeb6d1c3c2f89d6050348548834ad8289610d886e5bf7b7207728bd43ce33a",
+                "sha256:ce3801712acf4ad3e89fb9990df97b4972e93f4b3b0004d214be5bce12814c20"
+            ],
+            "markers": "python_version >= '3.10'",
+            "version": "==0.17.0"
         },
         "setuptools": {
             "hashes": [

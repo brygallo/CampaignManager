@@ -13,7 +13,7 @@ from apps.campaigns.models import (
     Position,
 )
 from apps.field_surveys.models import AdvertisingType
-from apps.political_agenda.models import PoliticalAgendaEvent
+from apps.political_agenda.models import AgendaEventType, PoliticalAgendaEvent
 from apps.territorial_ads.models import PhysicalAdvertisement
 from apps.workflows.exceptions import WorkflowException
 
@@ -34,6 +34,10 @@ class CampaignWorkflowTests(TestCase):
             code="LONA",
             name="Lona",
             icon="picture",
+        )
+        self.event_type, _ = AgendaEventType.objects.get_or_create(
+            code="REUNION",
+            defaults={"name": "Reunión", "order": 10, "color": "#3e97ff", "icon": "people"},
         )
         self.start = timezone.now().replace(microsecond=0) + timedelta(days=1)
         self.end = self.start + timedelta(hours=2)
@@ -71,6 +75,7 @@ class CampaignWorkflowTests(TestCase):
         event = PoliticalAgendaEvent(
             campaign=campaign,
             title="Evento bloqueante",
+            event_type=self.event_type,
             start_at=self.start,
             end_at=self.end,
             created_by=self.user,
