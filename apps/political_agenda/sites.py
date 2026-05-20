@@ -3,7 +3,6 @@ from superadmin.decorators import register
 from core.audit import AuditContextMixin
 from core.base import (
     BaseSite,
-    BlockEditOnReadOnlyStateMixin,
     DetailMapsMixin,
     HideEmptyFieldsetsMixin,
 )
@@ -111,7 +110,6 @@ class PoliticalAgendaRequestSite(BaseSite):
     detail_template_name = "political_agenda/politicalagendarequest_detail.html"
     list_mixins = (OrderingMixin, WorkflowStateFilterMixin, DropdownFilterMixin)
     create_mixins = (AgendaMapInitialLocationMixin, SaveOptionsMixin)
-    update_mixins = (BlockEditOnReadOnlyStateMixin,)
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
     always_visible_fieldsets = (
         "Solicitud",
@@ -196,7 +194,6 @@ class PoliticalAgendaEventSite(BaseSite):
         DropdownFilterMixin,
     )
     create_mixins = (PrefillEventFromRequestMixin, AgendaMapInitialLocationMixin, SaveOptionsMixin)
-    update_mixins = (BlockEditOnReadOnlyStateMixin,)
     detail_mixins = (
         AgendaEventVisibilityQuerysetMixin,
         AuditContextMixin,

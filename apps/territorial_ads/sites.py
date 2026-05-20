@@ -3,7 +3,6 @@ from superadmin.decorators import register
 from core.audit import AuditContextMixin
 from core.base import (
     BaseSite,
-    BlockEditOnReadOnlyStateMixin,
     DetailMapsMixin,
     HideEmptyFieldsetsMixin,
 )
@@ -92,7 +91,7 @@ class PhysicalAdvertisementSite(BaseSite):
         PhysicalAdMapAjaxCreateMixin,
         SaveOptionsMixin,
     )
-    update_mixins = (PhysicalAdMapAjaxUpdateMixin, BlockEditOnReadOnlyStateMixin)
+    update_mixins = (PhysicalAdMapAjaxUpdateMixin,)
     delete_mixins = (MapAjaxDeleteMixin,)
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
 

@@ -88,9 +88,10 @@ class BlockEditOnReadOnlyStateMixin:
 
     A state opts in via ``dict(read_only=True)`` next to its label in the
     ``WorkflowChoices`` declaration (see ``apps/workflows/__init__.py``).
-    Wire this mixin on a ``ModelSite`` via ``update_mixins``; nothing else
-    is required because the rule travels with the workflow definition,
-    not with the site.
+    ``BaseSite`` wires this into every ``update_view`` automatically; sites
+    with custom ``update_mixins`` inherit it too. Models without workflows
+    pass through untouched because the guard only activates when the object
+    exposes ``is_state_read_only()``.
     """
 
     def dispatch(self, request, *args, **kwargs):
@@ -196,6 +197,7 @@ class BaseSite(ModelSite):
     # is already conditional on the context key.
     detail_mixins = (ActiveCampaignScopeMixin, AuditContextMixin, DetailMapsMixin)
     delete_mixins = (ActiveCampaignScopeMixin, ProtectedDeleteMixin)
+    update_mixins = (ActiveCampaignFormMixin, BlockEditOnReadOnlyStateMixin, SaveOptionsMixin)
     detail_maps = ()
 
     create_success_url = "detail"
@@ -229,8 +231,6 @@ class BaseSite(ModelSite):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        if not getattr(cls, "respect_active_campaign", True):
-            return
 
         def _prepend_unique(attr, mixin):
             if attr not in cls.__dict__:
@@ -247,6 +247,10 @@ class BaseSite(ModelSite):
             if any(m is mixin for m in current):
                 return
             setattr(cls, attr, current + (mixin,))
+
+        _prepend_unique("update_mixins", BlockEditOnReadOnlyStateMixin)
+        if not getattr(cls, "respect_active_campaign", True):
+            return
 
         for attr in cls._QUERYSET_MIXIN_ATTRS:
             _prepend_unique(attr, ActiveCampaignScopeMixin)

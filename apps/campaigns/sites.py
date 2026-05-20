@@ -2,7 +2,7 @@
 from superadmin.decorators import register
 
 from core.audit import AuditContextMixin
-from core.base import BaseSite, BlockEditOnReadOnlyStateMixin, DetailMapsMixin, ProtectedDeleteMixin
+from core.base import BaseSite, DetailMapsMixin, ProtectedDeleteMixin
 from core.list_mixins import DropdownFilterMixin, OrderingMixin, WorkflowStateFilterMixin
 
 from .list_mixins import VisibleCampaignsMixin
@@ -70,7 +70,7 @@ class CampaignSite(BaseSite):
     list_mixins = (VisibleCampaignsMixin, OrderingMixin, WorkflowStateFilterMixin, DropdownFilterMixin)
     detail_mixins = (VisibleCampaignsMixin, AuditContextMixin, DetailMapsMixin)
     delete_mixins = (VisibleCampaignsMixin, ProtectedDeleteMixin)
-    update_mixins = (VisibleCampaignsMixin, BlockEditOnReadOnlyStateMixin)
+    update_mixins = (VisibleCampaignsMixin,)
     list_fields = (
         "name",
         "election",
