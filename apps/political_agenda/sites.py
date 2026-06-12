@@ -221,6 +221,7 @@ class PoliticalAgendaEventSite(BaseSite):
             ("title", "event_type"),
             ("start_at", "end_at"),
             ("is_public",),
+            ("private_reference",),
         ),
         "Ubicación": (
             ("address",),

@@ -65,6 +65,7 @@ class CompetitorSite(BaseSite):
     list_fields = (
         "campaign",
         "list_number",
+        "acronym:Acrónimo",
         "political_organization",
         "candidate_name",
         "is_active:Activo",

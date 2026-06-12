@@ -2,6 +2,11 @@
 
 <div class="table-responsive inline-group" data-label="{{ label }}" data-errors="{{ formset.errors }}" id="{{ formset.prefix }}-group" data-prefix="{{ formset.prefix }}">
   {{ formset.management_form }}
+  {% if formset.non_form_errors %}
+    <div class="alert alert-danger py-2 px-4 mb-3">
+      {% for error in formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+  {% endif %}
   <table class="table table-row-dashed align-middle mb-0">
     <thead>
       <tr class="text-gray-600 fw-bold fs-7 text-uppercase">
@@ -15,24 +20,13 @@
     </thead>
     <tbody>
       {% for form in formset %}
-        <tr id="{{ formset.prefix }}-{{ forloop.counter0 }}" class="inline {{ formset.prefix }}">
-          {% for field in form.hidden_fields %}
-            {{ field }}
-          {% endfor %}
-          {% for field in form.visible_fields %}
-            <td>
-              {% if field.field.widget.input_type == "checkbox" %}
-                {{ field }}
-              {% else %}
-                {% render_field field class="form-control form-control-sm" %}
-              {% endif %}
-              {% if field.errors %}
-                <div class="text-danger small mt-1">{{ field.errors|join:" · " }}</div>
-              {% endif %}
-            </td>
-          {% endfor %}
-        </tr>
+        {% include "forms/formset_row.html" with formset=formset row_form=form row_index=forloop.counter0 %}
       {% endfor %}
     </tbody>
   </table>
+  {% if allow_add %}
+    <template data-formset-empty-form>
+      {% include "forms/formset_row.html" with formset=formset row_form=formset.empty_form row_index="__prefix__" %}
+    </template>
+  {% endif %}
 </div>

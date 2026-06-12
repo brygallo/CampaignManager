@@ -67,24 +67,23 @@
     });
   }
 
-  // Competitor pins always use the same icon: kind matters more than the
-  // specific advertising type (banner vs. sticker vs. lona) for at-a-glance
-  // map reading.
-  var COMPETITOR_ICON = "flag";
-
+  // Competitor pins show the party acronym (max 3 letters/numbers) inside a
+  // pointed pin so the tip marks the exact detection spot.
   function competitorPin(item) {
     var color = safeColor(item.color, "#d9214e");
+    var acronym = String(item.acronym || "")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .slice(0, 3)
+      .toUpperCase();
     return window.L.divIcon({
       className: "fs-pin fs-pin--competitor",
       html:
-        '<span class="fs-pin__diamond" style="border-color:' + color + '">' +
-          '<span class="fs-pin__diamond-icon" style="color:' + color + '">' +
-            '<i data-lucide="' + COMPETITOR_ICON + '"></i>' +
-          '</span>' +
+        '<span class="fs-pin__pointer" style="border-color:' + color + '">' +
+          '<span class="fs-pin__pointer-label" style="color:' + color + '">' + acronym + '</span>' +
         '</span>',
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
-      popupAnchor: [0, -22]
+      iconSize: [44, 50],
+      iconAnchor: [22, 47],
+      popupAnchor: [0, -47]
     });
   }
 
@@ -1017,7 +1016,7 @@
               icon: competitorPin(item),
               bubblingMouseEvents: false
             })
-              .bindTooltip(item.label + " · " + item.type_label, { direction: "top", offset: [0, -22] })
+              .bindTooltip(item.label + " · " + item.type_label, { direction: "top", offset: [0, -44] })
               .addTo(competitorLayer);
             marker.on("click", function () {
               openDetailModal(detailModalEl, item, "Detección de competencia");

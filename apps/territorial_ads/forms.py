@@ -8,7 +8,12 @@ from core.widgets import LeafletMapWidget
 from apps.campaigns.models import Campaign
 from apps.field_surveys.models import AdvertisingType
 
-from .models import AdvertisingCostType, AdvertisingRefusal, PhysicalAdvertisement
+from .models import (
+    AdvertisingCostType,
+    AdvertisingRefusal,
+    PhysicalAdvertisement,
+    PhysicalAdvertisementItem,
+)
 
 
 class CostTypeSelect2Widget(Select2Widget):
@@ -38,6 +43,34 @@ class CostTypeSelect2Widget(Select2Widget):
         return option
 
 
+class PhysicalAdvertisementItemForm(forms.ModelForm):
+    """Row form for the items inline: one advertising type + quantity."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        active_types = AdvertisingType.objects.filter(is_active=True).order_by(
+            "order", "name"
+        )
+        self.fields["advertisement_type"].queryset = active_types
+        self.fields["quantity"].min_value = 1
+        self.fields["quantity"].widget.attrs.update({"min": 1, "step": 1})
+
+    class Meta:
+        model = PhysicalAdvertisementItem
+        fields = ("advertisement_type", "quantity")
+
+
+PhysicalAdvertisementItemFormSet = forms.inlineformset_factory(
+    PhysicalAdvertisement,
+    PhysicalAdvertisementItem,
+    form=PhysicalAdvertisementItemForm,
+    extra=1,
+    min_num=1,
+    validate_min=True,
+    can_delete=True,
+)
+
+
 class PhysicalAdvertisementForm(ModelForm):
     offered_location = forms.CharField(
         label="Ubicación en mapa",
@@ -57,10 +90,6 @@ class PhysicalAdvertisementForm(ModelForm):
             )
             self.fields["campaign"].queryset = active_campaigns
             self.fields["campaign"].widget.queryset = active_campaigns
-        if "advertisement_type" in self.fields:
-            active_types = AdvertisingType.objects.filter(is_active=True).order_by("order", "name")
-            self.fields["advertisement_type"].queryset = active_types
-            self.fields["advertisement_type"].widget.queryset = active_types
 
     class Meta:
         model = PhysicalAdvertisement
@@ -73,8 +102,7 @@ class PhysicalAdvertisementForm(ModelForm):
                 ("offered_photo",),
             ),
             "Publicidad": (
-                ("campaign", "advertisement_type"),
-                ("quantity",),
+                ("campaign",),
             ),
             "Contacto que ofreció el lugar": (
                 ("owner_name", "owner_phone"),
@@ -95,16 +123,6 @@ class PhysicalAdvertisementForm(ModelForm):
                     "data-minimum-input-length": 0,
                     "data-app": "campaigns",
                     "data-model": "Campaign",
-                },
-            ),
-            "advertisement_type": ModelSelect2Widget(
-                model=AdvertisingType,
-                search_fields=["name__icontains", "code__icontains"],
-                max_results=100,
-                attrs={
-                    "data-minimum-input-length": 0,
-                    "data-app": "field_surveys",
-                    "data-model": "AdvertisingType",
                 },
             ),
             "cost_type": CostTypeSelect2Widget(
@@ -221,6 +239,10 @@ class AdvertisingRefusalForm(ModelForm):
 
 
 class ApprovalForm(forms.Form):
+    # ChangeStateView passes the advertisement so one instructions textarea
+    # can be built per registered advertising type.
+    needs_object = True
+
     width_meters = forms.DecimalField(
         label="Ancho (m)",
         max_digits=6,
@@ -235,12 +257,21 @@ class ApprovalForm(forms.Form):
         min_value=0,
         required=True,
     )
-    installation_instructions = forms.CharField(
-        label="Instrucciones para instalación",
-        help_text="Indica qué se requiere: escalera, andamio, permisos, etc.",
-        widget=forms.Textarea(attrs={"rows": 3}),
-        required=True,
-    )
+
+    def __init__(self, *args, obj=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.obj = obj
+        items = (
+            obj.items.select_related("advertisement_type") if obj is not None else []
+        )
+        for item in items:
+            self.fields[f"item_instructions_{item.pk}"] = forms.CharField(
+                label=f"Indicaciones — {item.quantity}× {item.advertisement_type.name}",
+                help_text="Indica qué se requiere: escalera, andamio, permisos, etc.",
+                widget=forms.Textarea(attrs={"rows": 2}),
+                required=True,
+                initial=item.installation_instructions,
+            )
 
 
 class AssignInstallationForm(forms.Form):
@@ -275,8 +306,34 @@ class AssignInstallationForm(forms.Form):
         return cleaned_data
 
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleImageField(forms.ImageField):
+    """ImageField that accepts several files from one ``multiple`` input."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single_clean(item, initial) for item in data]
+        return [single_clean(data, initial)]
+
+
 class InstallationEvidenceForm(forms.Form):
-    installation_photo = forms.ImageField(label="Foto de evidencia", required=True)
+    # ChangeStateView passes the advertisement so the photo count can be
+    # validated against the total of installed units.
+    needs_object = True
+
+    installation_photos = MultipleImageField(
+        label="Fotos de evidencia",
+        required=True,
+        help_text="Sube una foto por cada unidad instalada.",
+    )
     installation_location = forms.CharField(
         label="Ubicación GPS de instalación",
         required=False,
@@ -310,8 +367,27 @@ class InstallationEvidenceForm(forms.Form):
         required=False,
     )
 
+    def __init__(self, *args, obj=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.obj = obj
+        if obj is not None:
+            total = obj.total_units
+            self.fields["installation_photos"].help_text = (
+                f"Sube exactamente {total} foto(s): una por cada unidad instalada "
+                f"({obj.items_summary})."
+            )
+
     def clean(self):
         cleaned_data = super().clean()
+        photos = cleaned_data.get("installation_photos") or []
+        if self.obj is not None and photos:
+            total = self.obj.total_units
+            if len(photos) != total:
+                self.add_error(
+                    "installation_photos",
+                    f"Debes subir exactamente {total} foto(s): una por cada unidad "
+                    f"instalada (subiste {len(photos)}).",
+                )
         if cleaned_data.get("installed_latitude") in (None, "") or cleaned_data.get(
             "installed_longitude"
         ) in (None, ""):

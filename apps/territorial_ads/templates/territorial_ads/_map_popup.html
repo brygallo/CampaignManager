@@ -23,8 +23,7 @@
         </span>
       </div>
       <p class="m-0 mt-1 text-muted fw-semibold fs-7">
-        {{ ad.advertisement_type.name }}
-        {% if ad.quantity > 1 %}<span class="mx-2 text-gray-400">·</span>{{ ad.quantity }} unidades{% endif %}
+        {{ ad.items_summary }}
         {% if ad.width_meters and ad.height_meters %}<span class="mx-2 text-gray-400">·</span>{{ ad.width_meters }} × {{ ad.height_meters }} m{% endif %}
       </p>
       {% if ad.campaign %}
@@ -92,7 +91,7 @@
   {% endif %}
 
   {# ===== Photo strip ===== #}
-  {% if ad.offered_photo or ad.installation_photo or ad.damage_photo %}
+  {% if ad.offered_photo or ad.installation_photos.all or ad.damage_photo %}
     <div class="map-popup__gallery" role="list" aria-label="Galería de fotos del aviso">
       {% if ad.offered_photo %}
         <a class="map-popup__photo" role="listitem"
@@ -104,16 +103,16 @@
           </span>
         </a>
       {% endif %}
-      {% if ad.installation_photo %}
+      {% for installation_photo in ad.installation_photos.all %}
         <a class="map-popup__photo" role="listitem"
-           href="{{ ad.installation_photo.url }}" target="_blank" rel="noopener"
+           href="{{ installation_photo.photo.url }}" target="_blank" rel="noopener"
            aria-label="Abrir foto de instalación en pestaña nueva">
-          <img src="{{ ad.installation_photo.url }}" alt="Foto de la instalación" loading="lazy">
+          <img src="{{ installation_photo.photo.url }}" alt="Foto de la instalación" loading="lazy">
           <span class="map-popup__photo-caption">
-            <i data-lucide="check-circle-2" class="fs-7" aria-hidden="true"></i>Instalada
+            <i data-lucide="check-circle-2" class="fs-7" aria-hidden="true"></i>Instalada {{ forloop.counter }}
           </span>
         </a>
-      {% endif %}
+      {% endfor %}
       {% if ad.damage_photo %}
         <a class="map-popup__photo" role="listitem"
            href="{{ ad.damage_photo.url }}" target="_blank" rel="noopener"
@@ -234,7 +233,14 @@
               <span class="fw-bolder text-dark">Aprobada</span>
               <span class="text-muted fs-8">{{ ad.approved_at|date:"d M Y · H:i" }}{% if ad.approved_by %} · {{ ad.approved_by }}{% endif %}</span>
             </div>
-            {% if ad.installation_instructions %}<div class="text-gray-700 fs-7 mt-1">{{ ad.installation_instructions|linebreaksbr }}</div>{% endif %}
+            {% for item in ad.items.all %}
+              {% if item.installation_instructions %}
+                <div class="text-gray-700 fs-7 mt-1">
+                  <span class="fw-semibold">{{ item.quantity }}× {{ item.advertisement_type.name }}:</span>
+                  {{ item.installation_instructions|linebreaksbr }}
+                </div>
+              {% endif %}
+            {% endfor %}
           </div>
         </li>
       {% endif %}

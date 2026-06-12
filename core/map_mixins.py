@@ -79,10 +79,21 @@ class MapAjaxCreateMixin:
     def get_map_object_label(self):
         return getattr(self.object, "code", None) or str(self.object)
 
+    def _map_form_inlines(self, form):
+        """Superadmin inline formsets, when the site declares them."""
+        inlines = getattr(form, "inlines", None)
+        if inlines is None and hasattr(self, "get_inlines"):
+            inlines = self.get_inlines()
+        return inlines
+
     def _render_map_form(self, form):
         return render_to_string(
             self.get_map_form_template_name(),
-            {"form": form, "action_url": self.request.get_full_path()},
+            {
+                "form": form,
+                "action_url": self.request.get_full_path(),
+                "inlines": self._map_form_inlines(form),
+            },
             request=self.request,
         )
 
@@ -137,6 +148,13 @@ class MapAjaxUpdateMixin:
     def get_map_object_label(self):
         return getattr(self.object, "code", None) or str(self.object)
 
+    def _map_form_inlines(self, form):
+        """Superadmin inline formsets, when the site declares them."""
+        inlines = getattr(form, "inlines", None)
+        if inlines is None and hasattr(self, "get_inlines"):
+            inlines = self.get_inlines()
+        return inlines
+
     def _render_map_form(self, form):
         return render_to_string(
             self.get_map_form_template_name(),
@@ -144,6 +162,7 @@ class MapAjaxUpdateMixin:
                 "form": form,
                 "action_url": self.request.get_full_path(),
                 "is_update": True,
+                "inlines": self._map_form_inlines(form),
             },
             request=self.request,
         )

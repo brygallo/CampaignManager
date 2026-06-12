@@ -115,6 +115,7 @@ class PoliticalAgendaEventForm(ModelForm):
                 ("title", "event_type"),
                 ("start_at", "end_at"),
                 ("is_public",),
+                ("private_reference",),
             ),
             "Ubicación": (
                 ("address",),

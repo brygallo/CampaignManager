@@ -58,7 +58,8 @@ class CompetitorForm(ModelForm):
             "Competidor": (
                 ("campaign", "list_number"),
                 ("political_organization", "candidate_name"),
-                ("color", "is_active"),
+                ("acronym", "color"),
+                ("is_active",),
                 ("notes",),
             ),
         }

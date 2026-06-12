@@ -254,6 +254,21 @@ class FieldSurveyViewHelperTests(TestCase):
         self.assertIn(str(survey.pk), fieldsurvey_detail_url(survey.pk))
         self.assertIn(str(detection.pk), competitor_detection_detail_url(detection.pk))
 
+    def test_marker_acronym_prefers_explicit_acronym_and_falls_back_to_list_number(self):
+        with_acronym = Competitor.objects.create(
+            campaign=self.campaign,
+            list_number="23",
+            political_organization="Org acrónimo",
+            acronym="ab1",
+        )
+        without_acronym = Competitor.objects.create(
+            campaign=self.campaign,
+            list_number="1234",
+            political_organization="Org lista",
+        )
+        self.assertEqual(with_acronym.marker_acronym, "AB1")
+        self.assertEqual(without_acronym.marker_acronym, "123")
+
     def test_filter_mixin_applies_all_optional_filters(self):
         privileged = get_user_model().objects.create_user(
             username="fs5",

@@ -203,6 +203,8 @@
 
 {% block extra_js %}
 {{ block.super }}
+<script src="{% static 'vendors/formset/jquery.formset.js' %}"></script>
+<script src="{% static 'vendors/formset/formsets.init.js' %}"></script>
 <script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260519-create-gate-50m"></script>
 <script>
   // Gate suave: a veces se planifica desde la oficina. Solo pedimos ubicación

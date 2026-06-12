@@ -18,7 +18,7 @@ class PhysicalAdTransitions:
             icon="verify",
             color="success",
             title="Aprobar publicidad",
-            text="Registra las dimensiones e instrucciones para la instalación.",
+            text="Registra las dimensiones y las indicaciones para cada tipo de publicidad.",
             form="apps.territorial_ads.forms.ApprovalForm",
         ),
     )
@@ -27,15 +27,19 @@ class PhysicalAdTransitions:
         user=None,
         width_meters=None,
         height_meters=None,
-        installation_instructions=None,
         **kwargs,
     ):
         if width_meters is not None:
             self.width_meters = width_meters
         if height_meters is not None:
             self.height_meters = height_meters
-        if installation_instructions is not None:
-            self.installation_instructions = installation_instructions
+        # Per-item instructions arrive as ``item_instructions_<pk>`` keys
+        # (one textarea per advertising type in ApprovalForm).
+        for item in self.items.all():
+            instructions = kwargs.get(f"item_instructions_{item.pk}")
+            if instructions is not None:
+                item.installation_instructions = instructions
+                item.save(update_fields=["installation_instructions"])
         self.approved_by = user
         self.approved_at = timezone.now()
 
@@ -88,20 +92,25 @@ class PhysicalAdTransitions:
             icon="check-circle",
             color="success",
             title="Registrar instalación",
-            text="Carga la evidencia y las coordenadas GPS reales del momento de instalación.",
+            text="Carga una foto por cada unidad instalada y las coordenadas GPS reales del momento de instalación.",
             form="apps.territorial_ads.forms.InstallationEvidenceForm",
         ),
     )
     def mark_installed(
         self,
         user=None,
-        installation_photo=None,
+        installation_photos=None,
         installed_latitude=None,
         installed_longitude=None,
         installation_notes="",
         **kwargs,
     ):
-        self.installation_photo = installation_photo
+        photos = installation_photos or []
+        if not isinstance(photos, (list, tuple)):
+            photos = [photos]
+        self.installation_photos.all().delete()
+        for photo in photos:
+            self.installation_photos.create(photo=photo)
         self.installed_latitude = installed_latitude
         self.installed_longitude = installed_longitude
         self.installation_notes = installation_notes or ""
@@ -119,11 +128,11 @@ class PhysicalAdTransitions:
             icon="arrow-left",
             color="warning",
             title="Volver a pendiente de instalación",
-            text="La evidencia GPS, la foto y las notas se limpiarán para que se vuelva a registrar la instalación. ¿Continuar?",
+            text="La evidencia GPS, las fotos y las notas se limpiarán para que se vuelva a registrar la instalación. ¿Continuar?",
         ),
     )
     def revert_to_pending(self, user=None, **kwargs):
-        self.installation_photo = None
+        self.installation_photos.all().delete()
         self.installed_latitude = None
         self.installed_longitude = None
         self.installed_at = None

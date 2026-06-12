@@ -54,6 +54,9 @@
 
   function setHtml(node, html) {
     node.innerHTML = html;
+    if (window.cmFormsets) {
+      window.cmFormsets.init(node);
+    }
   }
 
   function updateCount(counterEl, count) {

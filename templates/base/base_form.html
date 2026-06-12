@@ -131,7 +131,7 @@
               </h4>
             </div>
             <div class="separator separator-dashed mb-5"></div>
-            {% include "forms/formset.html" with formset=formset %}
+            {% include "forms/formset.html" with formset=formset allow_add=True %}
           </div>
         {% endfor %}
       {% endblock %}
@@ -189,6 +189,8 @@
 
 {% block extra_js %}
   {{ block.super }}
+  <script src="{% static 'vendors/formset/jquery.formset.js' %}"></script>
+  <script src="{% static 'vendors/formset/formsets.init.js' %}"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const form = document.getElementById("main-form");

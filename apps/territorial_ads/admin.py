@@ -1,6 +1,22 @@
 from django.contrib import admin
 
-from .models import AdvertisingCostType, AdvertisingRefusal, PhysicalAdvertisement
+from .models import (
+    AdvertisingCostType,
+    AdvertisingRefusal,
+    InstallationPhoto,
+    PhysicalAdvertisement,
+    PhysicalAdvertisementItem,
+)
+
+
+class PhysicalAdvertisementItemInline(admin.TabularInline):
+    model = PhysicalAdvertisementItem
+    extra = 0
+
+
+class InstallationPhotoInline(admin.TabularInline):
+    model = InstallationPhoto
+    extra = 0
 
 
 @admin.register(PhysicalAdvertisement)
@@ -12,8 +28,9 @@ class PhysicalAdvertisementAdmin(admin.ModelAdmin):
         "cost_type",
         "state",
     )
-    list_filter = ("state", "advertisement_type", "cost_type")
+    list_filter = ("state", "items__advertisement_type", "cost_type")
     search_fields = ("code", "owner_name", "owner_phone", "address")
+    inlines = (PhysicalAdvertisementItemInline, InstallationPhotoInline)
 
 
 @admin.register(AdvertisingCostType)

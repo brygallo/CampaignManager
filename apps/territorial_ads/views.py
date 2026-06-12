@@ -112,7 +112,8 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         queryset = (
-            PhysicalAdvertisement.objects.select_related("campaign", "advertisement_type")
+            PhysicalAdvertisement.objects.select_related("campaign")
+            .prefetch_related("items__advertisement_type")
             .filter(
                 Q(installed_latitude__isnull=False, installed_longitude__isnull=False)
                 | Q(offered_latitude__isnull=False, offered_longitude__isnull=False)
@@ -177,14 +178,16 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "state_code": ad.state,
                 "state_label": ad.get_state_display(),
                 "color": STATE_COLORS.get(ad.state, "#3388ff"),
-                "type_icon": ad.advertisement_type.icon if ad.advertisement_type_id else "element-12",
-                "type_label": ad.advertisement_type.name if ad.advertisement_type_id else "",
+                "type_icon": ad.primary_type_icon,
+                "type_label": ad.items_summary,
                 "url": physicalad_detail_url(ad.id),
                 "campaign": ad.campaign.name if ad.campaign_id else "",
                 "address": ad.address or "",
                 "marker_kind": "ad",
             }
-            if "update" in ad_urls:
+            # Read-only workflow states reject the update view (409), so the
+            # map must not offer the edit action for them.
+            if "update" in ad_urls and not ad.is_state_read_only():
                 item["update_url"] = ad_urls["update"]
             if "delete" in ad_urls:
                 item["delete_url"] = ad_urls["delete"]
@@ -235,7 +238,6 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
         queryset = scope_queryset_to_active_campaign(
             PhysicalAdvertisement.objects.select_related(
                 "campaign",
-                "advertisement_type",
                 "cost_type",
                 "approved_by",
                 "assigned_installer",
@@ -244,7 +246,7 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "rejected_by",
                 "damage_reported_by",
                 "retired_by",
-            ),
+            ).prefetch_related("items__advertisement_type", "installation_photos"),
             request,
         )
         ad = get_object_or_404(
@@ -274,7 +276,7 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "state_color": STATE_COLORS.get(ad.state, "#3388ff"),
                 "stepper_steps": steps,
                 "is_rejected": ad.state == 0,
-                "type_icon": ad.advertisement_type.icon if ad.advertisement_type_id else "element-12",
+                "type_icon": ad.primary_type_icon,
                 "pin_kind": pin_kind,
                 "pin_lat": pin_lat,
                 "pin_lng": pin_lng,

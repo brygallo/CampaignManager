@@ -43,16 +43,17 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
             icon="picture",
         )
 
-    def _build_ad(self, **overrides):
+    def _build_ad(self, quantity=1, **overrides):
         data = {
             "campaign": self.campaign,
-            "advertisement_type": self.ad_type,
             "owner_name": "Dueño",
             "owner_phone": "0999999999",
             "address": "Av. Principal",
         }
         data.update(overrides)
-        return PhysicalAdvertisement.objects.create(**data)
+        ad = PhysicalAdvertisement.objects.create(**data)
+        ad.items.create(advertisement_type=self.ad_type, quantity=quantity)
+        return ad
 
     def test_default_state_is_ofrecida(self):
         ad = self._build_ad()
@@ -94,7 +95,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad.save()
         ad.mark_installed(
             user=self.user,
-            installation_photo=None,
+            installation_photos=None,
             installed_latitude=-1.234567,
             installed_longitude=-78.123456,
             installation_notes="Pegada en pared sur",

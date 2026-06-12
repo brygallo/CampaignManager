@@ -8,7 +8,6 @@ from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -34,6 +33,10 @@ STATE_BORDERS = {
 }
 
 VIEW_PRIVATE_PERM = "political_agenda.view_private_politicalagendaevent"
+
+# Neutral gray used for private events shown as "Ocupado" to users without
+# the view-private permission.
+MASKED_EVENT_COLOR = "#7e8299"
 
 
 def _can_view_private_events(user):
@@ -109,8 +112,7 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
             campaign_id = str(request.active_campaign.pk)
         if campaign_id:
             queryset = queryset.filter(campaign_id=campaign_id)
-        if not _can_view_private_events(request.user):
-            queryset = queryset.filter(is_public=True)
+        can_view_private = _can_view_private_events(request.user)
 
         start = _parse_iso(request.GET.get("start"))
         end = _parse_iso(request.GET.get("end"))
@@ -134,6 +136,43 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
 
         events = []
         for event in queryset:
+            # Private events stay on the calendar for everyone, but users
+            # without the permission only see the slot as "busy" plus the
+            # optional reference — never the title, place or details.
+            if not event.is_public and not can_view_private:
+                title = "Ocupado"
+                if event.private_reference:
+                    title = f"Ocupado — {event.private_reference}"
+                events.append(
+                    {
+                        "id": event.id,
+                        "title": title,
+                        "start": event.start_at.isoformat(),
+                        "end": event.end_at.isoformat(),
+                        "color": MASKED_EVENT_COLOR,
+                        "borderColor": MASKED_EVENT_COLOR,
+                        "url": "",
+                        "extendedProps": {
+                            "state": event.state,
+                            "state_label": event.get_state_display(),
+                            "type_id": None,
+                            "type_label": "",
+                            "type_icon": "lock",
+                            "campaign": "",
+                            "address": "",
+                            "latitude": None,
+                            "longitude": None,
+                            "responsible": "",
+                            "is_public": False,
+                            "is_masked": True,
+                            "popup_url": reverse(
+                                "political_agenda:calendar_popup",
+                                kwargs={"pk": event.id},
+                            ),
+                        },
+                    }
+                )
+                continue
             color = event.event_type.color if event.event_type_id else "#3e97ff"
             border = STATE_BORDERS.get(event.state, color)
             events.append(
@@ -186,7 +225,20 @@ class PoliticalAgendaEventPopupView(LoginRequiredMixin, PermissionRequiredMixin,
             pk=pk,
         )
         if not event.is_public and not _can_view_private_events(request.user):
-            raise PermissionDenied("Este evento es privado.")
+            # Show a minimal "Ocupado" card: schedule plus the optional
+            # reference, with no title, place or organizational details.
+            html = render_to_string(
+                "political_agenda/_calendar_popup_masked.html",
+                {"event": event, "masked_color": MASKED_EVENT_COLOR},
+                request=request,
+            )
+            return JsonResponse(
+                {
+                    "html": html,
+                    "title": "Ocupado",
+                    "url": "",
+                }
+            )
         color = event.event_type.color if event.event_type_id else "#3e97ff"
         border = STATE_BORDERS.get(event.state, color)
         html = render_to_string(

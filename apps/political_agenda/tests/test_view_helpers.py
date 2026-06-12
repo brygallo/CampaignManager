@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -58,22 +57,50 @@ class PoliticalAgendaViewHelperTests(TestCase):
         self.user.is_superuser = True
         self.assertTrue(_can_view_private_events(self.user))
 
-    def test_popup_raises_permission_denied_for_private_event(self):
+    def test_popup_masks_private_event_for_user_without_permission(self):
         self.user.user_permissions.add(Permission.objects.get(codename="view_politicalagendaevent"))
         event = PoliticalAgendaEvent.objects.create(
             campaign=self.campaign,
-            title="Privado",
+            title="Reunión secreta",
             event_type=self.event_type,
             start_at=timezone.now(),
             end_at=timezone.now() + timedelta(hours=1),
             is_public=False,
+            private_reference="Fuera de la ciudad",
             created_by=self.user,
         )
         request = self.factory.get("/")
         request.user = self.user
         request.active_campaign = self.campaign
-        with self.assertRaises(PermissionDenied):
-            PoliticalAgendaEventPopupView.as_view()(request, pk=event.pk)
+        response = PoliticalAgendaEventPopupView.as_view()(request, pk=event.pk)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["title"], "Ocupado")
+        self.assertEqual(payload["url"], "")
+        self.assertNotIn("Reunión secreta", payload["html"])
+        self.assertIn("Fuera de la ciudad", payload["html"])
+
+    def test_calendar_data_masks_private_events_as_busy(self):
+        event = PoliticalAgendaEvent.objects.create(
+            campaign=self.campaign,
+            title="Reunión reservada",
+            event_type=self.event_type,
+            start_at=timezone.now(),
+            end_at=timezone.now() + timedelta(hours=1),
+            is_public=False,
+            private_reference="Fuera de la ciudad",
+            created_by=self.user,
+        )
+        request = self.factory.get(reverse("political_agenda:calendar_data"))
+        request.user = self.manager
+        request.active_campaign = None
+        response = PoliticalAgendaCalendarDataView.as_view()(request)
+        payload = json.loads(response.content)
+        row = next(item for item in payload if item["id"] == event.id)
+        self.assertEqual(row["title"], "Ocupado — Fuera de la ciudad")
+        self.assertEqual(row["url"], "")
+        self.assertNotIn("Reunión reservada", json.dumps(payload))
+        self.assertTrue(row["extendedProps"]["is_masked"])
+        self.assertEqual(row["extendedProps"]["address"], "")
 
     def test_calendar_data_without_campaign_or_dates_can_show_private_events_for_privileged_user(self):
         self.manager.user_permissions.add(

@@ -6,4 +6,18 @@
       {% if is_update %}data-map-update-form="true"{% else %}data-map-create-form="true"{% endif %}>
   {% csrf_token %}
   {% include "forms/form.html" with form=form %}
+  {% if inlines %}
+    {% load model_meta %}
+    {% for formset in inlines %}
+      <div class="mt-8">
+        <div class="d-flex align-items-center mb-3">
+          <span class="bullet bullet-vertical h-25px bg-info me-3"></span>
+          <h5 class="text-gray-800 fw-bold mb-0 text-uppercase fs-7">
+            {% firstof formset.model|verbose_name_plural formset.prefix %}
+          </h5>
+        </div>
+        {% include "forms/formset.html" with formset=formset allow_add=True %}
+      </div>
+    {% endfor %}
+  {% endif %}
 </form>

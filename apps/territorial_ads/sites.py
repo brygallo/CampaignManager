@@ -10,7 +10,11 @@ from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import OrderingMixin, WorkflowStateFilterMixin
 from core.map_mixins import MapAjaxDeleteMixin
 
-from .forms import AdvertisingRefusalForm, PhysicalAdvertisementForm
+from .forms import (
+    AdvertisingRefusalForm,
+    PhysicalAdvertisementForm,
+    PhysicalAdvertisementItemFormSet,
+)
 from .views import (
     PhysicalAdMapAjaxCreateMixin,
     PhysicalAdMapAjaxUpdateMixin,
@@ -83,6 +87,8 @@ class AdvertisingCostTypeSite(BaseSite):
 @register("territorial_ads.PhysicalAdvertisement")
 class PhysicalAdvertisementSite(BaseSite):
     form_class = PhysicalAdvertisementForm
+    # Superadmin's InlinesMixin: per-type quantities edited as inline rows.
+    inlines = (PhysicalAdvertisementItemFormSet,)
     form_template_name = "territorial_ads/physicaladvertisement_form.html"
     list_template_name = "territorial_ads/physicaladvertisement_list.html"
     list_mixins = (OrderingMixin, WorkflowStateFilterMixin)
@@ -112,8 +118,8 @@ class PhysicalAdvertisementSite(BaseSite):
     )
     detail_fields = {
         "Publicidad": (
-            ("campaign", "advertisement_type"),
-            ("quantity",),
+            ("campaign",),
+            ("items_summary:Tipos de publicidad",),
         ),
         "Contacto que ofreció el lugar": (
             ("owner_name", "owner_phone"),
@@ -134,14 +140,14 @@ class PhysicalAdvertisementSite(BaseSite):
         "Aprobación": (
             ("approved_by", "approved_at"),
             ("width_meters", "height_meters"),
-            ("installation_instructions",),
+            ("items_instructions_summary:Indicaciones por tipo",),
         ),
         "Asignación de instalación": (
             ("assigned_installer", "installer_team"),
             ("assigned_by", "assigned_at"),
         ),
         "Instalación": (
-            ("installation_photo",),
+            ("installation_photos_summary:Fotos de evidencia",),
             ("installed_latitude", "installed_longitude"),
             ("installed_at", "installed_by"),
             ("installation_notes",),
@@ -162,7 +168,6 @@ class PhysicalAdvertisementSite(BaseSite):
     filter_fields = (
         "state",
         "campaign",
-        "advertisement_type",
         "cost_type",
         "assigned_installer",
         "is_active",

@@ -14,7 +14,7 @@ from .models import Profile, User
 
 
 class EmailOrUsernameAuthenticationForm(AuthenticationForm):
-    username = forms.CharField(label="Usuario o correo institucional")
+    username = forms.CharField(label="Usuario o correo")
 
     error_messages = {
         "invalid_login": (

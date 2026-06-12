@@ -110,8 +110,6 @@ class Command(BaseCommand):
                 address=address,
                 defaults={
                     "campaign": campaign,
-                    "advertisement_type": advertisement_type,
-                    "quantity": 1,
                     "width_meters": w,
                     "height_meters": h,
                     "owner_name": owner,
@@ -125,6 +123,9 @@ class Command(BaseCommand):
             )
             if was_created:
                 created += 1
+            ad.items.get_or_create(
+                advertisement_type=advertisement_type, defaults={"quantity": 1}
+            )
 
             # avanzar workflow hasta el estado objetivo
             self._advance_to(ad, target, user, wf)
@@ -151,22 +152,26 @@ class Command(BaseCommand):
             if ad.state >= state:
                 continue
             if method == "approve":
+                instructions = {
+                    f"item_instructions_{item.pk}": (
+                        "Se requiere escalera y dos personas para colocación segura."
+                    )
+                    for item in ad.items.all()
+                }
                 ad.approve(
                     user=user,
                     width_meters=ad.width_meters,
                     height_meters=ad.height_meters,
-                    installation_instructions=(
-                        "Se requiere escalera y dos personas para colocación segura."
-                    ),
+                    **instructions,
                 )
             elif method == "assign_installation":
                 ad.assign_installation(user=user, installer_team="Brigada Macas A")
             elif method == "mark_installed":
                 ad.mark_installed(
                     user=user,
-                    installation_photo=ContentFile(
-                        _make_image_bytes(), name=f"install_{ad.pk}.jpg"
-                    ),
+                    installation_photos=[
+                        ContentFile(_make_image_bytes(), name=f"install_{ad.pk}.jpg")
+                    ],
                     installed_latitude=ad.offered_latitude,
                     installed_longitude=ad.offered_longitude,
                     installation_notes="Instalación con permiso del dueño. Buen estado.",

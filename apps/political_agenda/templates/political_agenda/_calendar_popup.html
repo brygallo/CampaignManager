@@ -29,10 +29,15 @@
           </span>
         {% else %}
           <span class="badge badge-light-danger fw-semibold d-inline-flex align-items-center gap-1"
-                title="Evento privado: solo visible para usuarios con permiso «Puede ver eventos privados»"
+                title="Evento privado: el resto del equipo solo lo ve como «Ocupado»"
                 aria-label="Evento privado">
             <i data-lucide="lock" class="fs-7" aria-hidden="true"></i>Privado
           </span>
+          {% if event.private_reference %}
+            <span class="text-muted fs-8" title="Referencia visible para todo el equipo">
+              Referencia: {{ event.private_reference }}
+            </span>
+          {% endif %}
         {% endif %}
       </div>
       <p class="m-0 mt-1 text-muted fw-semibold fs-7">

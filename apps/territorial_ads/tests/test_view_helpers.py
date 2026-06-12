@@ -60,7 +60,6 @@ class TerritorialAdsViewHelperTests(TestCase):
     def test_map_popup_and_refusal_popup_success_paths(self):
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Dueño",
             owner_phone="099",
             address="Dir",
@@ -115,7 +114,6 @@ class TerritorialAdsViewHelperTests(TestCase):
     def test_map_data_state_filter_excludes_refusals(self):
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Dueño",
             owner_phone="099",
             address="Dir",
@@ -143,7 +141,6 @@ class TerritorialAdsViewHelperTests(TestCase):
         self.user.user_permissions.add(Permission.objects.get(codename="delete_advertisingrefusal"))
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Dueño",
             owner_phone="099",
             address="Dir",
@@ -184,7 +181,6 @@ class TerritorialAdsViewHelperTests(TestCase):
         self.user.user_permissions.add(Permission.objects.get(codename="delete_physicaladvertisement"))
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Instalada",
             owner_phone="099",
             address="Dir 2",
@@ -205,7 +201,6 @@ class TerritorialAdsViewHelperTests(TestCase):
         self.user.user_permissions.add(Permission.objects.get(codename="change_physicaladvertisement"))
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Aprobada",
             owner_phone="099",
             address="Dir 4",
@@ -223,7 +218,6 @@ class TerritorialAdsViewHelperTests(TestCase):
         for idx in range(2):
             PhysicalAdvertisement.objects.create(
                 campaign=self.campaign,
-                advertisement_type=self.ad_type,
                 owner_name=f"Dueño {idx}",
                 owner_phone="099",
                 address=f"Dir {idx}",
@@ -248,7 +242,6 @@ class TerritorialAdsViewHelperTests(TestCase):
     def test_map_popup_without_coordinates_returns_null_pin(self):
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Sin pin",
             owner_phone="099",
             address="Dir",
@@ -262,7 +255,6 @@ class TerritorialAdsViewHelperTests(TestCase):
     def test_map_popup_with_offered_coordinates_uses_offered_pin(self):
         ad = PhysicalAdvertisement.objects.create(
             campaign=self.campaign,
-            advertisement_type=self.ad_type,
             owner_name="Con oferta",
             owner_phone="099",
             address="Dir 3",

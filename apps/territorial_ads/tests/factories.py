@@ -31,14 +31,23 @@ class PhysicalAdvertisementFactory(factory.django.DjangoModelFactory):
         model = PhysicalAdvertisement
 
     campaign = factory.SubFactory(CampaignFactory)
-    advertisement_type = factory.SubFactory(AdvertisingTypeFactory)
-    quantity = 1
     owner_name = factory.Faker("name", locale="es_ES")
     owner_phone = "0999000444"
     cost_type = factory.SubFactory(AdvertisingCostTypeFactory)
     address = "Av. Macas Norte, frente al parque"
     offered_latitude = Decimal("-2.302000")
     offered_longitude = Decimal("-78.123000")
+
+    @factory.post_generation
+    def items(self, create, extracted, **kwargs):
+        """Create item lines; pass ``items=[(ad_type, qty), ...]`` to customize."""
+        if not create:
+            return
+        if extracted is None:
+            self.items.create(advertisement_type=AdvertisingTypeFactory(), quantity=1)
+        else:
+            for ad_type, quantity in extracted:
+                self.items.create(advertisement_type=ad_type, quantity=quantity)
 
 
 class AdvertisingRefusalFactory(factory.django.DjangoModelFactory):

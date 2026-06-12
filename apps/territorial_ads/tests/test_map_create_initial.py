@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from core.map_mixins import MapInitialLocationMixin
+from apps.territorial_ads.views import PhysicalAdMapInitialLocationMixin
 
 
 class _StubParent:
@@ -17,7 +17,7 @@ class _StubParent:
         )
 
 
-class _MixinUnderTest(MapInitialLocationMixin, _StubParent):
+class _MixinUnderTest(PhysicalAdMapInitialLocationMixin, _StubParent):
     pass
 
 
@@ -48,7 +48,8 @@ def test_map_initial_location_mixin_prefills_map_context():
 
     form = view.get_form()
 
-    assert form.fields["offered_location"].widget.attrs == {
-        "data-default-zoom": 17,
-        "data-default-basemap": "satellite",
-    }
+    attrs = form.fields["offered_location"].widget.attrs
+    # Tenant defaults may also inject data-default-lat/lng; only the
+    # query-param overrides are asserted here.
+    assert attrs["data-default-zoom"] == 17
+    assert attrs["data-default-basemap"] == "satellite"

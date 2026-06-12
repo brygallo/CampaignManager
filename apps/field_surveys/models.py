@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from tracing.models import BaseModel
 
@@ -167,8 +168,26 @@ class Competitor(BaseModel):
     list_number = models.CharField("Lista", max_length=16)
     political_organization = models.CharField("Organización política", max_length=180)
     candidate_name = models.CharField("Candidato", max_length=180, blank=True)
+    acronym = models.CharField(
+        "Acrónimo",
+        max_length=3,
+        blank=True,
+        validators=[
+            RegexValidator(
+                r"^[A-Za-z0-9]{1,3}$",
+                "Usa solo letras o números (máximo 3 caracteres).",
+            )
+        ],
+        help_text="Letras o números (máx. 3) mostrados en el pin del mapa; si se omite se usa la lista.",
+    )
     color = ColorField("Color", blank=True, help_text="Hex #RRGGBB")
     notes = models.TextField("Notas", blank=True)
+
+    @property
+    def marker_acronym(self):
+        """Up-to-3-character label shown inside the map pin."""
+        value = self.acronym or self.list_number or ""
+        return value[:3].upper()
 
     class Meta:
         verbose_name = "Competidor"

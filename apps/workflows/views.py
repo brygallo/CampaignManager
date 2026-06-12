@@ -41,7 +41,7 @@ class ChangeStateView(LoginRequiredMixin, View):
             if form_class:
                 template = render_to_string(
                     "workflows/form.html",
-                    context={"form": form_class(**self.get_kwargs_form())},
+                    context={"form": form_class(**self.get_kwargs_form(form_class, object))},
                 )
                 response = {"template": template}
                 return JsonResponse(response, status=200)
@@ -76,7 +76,7 @@ class ChangeStateView(LoginRequiredMixin, View):
             transition_method = self.get_transition(object, transition_name)
             form_class = self.get_form(transition_method)
             if form_class:
-                form = form_class(**self.get_kwargs_form())
+                form = form_class(**self.get_kwargs_form(form_class, object))
                 if not form.is_valid():
                     template = render_to_string(
                         "workflows/form.html",
@@ -110,7 +110,9 @@ class ChangeStateView(LoginRequiredMixin, View):
         if self.request.FILES:
             keys = self.request.FILES.keys()
             for key in keys:
-                value = self.request.FILES.get(str(key))
+                value = self.request.FILES.getlist(str(key))
+                if not (len(value) > 1):
+                    value = self.request.FILES.get(str(key))
                 kwargs.update({key: value})
         if self.request.POST:
             keys = self.request.POST.keys()
@@ -121,7 +123,7 @@ class ChangeStateView(LoginRequiredMixin, View):
                 kwargs.update({key: value})
         return kwargs
 
-    def get_kwargs_form(self):
+    def get_kwargs_form(self, form_class=None, object=None):
         kwargs = {}
         if self.request.method in ("POST", "PUT"):
             kwargs.update(
@@ -130,6 +132,10 @@ class ChangeStateView(LoginRequiredMixin, View):
                     "files": self.request.FILES,
                 }
             )
+        # Transition forms that declare ``needs_object = True`` receive the
+        # instance so they can build dynamic fields (e.g. per-item inputs).
+        if form_class is not None and getattr(form_class, "needs_object", False):
+            kwargs["obj"] = object
         return kwargs
 
     def get_object(self):

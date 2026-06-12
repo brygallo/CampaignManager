@@ -44,14 +44,7 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         related_name="physical_advertisements",
         verbose_name="Campaña",
     )
-    advertisement_type = models.ForeignKey(
-        AdvertisingType,
-        on_delete=models.PROTECT,
-        related_name="physical_advertisements",
-        verbose_name="Tipo de publicidad",
-    )
     code = models.CharField("Código", max_length=32, unique=True, blank=True)
-    quantity = models.PositiveSmallIntegerField("Cantidad", default=1)
     width_meters = models.DecimalField(
         "Ancho (m)", max_digits=6, decimal_places=2, null=True, blank=True
     )
@@ -120,11 +113,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         blank=True,
     )
     approved_at = models.DateTimeField("Fecha de aprobación", null=True, blank=True)
-    installation_instructions = models.TextField(
-        "Instrucciones para instalación",
-        blank=True,
-        help_text="Indica qué se requiere para instalar (escalera, andamio, permisos, etc.).",
-    )
     assigned_installer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -144,12 +132,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     )
     assigned_at = models.DateTimeField("Fecha de asignación", null=True, blank=True)
 
-    installation_photo = CompressedImageField(
-        "Foto de evidencia",
-        upload_to="territorial_ads/installations/",
-        null=True,
-        blank=True,
-    )
     installed_latitude = models.DecimalField(
         "Latitud GPS instalación",
         max_digits=9,
@@ -236,6 +218,108 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         if not self.code:
             self.code = f"PF-{self.pk:06d}"
             super().save(update_fields=["code"])
+
+    @property
+    def primary_item(self):
+        """First item by catalog order; drives the map pin icon."""
+        return self.items.select_related("advertisement_type").first()
+
+    @property
+    def primary_type_icon(self):
+        item = self.primary_item
+        return item.advertisement_type.icon if item else "element-12"
+
+    @property
+    def items_summary(self):
+        """Human-readable list like ``2× Valla · 3× Lona`` for lists and pins."""
+        return " · ".join(
+            f"{item.quantity}× {item.advertisement_type.name}"
+            for item in self.items.select_related("advertisement_type")
+        )
+
+    @property
+    def total_units(self):
+        """Total physical units across all items (one installation photo each)."""
+        return sum(item.quantity for item in self.items.all())
+
+    @property
+    def installation_photos_summary(self):
+        count = self.installation_photos.count()
+        return f"{count} foto(s)" if count else ""
+
+    @property
+    def items_instructions_summary(self):
+        """Per-type installation instructions for detail pages."""
+        return "\n".join(
+            f"{item.quantity}× {item.advertisement_type.name}: {item.installation_instructions}"
+            for item in self.items.select_related("advertisement_type")
+            if item.installation_instructions
+        )
+
+
+class PhysicalAdvertisementItem(BaseModel):
+    """One advertising type (with quantity) inside a physical advertisement.
+
+    A single offered spot can host several preloaded advertising types at
+    once (e.g. 2 vallas + 3 lonas); each line keeps its own quantity and,
+    once approved, its own installation instructions.
+    """
+
+    advertisement = models.ForeignKey(
+        PhysicalAdvertisement,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name="Publicidad",
+    )
+    advertisement_type = models.ForeignKey(
+        AdvertisingType,
+        on_delete=models.PROTECT,
+        related_name="physical_ad_items",
+        verbose_name="Tipo de publicidad",
+    )
+    quantity = models.PositiveSmallIntegerField("Cantidad", default=1)
+    installation_instructions = models.TextField(
+        "Indicaciones para instalación",
+        blank=True,
+        help_text="Indica qué se requiere para instalar este tipo (escalera, andamio, permisos, etc.).",
+    )
+
+    class Meta:
+        verbose_name = "Tipo de publicidad del lugar"
+        verbose_name_plural = "Tipos de publicidad del lugar"
+        ordering = ["advertisement_type__order", "advertisement_type__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["advertisement", "advertisement_type"],
+                name="unique_type_per_advertisement",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.quantity}× {self.advertisement_type.name}"
+
+
+class InstallationPhoto(BaseModel):
+    """Installation evidence photo: one photo per installed unit (valla)."""
+
+    advertisement = models.ForeignKey(
+        PhysicalAdvertisement,
+        on_delete=models.CASCADE,
+        related_name="installation_photos",
+        verbose_name="Publicidad",
+    )
+    photo = CompressedImageField(
+        "Foto de evidencia",
+        upload_to="territorial_ads/installations/",
+    )
+
+    class Meta:
+        verbose_name = "Foto de instalación"
+        verbose_name_plural = "Fotos de instalación"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"Foto #{self.pk}" if self.pk else "Foto"
 
 
 class AdvertisingRefusal(BaseModel):

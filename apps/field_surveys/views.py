@@ -460,6 +460,7 @@ class FieldSurveyMapDataView(FieldSurveyAccessMixin, FieldSurveyFilterMixin, Vie
                 if ad.advertising_type_id
                 else "element-12",
                 "color": ad.competitor.color or "#d9214e",
+                "acronym": ad.competitor.marker_acronym,
                 "url": competitor_detection_detail_url(ad.id),
             }
             if "update" in ad_urls:

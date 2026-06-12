@@ -216,10 +216,20 @@ class PoliticalAgendaEvent(BaseModel, PoliticalAgendaEventTransitions):
             "Activado: visible para todo el equipo del partido."
             '<details class="cm-help-disclosure">'
             "<summary></summary>"
-            "<p>Si lo desactivas, solo los usuarios con el permiso "
-            "«Puede ver eventos privados» podrán verlo en el listado y "
-            "el calendario.</p>"
+            "<p>Si lo desactivas, el resto del equipo solo verá el horario "
+            "como «Ocupado» (con la referencia opcional); el detalle queda "
+            "reservado a los usuarios con el permiso "
+            "«Puede ver eventos privados».</p>"
             "</details>"
+        ),
+    )
+    private_reference = models.CharField(
+        "Referencia del evento privado",
+        max_length=180,
+        blank=True,
+        help_text=(
+            "Texto opcional visible para todo el equipo cuando el evento es "
+            "privado (ej. «Fuera de la ciudad»)."
         ),
     )
     organizer_name = models.CharField("Organizador / contacto", max_length=180, blank=True)

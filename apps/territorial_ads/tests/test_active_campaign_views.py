@@ -64,7 +64,6 @@ class TerritorialAdsActiveCampaignViewTests(TestCase):
         self.ad_type = AdvertisingType.objects.create(code="LONA", name="Lona", icon="picture")
         self.first_ad = PhysicalAdvertisement.objects.create(
             campaign=self.first_campaign,
-            advertisement_type=self.ad_type,
             owner_name="Dueño A",
             owner_phone="0999999999",
             address="Av. A",
@@ -73,7 +72,6 @@ class TerritorialAdsActiveCampaignViewTests(TestCase):
         )
         self.second_ad = PhysicalAdvertisement.objects.create(
             campaign=self.second_campaign,
-            advertisement_type=self.ad_type,
             owner_name="Dueño B",
             owner_phone="0988888888",
             address="Av. B",
