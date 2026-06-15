@@ -196,7 +196,6 @@ class Campaign(BaseModel, CampaignTransitions, TransitionRequirementsMixin):
                 PhysicalAdvertisement.workflow.APROBADA,
                 PhysicalAdvertisement.workflow.PENDIENTE_INSTALACION,
                 PhysicalAdvertisement.workflow.INSTALADA,
-                PhysicalAdvertisement.workflow.DANADA,
             ],
         ).count()
         return {

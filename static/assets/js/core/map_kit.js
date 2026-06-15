@@ -1366,14 +1366,21 @@
       return distanceMeters !== null && distanceMeters <= createGateMeters;
     }
 
-    function showCreateZoomGateMessage() {
-      var distanceMeters = getCreateGateDistanceMeters();
-      var roundedMeters = roundMetersForUi(distanceMeters);
-      var message = "Acerca el mapa hasta " + createGateMeters + " m o menos para abrir este menu.";
-      if (roundedMeters !== null && roundedMeters > createGateMeters) {
-        message = "Acerca el mapa: ahora esta en aprox. " + roundedMeters + " m. Debe estar en " + createGateMeters + " m o menos.";
-      }
-      showStatus(message, "danger", 3500);
+    function zoomToCreateGate(latlng) {
+      var targetZoom = findZoomForTargetMeters(
+        map,
+        latlng,
+        createGateMeters,
+        scaleReferenceWidthPx
+      );
+      // Center on the clicked point and zoom in so the next click clears the
+      // gate. Never zoom out if the user is already closer than required.
+      map.setView(latlng, Math.max(map.getZoom(), targetZoom));
+      showStatus(
+        "Acercando a " + createGateMeters + " m. Vuelve a tocar el punto para agregar.",
+        "info",
+        3500
+      );
     }
 
     map.on("click", function (event) {
@@ -1389,7 +1396,7 @@
         return;
       }
       if (!canOpenCreateFromMap()) {
-        showCreateZoomGateMessage();
+        zoomToCreateGate(event.latlng);
         return;
       }
       if (config.onMapClick) {
