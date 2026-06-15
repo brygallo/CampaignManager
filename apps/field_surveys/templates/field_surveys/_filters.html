@@ -29,6 +29,32 @@ to preserve selected values.
     </div>
   </div>
 
+  {% if active_campaign and active_campaign_filter_id and active_campaign_filter_id != active_campaign.pk|stringformat:"s" %}
+    {# The page-level campaign filter overrides the navbar's active campaign;
+       surface the divergence so the user isn't misled by the navbar label,
+       and offer a one-click sync. #}
+    <div class="card-body pt-0 pb-3">
+      <div class="d-flex flex-wrap align-items-center gap-2 bg-light-warning border border-warning border-dashed rounded px-3 py-2">
+        <i data-lucide="alert-triangle" class="fs-4 text-warning flex-shrink-0"></i>
+        <span class="fs-8 text-gray-800 flex-grow-1">
+          Este filtro muestra una campaña distinta de tu campaña activa
+          («{{ active_campaign.name }}»).
+        </span>
+        {% for campaign in filter_campaigns %}
+          {% if active_campaign_filter_id == campaign.id|stringformat:"s" %}
+            <form method="post" action="{% url 'campaigns:switch_active' campaign.id %}" class="m-0">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button type="submit" class="btn btn-sm btn-light-warning text-nowrap">
+                <i data-lucide="refresh-cw" class="fs-7 me-1"></i>Hacerla mi campaña activa
+              </button>
+            </form>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
   {% if active_filters.campaign or active_filters.brigadier or active_filters.support_level or active_filters.advertising_response or active_filters.date_from or active_filters.date_to %}
     <div class="card-body pt-0 pb-3 d-flex flex-wrap gap-2">
       {% for campaign in filter_campaigns %}

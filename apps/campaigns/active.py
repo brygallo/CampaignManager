@@ -48,6 +48,24 @@ def visible_campaigns_queryset(queryset, user):
     return queryset.filter(is_active=True)
 
 
+def is_campaign_read_only(campaign) -> bool:
+    """True when records must not be created/edited under ``campaign``.
+
+    Archived campaigns (``is_active=False``) and campaigns in a terminal
+    workflow state (CLOSED / CANCELED) are browsing-only scopes: lists may
+    still be filtered by them, but forms must ask for an operational
+    campaign explicitly.
+    """
+    if campaign is None:
+        return False
+    if not getattr(campaign, "is_active", True):
+        return True
+    workflow = getattr(type(campaign), "workflow", None)
+    if workflow is None:
+        return False
+    return campaign.state in {workflow.CLOSED, workflow.CANCELED}
+
+
 def get_session_campaign_id(request) -> int | None:
     """Return the campaign id stored in the session, or ``None``."""
     session = getattr(request, "session", None)
@@ -94,7 +112,12 @@ def resolve_active_campaign(request):
 
     try:
         if stored_id is not None:
-            campaign = Campaign.objects.filter(pk=stored_id, is_active=True).first()
+            stored_qs = Campaign.objects.filter(pk=stored_id)
+            # Users with the historical-campaigns permission may keep an
+            # archived campaign selected (read-only browsing scope).
+            if not can_view_historical_campaigns(getattr(request, "user", None)):
+                stored_qs = stored_qs.filter(is_active=True)
+            campaign = stored_qs.first()
             if campaign is not None:
                 return campaign
             # Stored id no longer points anywhere — drop it before falling back.
@@ -155,18 +178,20 @@ def list_available_campaigns(request_or_user=None, limit: int = 50):
     """Return a small, ordered queryset for the navbar selector.
 
     Default campaign first, then ACTIVE state (workflow value 1), then
-    newest by ``start_date``. Empty queryset is fine — callers handle the
-    "no campaigns yet" case.
+    newest by ``start_date``. Archived campaigns sink to the bottom and
+    only appear for users with the historical-campaigns permission
+    (``visible_campaigns_queryset`` hides them otherwise). Empty queryset
+    is fine — callers handle the "no campaigns yet" case.
     """
     Campaign = _campaign_model()
     workflow = Campaign.workflow
     user = getattr(request_or_user, "user", request_or_user)
     return (
         visible_campaigns_queryset(Campaign.objects.all(), user)
-        .filter(is_active=True)
         .select_related("candidate", "movement")
         .order_by(
             "-is_default",
+            "-is_active",
             # ACTIVE first, everything else after.
             models_case_active(workflow.ACTIVE),
             "-start_date",

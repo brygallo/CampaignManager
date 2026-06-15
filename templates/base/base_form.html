@@ -106,6 +106,23 @@
 {% endblock %}
 
 {% block content %}
+{% if active_campaign_blocked %}
+  {# The active campaign can't receive new records (archived or in a
+     terminal workflow state), so the campaign field below is shown
+     unlocked — this alert explains why the usual auto-fill didn't happen. #}
+  <div class="alert alert-warning d-flex align-items-center p-4 mb-5" role="alert">
+    <i data-lucide="lock" class="fs-2 text-warning me-3 flex-shrink-0"></i>
+    <div class="d-flex flex-column fs-7">
+      <span class="fw-bold">La campaña activa es de solo lectura</span>
+      <span>
+        «{{ active_campaign.name }}» está
+        {% if not active_campaign.is_active %}archivada{% else %}{{ active_campaign.get_state_display|lower }}{% endif %},
+        por lo que no se pueden guardar registros en ella.
+        Elige una campaña operativa en el campo «Campaña» del formulario.
+      </span>
+    </div>
+  </div>
+{% endif %}
 <div class="card">
   <div class="card-body">
     <form id="main-form"

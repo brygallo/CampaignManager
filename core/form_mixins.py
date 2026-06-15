@@ -46,18 +46,16 @@ class ActiveCampaignFormMixin:
     def _active_campaign_is_editable(self, active) -> bool:
         """Return True when records can be created/edited under ``active``.
 
-        CLOSED and CANCELED campaigns are terminal states (`read_only=True`
-        in ``CampaignWorkflow``). The session-level "active campaign" is
-        still useful for browsing scope on those, but the create/update
+        CLOSED / CANCELED campaigns and archived ones (``is_active=False``)
+        are browsing-only scopes. The session-level "active campaign" is
+        still useful for filtering lists on those, but the create/update
         forms must not silently associate new records with them.
         """
+        from apps.campaigns.active import is_campaign_read_only
+
         if active is None:
             return False
-        workflow = getattr(type(active), "workflow", None)
-        if workflow is None:
-            return True
-        terminal = {workflow.CLOSED, workflow.CANCELED}
-        return active.state not in terminal
+        return not is_campaign_read_only(active)
 
     def get_initial(self):
         initial = super().get_initial()
@@ -101,6 +99,24 @@ class ActiveCampaignFormMixin:
         field.widget = forms.HiddenInput()
         field.required = True
         return form
+
+    def get_context_data(self, **kwargs):
+        """Flag the template when the active campaign can't receive records.
+
+        ``active_campaign_blocked`` drives an explanatory alert in
+        ``base_form.html``: without it the campaign field just "appears"
+        on the form and the user has no idea why the usual auto-fill
+        didn't happen.
+        """
+        context = super().get_context_data(**kwargs)
+        active = getattr(self.request, "active_campaign", None)
+        context["active_campaign_blocked"] = bool(
+            active is not None
+            and not self._active_campaign_is_editable(active)
+            and self._site_respects_active_campaign()
+            and self._model_has_campaign_field()
+        )
+        return context
 
 
 class SaveOptionsMixin:

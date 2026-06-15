@@ -13,7 +13,11 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from apps.campaigns.active import clear_active_campaign, set_active_campaign
+from apps.campaigns.active import (
+    can_view_historical_campaigns,
+    clear_active_campaign,
+    set_active_campaign,
+)
 from apps.campaigns.models import Campaign
 
 # Matches detail / edit / delete URL patterns produced by ``superadmin``:
@@ -79,8 +83,13 @@ def switch_active_campaign(request, pk: int):
 
     The queryset is implicitly scoped to the current tenant schema by
     django-tenants, so a forged id from another tenant simply 404s.
+    Archived campaigns are selectable only with the historical-campaigns
+    permission (read-only browsing scope).
     """
-    campaign = get_object_or_404(Campaign, pk=pk, is_active=True)
+    queryset = Campaign.objects.all()
+    if not can_view_historical_campaigns(request.user):
+        queryset = queryset.filter(is_active=True)
+    campaign = get_object_or_404(queryset, pk=pk)
     set_active_campaign(request, campaign)
     messages.success(request, f"Campaña activa: {campaign}")
     return HttpResponseRedirect(_safe_next(request, reverse("home")))

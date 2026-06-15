@@ -89,8 +89,34 @@ class ActiveCampaignScopeMixin:
             return qs
         active = getattr(self.request, "active_campaign", None)
         if active is None:
-            return qs
+            # "Todas" mode mixes records from several campaigns, and
+            # ``get_context_data`` labels each row with its campaign —
+            # prefetch the FK so that doesn't become an N+1.
+            return qs.select_related(self._scope_field_name())
         return qs.filter(**{self._scope_field_name(): active.pk})
+
+    def get_context_data(self, **kwargs):
+        """Label rows with their campaign while browsing in "Todas" mode.
+
+        Records from several campaigns are mixed in the same table, so each
+        row needs to say which campaign it belongs to (rendered by
+        ``base_list.html`` next to the first column).
+        """
+        context = super().get_context_data(**kwargs)
+        if not self._scope_enabled():
+            return context
+        if getattr(self.request, "active_campaign", None) is not None:
+            return context
+        context["campaign_scope_all_mode"] = True
+        site_ctx = context.get("site")
+        rows = site_ctx.get("rows") if isinstance(site_ctx, dict) else None
+        if not rows:
+            return context
+        field_name = self._scope_field_name()
+        for row in rows:
+            campaign = getattr(row.get("instance"), field_name, None)
+            row["campaign_label"] = str(campaign) if campaign else ""
+        return context
 
 
 class OrderingMixin:

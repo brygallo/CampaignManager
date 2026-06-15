@@ -92,6 +92,17 @@
 {% endblock %}
 
 {% block content %}
+{% if campaign_scope_all_mode %}
+  {# "Todas las campañas" mode mixes records from several campaigns; each
+     row shows its campaign badge (see ActiveCampaignScopeMixin). #}
+  <div class="alert bg-light-info border border-info border-dashed d-flex align-items-center px-4 py-3 mb-5" role="status">
+    <i data-lucide="layers" class="fs-2 text-info me-3 flex-shrink-0"></i>
+    <span class="fs-7 text-gray-800">
+      Estás viendo registros de <span class="fw-bold">todas las campañas</span>.
+      Cada fila indica la campaña a la que pertenece.
+    </span>
+  </div>
+{% endif %}
 <div class="card">
   {% block list_filters %}
     {% if state_filter_items %}
@@ -251,7 +262,15 @@
             <tr>
               {% for value in row.values %}
                 {% if forloop.first %}
-                  <td><span class="text-gray-800 fw-bold">{{ value|default_if_none:""|list_cell }}</span></td>
+                  <td>
+                    <span class="text-gray-800 fw-bold">{{ value|default_if_none:""|list_cell }}</span>
+                    {% if campaign_scope_all_mode and row.campaign_label %}
+                      <span class="badge badge-light fs-9 d-block mt-1 text-truncate mw-200px"
+                            title="Campaña: {{ row.campaign_label }}">
+                        <i data-lucide="megaphone" class="fs-9 me-1"></i>{{ row.campaign_label }}
+                      </span>
+                    {% endif %}
+                  </td>
                 {% else %}
                   <td>{{ value|default_if_none:""|list_cell }}</td>
                 {% endif %}

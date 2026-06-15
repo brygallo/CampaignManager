@@ -119,21 +119,36 @@ def active_campaign(request):
     ``request.active_campaign`` is set by ``ActiveCampaignMiddleware``. We
     list candidates lazily so the navbar can show a selector when there is
     more than one campaign in the tenant. No-op on the public schema.
+
+    The campaign list is memoized on the request: context processors run
+    once per rendered template (including partials in the same response),
+    and the navbar query shouldn't repeat for each of them.
     """
     tenant = getattr(request, "tenant", None)
     if not tenant or getattr(tenant, "schema_name", None) == get_public_schema_name():
         return {}
 
-    try:
-        from apps.campaigns.active import list_available_campaigns
+    campaigns = getattr(request, "_available_campaigns_cache", None)
+    if campaigns is None:
+        try:
+            from apps.campaigns.active import list_available_campaigns
 
-        campaigns = list(list_available_campaigns(request))
-    except DatabaseError:
-        return {}
+            campaigns = list(list_available_campaigns(request))
+        except DatabaseError:
+            return {}
+        request._available_campaigns_cache = campaigns
 
+    from apps.campaigns.active import is_campaign_read_only
+
+    active = getattr(request, "active_campaign", None)
     return {
-        "active_campaign": getattr(request, "active_campaign", None),
+        "active_campaign": active,
         "available_campaigns": campaigns,
+        # Tenant-schema marker so the navbar can render the selector shell
+        # (e.g. the "create first campaign" CTA) even with zero campaigns.
+        "campaign_selector_enabled": True,
+        # Terminal-state or archived campaign: browsing-only scope.
+        "active_campaign_read_only": is_campaign_read_only(active),
     }
 
 

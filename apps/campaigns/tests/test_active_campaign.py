@@ -17,6 +17,7 @@ from apps.campaigns.active import (
     SESSION_KEY,
     can_view_historical_campaigns,
     clear_active_campaign,
+    is_campaign_read_only,
     list_available_campaigns,
     resolve_active_campaign,
     scope_queryset_to_active_campaign,
@@ -149,6 +150,35 @@ class ResolveActiveCampaignTests(TestCase):
         self.assertIsNone(resolve_active_campaign(request))
         self.assertNotIn(SESSION_KEY, request.session)
 
+    def test_archived_campaign_restored_from_session_with_permission(self):
+        archived = _make_campaign("Historica", is_active=False)
+        _make_campaign("Operativa")
+        user = get_user_model().objects.create_user(
+            username="historian", email="historian@example.com", password="x"
+        )
+        user.user_permissions.add(
+            Permission.objects.get(codename="view_historical_campaigns")
+        )
+        request = self.builder()
+        request.user = get_user_model().objects.get(pk=user.pk)
+        request.session[SESSION_KEY] = archived.pk
+        self.assertEqual(resolve_active_campaign(request), archived)
+
+    def test_auto_select_never_picks_archived_even_with_permission(self):
+        # The permission allows *keeping* an archived selection, but the
+        # default/single-campaign auto-pick must stay on operational ones.
+        _make_campaign("Historica", is_active=False, is_default=True)
+        operational = _make_campaign("Operativa")
+        user = get_user_model().objects.create_user(
+            username="historian2", email="historian2@example.com", password="x"
+        )
+        user.user_permissions.add(
+            Permission.objects.get(codename="view_historical_campaigns")
+        )
+        request = self.builder()
+        request.user = get_user_model().objects.get(pk=user.pk)
+        self.assertEqual(resolve_active_campaign(request), operational)
+
 
 class ActiveCampaignHelpersTests(TestCase):
     def setUp(self):
@@ -208,6 +238,29 @@ class ActiveCampaignHelpersTests(TestCase):
         )
         refreshed = get_user_model().objects.get(pk=self.user.pk)
         self.assertTrue(can_view_historical_campaigns(refreshed))
+
+    def test_list_available_campaigns_includes_archived_with_permission(self):
+        operational = _make_campaign("Operativa")
+        archived = _make_campaign("Historica", is_active=False)
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_historical_campaigns")
+        )
+        refreshed = get_user_model().objects.get(pk=self.user.pk)
+        campaigns = list(list_available_campaigns(refreshed))
+        self.assertEqual({c.pk for c in campaigns}, {operational.pk, archived.pk})
+        # Archived campaigns sink below operational ones.
+        self.assertEqual(campaigns[-1], archived)
+
+    def test_is_campaign_read_only(self):
+        operational = _make_campaign("Operativa2")
+        archived = _make_campaign("Archivada2", is_active=False)
+        closed = _make_campaign("Cerrada2")
+        Campaign.objects.filter(pk=closed.pk).update(state=Campaign.workflow.CLOSED)
+        closed = Campaign.objects.get(pk=closed.pk)
+        self.assertFalse(is_campaign_read_only(None))
+        self.assertFalse(is_campaign_read_only(operational))
+        self.assertTrue(is_campaign_read_only(archived))
+        self.assertTrue(is_campaign_read_only(closed))
 
 
 class CampaignDefaultFlagTests(TestCase):
@@ -290,6 +343,20 @@ class SwitchActiveCampaignViewTests(TestCase):
         request = self._request(reverse("campaigns:switch_active", args=[inactive.pk]))
         with self.assertRaisesMessage(Exception, ""):
             switch_active_campaign(request, inactive.pk)
+
+    def test_can_switch_to_inactive_campaign_with_permission(self):
+        inactive = _make_campaign("Inactiva2", is_active=False)
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_historical_campaigns")
+        )
+        request = self._request(
+            reverse("campaigns:switch_active", args=[inactive.pk]),
+            data={"next": "/somewhere/"},
+        )
+        request.user = get_user_model().objects.get(pk=self.user.pk)
+        response = switch_active_campaign(request, inactive.pk)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(request.session[SESSION_KEY], inactive.pk)
 
     def test_safe_next_blocks_external_redirects(self):
         request = self._request(
@@ -605,6 +672,20 @@ class FormMixinTests(TestCase):
         self.assertNotIsInstance(field.widget, HiddenInput)
         # Queryset must NOT be narrowed to the closed campaign.
         self.assertGreater(field.queryset.count(), 1)
+
+    def test_archived_campaign_leaves_field_visible(self):
+        # Archived campaigns are browsing-only: the form must not auto-fill
+        # them even when the workflow state is not terminal.
+        from django.forms import HiddenInput
+
+        archived = _make_campaign("ArchivadaForm", is_active=False)
+        _make_campaign("OperativaForm")
+        request = self.factory.get("/")
+        request.active_campaign = archived
+        view = _FakeCreateView(FieldSurvey, request)
+        form = view.get_form()
+        self.assertNotIsInstance(form.fields["campaign"].widget, HiddenInput)
+        self.assertNotIn("campaign", view.get_initial())
 
     def test_initial_skips_terminal_campaign(self):
         # ``get_initial`` must not seed a closed campaign either — same
