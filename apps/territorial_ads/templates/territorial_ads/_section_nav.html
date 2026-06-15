@@ -1,7 +1,7 @@
 {% comment %}
 Cross-navigation between the pages of "Publicidad territorial".
 Receives:
-  - active: one of "map", "list"
+  - active: one of "map", "list", "units"
 {% endcomment %}
 <div class="btn-group btn-group-sm" role="group" aria-label="Navegación de publicidad territorial">
   <a href="{% url 'territorial_ads:map' %}"
@@ -14,10 +14,18 @@ Receives:
   </a>
   <a href="{% url 'site:territorial_ads_physicaladvertisement_listar' %}"
      class="btn d-flex align-items-center gap-1 {% if active == 'list' %}btn-light-primary active{% else %}btn-light{% endif %}"
-     aria-label="Lista"
-     title="Lista"
+     aria-label="Solicitudes"
+     title="Solicitudes"
      {% if active == 'list' %}aria-current="page"{% endif %}>
     <i data-lucide="rows-3" class="fs-3"></i>
-    <span class="d-none d-md-inline">Lista</span>
+    <span class="d-none d-md-inline">Solicitudes</span>
+  </a>
+  <a href="{% url 'site:territorial_ads_physicaladvertisementunit_listar' %}"
+     class="btn d-flex align-items-center gap-1 {% if active == 'units' %}btn-light-primary active{% else %}btn-light{% endif %}"
+     aria-label="Publicidades"
+     title="Publicidades"
+     {% if active == 'units' %}aria-current="page"{% endif %}>
+    <i data-lucide="flag" class="fs-3"></i>
+    <span class="d-none d-md-inline">Publicidades</span>
   </a>
 </div>

@@ -245,3 +245,18 @@ table thead th.cm-actions-col .visually-hidden { font-size: initial; }
 .cm-map-truncation > i[data-lucide] {
   flex-shrink: 0;
 }
+
+/* Empty-state card centered over the map (shared by the territorial and
+   field-survey maps). Toggled by CmMapKit when a load returns 0 markers. */
+.cm-map-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 600;
+  max-width: min(360px, calc(100% - 2rem));
+  border: 0;
+}
+.cm-map-empty[hidden] {
+  display: none;
+}

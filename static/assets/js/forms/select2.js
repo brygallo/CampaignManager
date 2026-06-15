@@ -210,7 +210,10 @@
     $("#" + field.id).select2("close");
 
     try {
-      var response = await fetch("/insoles/forms/" + field.dataset.app + "/" + field.dataset.model + "/", {
+      // Re-add the tenant subfolder prefix: request.path is rewritten without
+      // it, so this hand-built absolute path would 404 on a tenant otherwise.
+      var tenantPrefix = window.TENANT_PATH_PREFIX || "";
+      var response = await fetch(tenantPrefix + "/insoles/forms/" + field.dataset.app + "/" + field.dataset.model + "/", {
         credentials: "include"
       });
       if (!response.ok) {

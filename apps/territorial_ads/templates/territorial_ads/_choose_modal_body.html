@@ -1,4 +1,5 @@
 <div class="cm-choice-list" role="list">
+  {% if perms.territorial_ads.add_physicaladvertisement %}
   <button type="button"
           class="cm-choice-card"
           data-tone="primary"
@@ -8,14 +9,35 @@
       <i data-lucide="flag" class="text-primary fs-2x" aria-hidden="true"></i>
     </span>
     <span class="cm-choice-card__body">
-      <span class="cm-choice-card__title">Registrar publicidad</span>
+      <span class="cm-choice-card__title">Ingresar solicitud</span>
       <span class="cm-choice-card__desc">Una persona ofreció el lugar para colocar publicidad.</span>
     </span>
     <span class="cm-choice-card__chevron">
       <i data-lucide="arrow-right" class="fs-2" aria-hidden="true"></i>
     </span>
   </button>
+  {% endif %}
 
+  {% if perms.territorial_ads.add_physicaladvertisement and perms.territorial_ads.install_physicaladvertisement %}
+  <button type="button"
+          class="cm-choice-card"
+          data-tone="success"
+          data-choice="direct"
+          role="listitem">
+    <span class="cm-choice-card__icon">
+      <i data-lucide="badge-check" class="text-success fs-2x" aria-hidden="true"></i>
+    </span>
+    <span class="cm-choice-card__body">
+      <span class="cm-choice-card__title">Registrar publicidad</span>
+      <span class="cm-choice-card__desc">La publicidad ya está instalada. Registra foto, tipo y ubicación.</span>
+    </span>
+    <span class="cm-choice-card__chevron">
+      <i data-lucide="arrow-right" class="fs-2" aria-hidden="true"></i>
+    </span>
+  </button>
+  {% endif %}
+
+  {% if perms.territorial_ads.add_advertisingrefusal %}
   <button type="button"
           class="cm-choice-card"
           data-tone="danger"
@@ -32,4 +54,5 @@
       <i data-lucide="arrow-right" class="fs-2" aria-hidden="true"></i>
     </span>
   </button>
+  {% endif %}
 </div>

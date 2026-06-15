@@ -1,4 +1,13 @@
 <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
+{% if dev_prefill_enabled %}
+  <button type="button"
+          class="js-dev-prefill btn btn-sm btn-light-warning d-flex align-items-center gap-1 me-auto"
+          data-prefill-form="physical-ad-map-create-form"
+          title="Rellenar todos los campos con datos de prueba (excepto la ubicación)"
+          aria-label="Rellenar datos de prueba">
+    <i data-lucide="wand-2" class="fs-3"></i>Datos de prueba
+  </button>
+{% endif %}
 <button type="submit"
         form="physical-ad-map-create-form"
         class="btn btn-sm btn-primary d-flex align-items-center gap-2"

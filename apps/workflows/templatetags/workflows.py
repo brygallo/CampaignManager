@@ -53,6 +53,8 @@ def split_backward_transitions(context, instance):
         target = getattr(transition, "target", None)
         if target is None or target == 0 or target >= current_state:
             continue
+        if (getattr(transition, "custom", None) or {}).get("hidden"):
+            continue
         if user and getattr(transition, "permission", None):
             if not user.has_perm(transition.permission):
                 continue
@@ -64,6 +66,29 @@ def split_backward_transitions(context, instance):
         "closest": candidates[0] if candidates else None,
         "others": candidates[1:],
     }
+
+
+@register.simple_tag(takes_context=True)
+def neutral_transitions(context, instance):
+    """
+    Transitions that keep the current state (``target=None``), e.g. partial
+    evidence uploads or contact fixes. Filtered by user permission.
+    """
+    request = context.get("request")
+    user = getattr(request, "user", None)
+    if getattr(instance, "state", None) is None:
+        return []
+    result = []
+    for transition in instance.get_available_state_transitions():
+        if getattr(transition, "target", "missing") is not None:
+            continue
+        if (getattr(transition, "custom", None) or {}).get("hidden"):
+            continue
+        if user and getattr(transition, "permission", None):
+            if not user.has_perm(transition.permission):
+                continue
+        result.append(transition)
+    return result
 
 
 @register.simple_tag(takes_context=True)
@@ -84,6 +109,8 @@ def split_forward_transitions(context, instance):
     for transition in instance.get_available_state_transitions():
         target = getattr(transition, "target", None)
         if target is None or target == 0 or target < current_state:
+            continue
+        if (getattr(transition, "custom", None) or {}).get("hidden"):
             continue
         if user and getattr(transition, "permission", None):
             if not user.has_perm(transition.permission):

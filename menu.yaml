@@ -51,9 +51,12 @@ Publicidad territorial:
   Mapa:
     url_name: territorial_ads:map
     icon: map
-  Publicidad:
+  Solicitudes:
     app: territorial_ads
     model: physicaladvertisement
+  Publicidades:
+    app: territorial_ads
+    model: physicaladvertisementunit
   Rechazos:
     app: territorial_ads
     model: advertisingrefusal
@@ -87,6 +90,9 @@ Catálogos:
   Tipos de costo de publicidad:
     app: territorial_ads
     model: advertisingcosttype
+  Tamaños de publicidad:
+    app: territorial_ads
+    model: advertisingtypesize
   Competidores:
     app: field_surveys
     model: competitor

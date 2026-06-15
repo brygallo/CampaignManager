@@ -1,0 +1,73 @@
+{% comment %}
+Bulk installation-assignment form rendered inside the list view's modal.
+Fields are laid out manually (no forms/form.html chain) so the approved-ads
+checkbox list can render as a scrollable selection panel.
+{% endcomment %}
+<form method="post" action="{{ action_url }}" data-bulk-assign-form="true">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+      <i data-lucide="alert-triangle" class="fs-3" aria-hidden="true"></i>
+      <div>{{ form.non_field_errors|join:" " }}</div>
+    </div>
+  {% endif %}
+
+  <div class="row g-4 mb-5">
+    <div class="col-md-6">
+      <label class="form-label fw-semibold" for="{{ form.assigned_installer.id_for_label }}">
+        {{ form.assigned_installer.label }}
+      </label>
+      {{ form.assigned_installer }}
+      {% if form.assigned_installer.errors %}
+        <div class="text-danger fs-8 mt-1" role="alert">{{ form.assigned_installer.errors|join:" " }}</div>
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-semibold" for="{{ form.installer_team.id_for_label }}">
+        {{ form.installer_team.label }}
+      </label>
+      {{ form.installer_team }}
+      {% if form.installer_team.errors %}
+        <div class="text-danger fs-8 mt-1" role="alert">{{ form.installer_team.errors|join:" " }}</div>
+      {% endif %}
+      <div class="form-text">Usa este campo si la instalación la hará un equipo externo.</div>
+    </div>
+  </div>
+
+  {% with field=form.advertisements %}
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <label class="form-label fw-semibold mb-0">{{ field.label }}</label>
+      <div class="form-check form-check-sm mb-0">
+        <input class="form-check-input" type="checkbox" id="bulk-assign-select-all" data-bulk-select-all>
+        <label class="form-check-label fs-8 text-muted" for="bulk-assign-select-all">Seleccionar todas</label>
+      </div>
+    </div>
+    {% if field.errors %}
+      <div class="text-danger fs-8 mb-2" role="alert">{{ field.errors|join:" " }}</div>
+    {% endif %}
+    {% if field.field.queryset %}
+      <div class="border rounded p-3 mh-300px overflow-auto" data-bulk-assign-list>
+        {% for ad in field.field.queryset %}
+          <div class="form-check d-flex align-items-start gap-2 py-2 border-bottom border-gray-200">
+            <input class="form-check-input flex-shrink-0 mt-1"
+                   type="checkbox"
+                   name="{{ field.html_name }}"
+                   value="{{ ad.pk }}"
+                   id="bulk-ad-{{ ad.pk }}"
+                   {% if ad.pk|stringformat:"s" in field.value %}checked{% endif %}>
+            <label class="form-check-label flex-grow-1" for="bulk-ad-{{ ad.pk }}">
+              <span class="fw-bold text-gray-800 d-block">{{ ad.code }} · {{ ad.items_summary }}</span>
+              <span class="text-muted fs-8 d-block">{{ ad.address }}{% if ad.campaign_id %} — {{ ad.campaign.name }}{% endif %}</span>
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info d-flex align-items-center gap-2 mb-0" role="status">
+        <i data-lucide="info" class="fs-3" aria-hidden="true"></i>
+        <div>No hay publicidades en estado <strong>Aprobada</strong> pendientes de asignación.</div>
+      </div>
+    {% endif %}
+  {% endwith %}
+</form>

@@ -19,6 +19,12 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
+# When DEV_PREFILL is on (QA/testing environments only) every CRUD form exposes
+# a "Rellenar datos de prueba" button that fills all fields with dummy data so
+# records can be created quickly. The location is never filled automatically:
+# it is always picked by hand on the map. Must stay False in production.
+DEV_PREFILL = env.bool("DEV_PREFILL", default=False)
+
 # ----- I18N / TZ -----
 LANGUAGE_CODE = "es"
 TIME_ZONE = "America/Guayaquil"
@@ -136,6 +142,7 @@ TEMPLATES = [
                 "core.context_processors.brand",
                 "core.context_processors.tenant_features",
                 "core.context_processors.active_campaign",
+                "core.context_processors.dev_prefill",
             ],
             "libraries": {
                 # `core` is not in INSTALLED_APPS, so its template tags
@@ -294,6 +301,9 @@ TEMPLATE_WIDGETS = {
     "textarea": "widgets/textinput.html",
     "file": "widgets/imageinput.html",
     "clearablefile": "widgets/imageinput.html",
+    # MultipleFileInput (evidence photo batches): plain multi-file input —
+    # the Metronic single-image picker can't handle several files at once.
+    "multiplefile": "widgets/multiplefileinput.html",
     "checkbox": "widgets/checkboxinput.html",
     "select": "widgets/selectinput.html",
     "date": "widgets/dateinput.html",
@@ -302,6 +312,7 @@ TEMPLATE_WIDGETS = {
     "modelselect2": "widgets/selectinput.html",
     "modelselect2multiple": "widgets/selectinput.html",
     "costtypeselect2": "widgets/selectinput.html",
+    "typesizeselect": "widgets/selectinput.html",
     "email": "widgets/textinput.html",
     "number": "widgets/textinput.html",
     "password": "widgets/textinput.html",

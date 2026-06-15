@@ -64,6 +64,15 @@
           <i data-lucide="trash-2" class="fs-3"></i>
         </button>
       {% endif %}
+      {% if dev_prefill_enabled %}
+        <button type="button"
+                class="js-dev-prefill btn btn-sm btn-light-warning d-flex align-items-center gap-1"
+                data-prefill-form="main-form"
+                title="Rellenar todos los campos con datos de prueba (excepto la ubicación)"
+                aria-label="Rellenar datos de prueba">
+          <i data-lucide="wand-2" class="fs-3"></i><span class="d-none d-md-inline">Datos de prueba</span>
+        </button>
+      {% endif %}
       <div class="btn-group">
         <button type="submit" form="main-form" name="_save" value="1" class="btn btn-primary btn-sm" data-kt-form-submit="true">
           <span class="indicator-label d-flex align-items-center">

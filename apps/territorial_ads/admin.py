@@ -3,9 +3,11 @@ from django.contrib import admin
 from .models import (
     AdvertisingCostType,
     AdvertisingRefusal,
+    AdvertisingTypeSize,
     InstallationPhoto,
     PhysicalAdvertisement,
     PhysicalAdvertisementItem,
+    PhysicalAdvertisementUnit,
 )
 
 
@@ -31,6 +33,31 @@ class PhysicalAdvertisementAdmin(admin.ModelAdmin):
     list_filter = ("state", "items__advertisement_type", "cost_type")
     search_fields = ("code", "owner_name", "owner_phone", "address")
     inlines = (PhysicalAdvertisementItemInline, InstallationPhotoInline)
+
+
+@admin.register(AdvertisingTypeSize)
+class AdvertisingTypeSizeAdmin(admin.ModelAdmin):
+    list_display = ("advertisement_type", "name", "order", "is_active")
+    list_filter = ("advertisement_type", "is_active")
+    search_fields = ("name",)
+
+
+@admin.register(PhysicalAdvertisementUnit)
+class PhysicalAdvertisementUnitAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "item",
+        "unit_number",
+        "size",
+        "state",
+        "installed_at",
+        "installed_by",
+    )
+    list_filter = ("state", "item__advertisement_type")
+    search_fields = (
+        "item__advertisement__code",
+        "item__advertisement__address",
+    )
 
 
 @admin.register(AdvertisingCostType)

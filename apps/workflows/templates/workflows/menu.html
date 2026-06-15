@@ -1,7 +1,7 @@
 {% load superadmin_utils static %}
 {# Renders available transitions as menu items inside a parent menu (Metronic kt-menu). #}
 {% for transition in object.get_available_state_transitions %}
-  {% if request.user|has_perm:transition.permission %}
+  {% if not transition.custom.hidden and request.user|has_perm:transition.permission %}
     <div class="menu-item">
       <a href="#"
          data-transition="{{ transition.name }}"

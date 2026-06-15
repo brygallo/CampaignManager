@@ -20,7 +20,10 @@ from PIL import Image
 
 from apps.campaigns.models import Campaign
 from apps.field_surveys.models import AdvertisingType
-from apps.territorial_ads.models import PhysicalAdvertisement
+from apps.territorial_ads.models import (
+    AdvertisingTypeSize,
+    PhysicalAdvertisement,
+)
 
 
 User = get_user_model()
@@ -98,6 +101,7 @@ class Command(BaseCommand):
             return
 
         types_by_code = {t.code: t for t in AdvertisingType.objects.filter(is_active=True)}
+        self._seed_sizes(types_by_code)
         wf = PhysicalAdvertisement.workflow
         created = 0
         for i, (atype, w, h, address, owner, phone, target) in enumerate(ADS):
@@ -134,56 +138,82 @@ class Command(BaseCommand):
             f"Publicidad: {created} nuevas (total {PhysicalAdvertisement.objects.count()})."
         ))
 
-    def _advance_to(self, ad, target, user, wf):
-        target_value = getattr(wf, target)
-        # secuencia OFRECIDA → APROBADA → PENDIENTE_INSTALACION → INSTALADA → DANADA → RETIRADA
-        order = [
-            (wf.OFRECIDA, None),
-            (wf.APROBADA, "approve"),
-            (wf.PENDIENTE_INSTALACION, "assign_installation"),
-            (wf.INSTALADA, "mark_installed"),
-            (wf.DANADA, "report_damage"),
-            (wf.RETIRADA, "retire"),
-        ]
-        target_idx = next(i for i, (s, _) in enumerate(order) if s == target_value)
+    DEFAULT_SIZES = {
+        "LONA": ["Pared", "Cuadro"],
+        "VALLA": ["Grande", "Mediana"],
+    }
 
-        for state, method in order[1:target_idx + 1]:
-            # ya alcanzó (o pasó) este estado en una corrida previa
-            if ad.state >= state:
-                continue
-            if method == "approve":
-                instructions = {
-                    f"item_instructions_{item.pk}": (
-                        "Se requiere escalera y dos personas para colocación segura."
-                    )
-                    for item in ad.items.all()
-                }
-                ad.approve(
-                    user=user,
-                    width_meters=ad.width_meters,
-                    height_meters=ad.height_meters,
-                    **instructions,
+    def _seed_sizes(self, types_by_code):
+        """Ensure every active advertising type has a size catalog."""
+        for code, ad_type in types_by_code.items():
+            names = self.DEFAULT_SIZES.get(code, ["Pequeño", "Mediano", "Grande"])
+            for index, name in enumerate(names):
+                AdvertisingTypeSize.objects.get_or_create(
+                    advertisement_type=ad_type,
+                    name=name,
+                    defaults={"order": index},
                 )
-            elif method == "assign_installation":
-                ad.assign_installation(user=user, installer_team="Brigada Macas A")
-            elif method == "mark_installed":
-                ad.mark_installed(
-                    user=user,
-                    installation_photos=[
-                        ContentFile(_make_image_bytes(), name=f"install_{ad.pk}.jpg")
-                    ],
-                    installed_latitude=ad.offered_latitude,
-                    installed_longitude=ad.offered_longitude,
-                    installation_notes="Instalación con permiso del dueño. Buen estado.",
+
+    def _advance_to(self, ad, target, user, wf):
+        # Secuencia de la solicitud: OFRECIDA → APROBADA → PENDIENTE →
+        # INSTALADA (automático al instalar todas las unidades). DANADA y
+        # RETIRADA se gestionan por unidad.
+        if target == "OFRECIDA":
+            return
+        if ad.state == wf.OFRECIDA:
+            kwargs = {}
+            for item in ad.items.all():
+                kwargs[f"item_instructions_{item.pk}"] = (
+                    "Se requiere escalera y dos personas para colocación segura."
                 )
-            elif method == "report_damage":
-                ad.report_damage(
+                first_size = AdvertisingTypeSize.objects.filter(
+                    advertisement_type=item.advertisement_type, is_active=True
+                ).order_by("order", "name").first()
+                if first_size:
+                    for number in range(1, item.quantity + 1):
+                        kwargs[f"item_size_{item.pk}_{number}"] = first_size.pk
+            ad.approve(user=user, **kwargs)
+            ad.save()
+        if target == "APROBADA":
+            return
+        if ad.state == wf.APROBADA:
+            ad.assign_installation(user=user, installer_team="Brigada Macas A")
+            ad.save()
+        if target == "PENDIENTE_INSTALACION":
+            return
+        # Instalar todas las unidades pendientes; al completar la última la
+        # solicitud pasa sola a INSTALADA (sync_state_with_units).
+        unit_wf = None
+        for item in ad.items.all():
+            for unit in item.units.all():
+                unit_wf = unit.workflow
+                if unit.state != unit.workflow.PENDIENTE:
+                    continue
+                unit.mark_installed(
+                    user=user,
+                    photo=ContentFile(
+                        _make_image_bytes(), name=f"install_{ad.pk}_{unit.pk}.jpg"
+                    ),
+                    latitude=_jitter(ad.offered_latitude, 0.0005),
+                    longitude=_jitter(ad.offered_longitude, 0.0005),
+                    notes="Instalación con permiso del dueño. Buen estado.",
+                )
+                unit.save()
+        # ``ad`` quedó desactualizado: el sync guardó otra instancia.
+        ad = PhysicalAdvertisement.objects.get(pk=ad.pk)
+        if target == "INSTALADA":
+            return
+        if target == "DANADA":
+            unit = next(
+                (u for u in ad.units if u.state == unit_wf.INSTALADA), None
+            )
+            if unit is not None:
+                unit.report_damage(
                     user=user,
                     damage_notes="Lona rasgada por viento fuerte; requiere reposición.",
                 )
-            elif method == "retire":
-                ad.retire(
-                    user=user,
-                    retirement_notes="Retirada al cierre del periodo electoral.",
-                )
+                unit.save()
+            return
+        if target == "RETIRADA" and ad.state in (wf.INSTALADA, wf.DANADA):
+            ad.retire(user=user)
             ad.save()

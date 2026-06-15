@@ -45,17 +45,27 @@
     </div>
   </header>
 
-  {# ===== Progress stepper / rejected alert ===== #}
+  {# ===== Progress stepper / terminal alerts ===== #}
   {% if is_rejected %}
     <div class="alert alert-danger d-flex align-items-center gap-3 py-3 px-4 mb-5" role="status">
       <i data-lucide="x-circle" class="fs-2x text-danger" aria-hidden="true"></i>
       <div>
-        <div class="fw-bolder text-danger">Aviso rechazado</div>
+        <div class="fw-bolder text-danger">Solicitud rechazada</div>
         <div class="text-muted fs-7">No avanzó por el flujo de instalación.</div>
       </div>
     </div>
+  {% elif is_retired %}
+    <div class="alert d-flex align-items-center gap-3 py-3 px-4 mb-5"
+         style="background:#7e82991a;border:1px solid #7e829940;"
+         role="status">
+      <i data-lucide="archive" class="fs-2x" style="color:#7e8299;" aria-hidden="true"></i>
+      <div>
+        <div class="fw-bolder" style="color:#5e6278;">Publicidad retirada</div>
+        <div class="text-muted fs-7">Todas las publicidades de esta solicitud fueron retiradas.</div>
+      </div>
+    </div>
   {% else %}
-    <ol class="map-popup__stepper" aria-label="Avance del aviso en el flujo">
+    <ol class="map-popup__stepper" aria-label="Avance de la solicitud en el flujo">
       {% for step in stepper_steps %}
         <li class="map-popup__step{% if step.is_done %} is-done{% endif %}{% if step.is_current %} is-current{% endif %}"
             {% if step.is_current %}aria-current="step"{% endif %}>
@@ -90,9 +100,10 @@
     </div>
   {% endif %}
 
-  {# ===== Photo strip ===== #}
-  {% if ad.offered_photo or ad.installation_photos.all or ad.damage_photo %}
-    <div class="map-popup__gallery" role="list" aria-label="Galería de fotos del aviso">
+  {# ===== Photo strip: offered photo always; legacy installation gallery
+     only for old records without per-unit evidence ===== #}
+  {% if ad.offered_photo or ad.installation_photos.all and not units %}
+    <div class="map-popup__gallery" role="list" aria-label="Galería de fotos de la solicitud">
       {% if ad.offered_photo %}
         <a class="map-popup__photo" role="listitem"
            href="{{ ad.offered_photo.url }}" target="_blank" rel="noopener"
@@ -103,27 +114,89 @@
           </span>
         </a>
       {% endif %}
-      {% for installation_photo in ad.installation_photos.all %}
-        <a class="map-popup__photo" role="listitem"
-           href="{{ installation_photo.photo.url }}" target="_blank" rel="noopener"
-           aria-label="Abrir foto de instalación en pestaña nueva">
-          <img src="{{ installation_photo.photo.url }}" alt="Foto de la instalación" loading="lazy">
-          <span class="map-popup__photo-caption">
-            <i data-lucide="check-circle-2" class="fs-7" aria-hidden="true"></i>Instalada {{ forloop.counter }}
-          </span>
-        </a>
-      {% endfor %}
-      {% if ad.damage_photo %}
-        <a class="map-popup__photo" role="listitem"
-           href="{{ ad.damage_photo.url }}" target="_blank" rel="noopener"
-           aria-label="Abrir foto del daño en pestaña nueva">
-          <img src="{{ ad.damage_photo.url }}" alt="Foto del daño reportado" loading="lazy">
-          <span class="map-popup__photo-caption">
-            <i data-lucide="info" class="fs-7" aria-hidden="true"></i>Daño
-          </span>
-        </a>
+      {% if not units %}
+        {% for installation_photo in ad.installation_photos.all %}
+          <a class="map-popup__photo" role="listitem"
+             href="{{ installation_photo.photo.url }}" target="_blank" rel="noopener"
+             aria-label="Abrir foto de instalación en pestaña nueva">
+            <img src="{{ installation_photo.photo.url }}" alt="Foto de la instalación" loading="lazy">
+            <span class="map-popup__photo-caption">
+              <i data-lucide="check-circle-2" class="fs-7" aria-hidden="true"></i>Instalada {{ forloop.counter }}
+            </span>
+          </a>
+        {% endfor %}
+        {% if ad.damage_photo %}
+          <a class="map-popup__photo" role="listitem"
+             href="{{ ad.damage_photo.url }}" target="_blank" rel="noopener"
+             aria-label="Abrir foto del daño en pestaña nueva">
+            <img src="{{ ad.damage_photo.url }}" alt="Foto del daño reportado" loading="lazy">
+            <span class="map-popup__photo-caption">
+              <i data-lucide="info" class="fs-7" aria-hidden="true"></i>Daño
+            </span>
+          </a>
+        {% endif %}
       {% endif %}
     </div>
+  {% endif %}
+
+  {% if units %}
+    <section class="mb-5" aria-label="Publicidades de esta solicitud">
+      <h6 class="text-gray-600 fw-bold text-uppercase fs-8 mb-3">
+        <i data-lucide="layout-grid" class="fs-7 me-1" aria-hidden="true"></i>Publicidades
+        <span class="text-gray-400 fw-semibold">({{ units|length }})</span>
+      </h6>
+      <div class="d-flex flex-column gap-2" role="list">
+        {% for unit in units %}
+          <div class="d-flex align-items-start gap-3 bg-light rounded p-3" role="listitem">
+            {% if unit.photo %}
+              <a href="{{ unit.photo.url }}" target="_blank" rel="noopener" class="flex-shrink-0"
+                 aria-label="Abrir foto de {{ unit.display_label }} en pestaña nueva">
+                <img src="{{ unit.photo.url }}" alt="Foto de evidencia de {{ unit.display_label }}"
+                     class="rounded" style="width:48px;height:48px;object-fit:cover;" loading="lazy">
+              </a>
+            {% else %}
+              <span class="symbol symbol-45px flex-shrink-0" aria-hidden="true">
+                <span class="symbol-label bg-white border border-gray-300">
+                  <i data-lucide="image-off" class="fs-4 text-gray-400"></i>
+                </span>
+              </span>
+            {% endif %}
+            <div class="flex-grow-1 min-w-0">
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark fs-7">{{ unit.display_label }}</span>
+                <span class="map-popup__state-badge"
+                      style="--state-color:{% if unit.state == 1 %}#ffc700{% elif unit.state == 2 %}#50cd89{% elif unit.state == 3 %}#fd7e14{% else %}#7e8299{% endif %};"
+                      aria-label="Estado: {{ unit.get_state_display }}">
+                  <span class="map-popup__state-dot" aria-hidden="true"></span>
+                  {{ unit.get_state_display }}
+                </span>
+              </div>
+              {% if unit.latitude and unit.longitude %}
+                <div class="text-muted fs-8 font-monospace mt-1">
+                  <i data-lucide="map-pin" class="fs-8 me-1" aria-hidden="true"></i>{{ unit.latitude }} / {{ unit.longitude }}
+                </div>
+              {% endif %}
+              {% if unit.installed_at %}
+                <div class="text-muted fs-8 mt-1">
+                  <i data-lucide="user-check" class="fs-8 me-1" aria-hidden="true"></i>
+                  Instaló {{ unit.installed_by|default:"—" }} · {{ unit.installed_at|date:"d M Y H:i" }}
+                </div>
+              {% endif %}
+              {% if unit.notes %}
+                <div class="text-gray-700 fs-8 mt-1" title="{{ unit.notes }}">{{ unit.notes|truncatechars:90 }}</div>
+              {% endif %}
+              {% if unit.damage_reported_at %}
+                <span class="badge badge-light-warning fs-8 mt-2"
+                      title="{{ unit.damage_notes|default:'Daño reportado' }}">
+                  <i data-lucide="alert-triangle" class="fs-8 me-1" aria-hidden="true"></i>
+                  Daño · {{ unit.damage_reported_at|date:"d M Y" }}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
   {% endif %}
 
   {# ===== Owner conditions (offered_notes) ===== #}
@@ -138,7 +211,7 @@
   {% endif %}
 
   {# ===== Key facts ===== #}
-  <section class="row g-4 mb-2" aria-label="Datos del aviso">
+  <section class="row g-4 mb-2" aria-label="Datos de la solicitud">
     <div class="col-12 col-sm-6">
       <div class="map-popup__fact">
         <span class="symbol symbol-40px symbol-circle">
@@ -204,8 +277,8 @@
     {% endif %}
   </section>
 
-  {# ===== Activity log ===== #}
-  {% if ad.rejected_at or ad.approved_at or ad.assigned_at or ad.installed_at or ad.damage_reported_at or ad.retired_at %}
+  {# ===== Activity log (damage entries now live on each unit) ===== #}
+  {% if ad.rejected_at or ad.approved_at or ad.assigned_at or ad.installed_at or ad.retired_at %}
     <div class="separator separator-dashed my-5"></div>
     <h6 class="text-gray-600 fw-bold text-uppercase fs-8 mb-4">
       <i data-lucide="clock" class="fs-7 me-1" aria-hidden="true"></i>Bitácora
@@ -271,19 +344,6 @@
               </div>
             {% endif %}
             {% if ad.installation_notes %}<div class="text-gray-700 fs-7 mt-1">{{ ad.installation_notes|linebreaksbr }}</div>{% endif %}
-          </div>
-        </li>
-      {% endif %}
-
-      {% if ad.damage_reported_at %}
-        <li class="map-popup__activity-item is-warning">
-          <span class="map-popup__activity-icon"><i data-lucide="info" aria-hidden="true"></i></span>
-          <div class="map-popup__activity-body">
-            <div class="map-popup__activity-head">
-              <span class="fw-bolder text-dark">Daño reportado</span>
-              <span class="text-muted fs-8">{{ ad.damage_reported_at|date:"d M Y · H:i" }}{% if ad.damage_reported_by %} · {{ ad.damage_reported_by }}{% endif %}</span>
-            </div>
-            {% if ad.damage_notes %}<div class="text-gray-700 fs-7 mt-1">{{ ad.damage_notes|linebreaksbr }}</div>{% endif %}
           </div>
         </li>
       {% endif %}

@@ -152,6 +152,16 @@ def active_campaign(request):
     }
 
 
+def dev_prefill(request):
+    """Expose the test-data prefill flag, gated by the ``DEV_PREFILL`` env var.
+
+    When enabled, ``base_form.html`` renders a button (and loads the JS) that
+    fills every CRUD form with dummy data except the location. Off by default
+    and never enabled in production.
+    """
+    return {"dev_prefill_enabled": getattr(settings, "DEV_PREFILL", False)}
+
+
 def tenant_path_menu(request):
     """Prefix sidebar menu URLs when tenants are routed by path.
 

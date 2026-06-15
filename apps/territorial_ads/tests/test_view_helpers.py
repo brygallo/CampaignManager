@@ -14,7 +14,11 @@ from django.utils import timezone
 
 from apps.campaigns.models import Campaign, Candidate, Election, PoliticalMovement, Position
 from apps.field_surveys.models import AdvertisingType
-from apps.territorial_ads.models import AdvertisingRefusal, PhysicalAdvertisement
+from apps.territorial_ads.models import (
+    AdvertisingRefusal,
+    PhysicalAdvertisement,
+    PhysicalAdvertisementUnit,
+)
 from apps.territorial_ads.views import (
     AdvertisingRefusalCreateView,
     AdvertisingRefusalPopupView,
@@ -134,6 +138,48 @@ class TerritorialAdsViewHelperTests(TestCase):
         self.assertEqual(len(payload["ads"]), 1)
         self.assertEqual(payload["ads"][0]["marker_kind"], "ad")
 
+    def test_map_data_filters_marker_categories(self):
+        ad = PhysicalAdvertisement.objects.create(
+            campaign=self.campaign,
+            owner_name="Dueño",
+            owner_phone="099",
+            address="Dir",
+            offered_latitude=Decimal("-2.1"),
+            offered_longitude=Decimal("-79.9"),
+        )
+        item = ad.items.create(advertisement_type=self.ad_type, quantity=1)
+        unit = item.units.create(
+            state=PhysicalAdvertisementUnit.workflow.INSTALADA,
+            latitude=Decimal("-2.11"),
+            longitude=Decimal("-79.91"),
+        )
+        refusal = AdvertisingRefusal.objects.create(
+            campaign=self.campaign,
+            owner_reference="Casa",
+            reason="No",
+            latitude=Decimal("-2.2"),
+            longitude=Decimal("-79.8"),
+            reported_by=self.user,
+        )
+
+        expected = {
+            "request": {f"request:{ad.id}"},
+            "publicity": {f"unit:{unit.id}"},
+            "refusal": {f"refusal:{refusal.id}"},
+        }
+        for marker_kind, expected_keys in expected.items():
+            with self.subTest(marker_kind=marker_kind):
+                request = self._request(
+                    reverse("territorial_ads:map_data"),
+                    data={"kind": marker_kind},
+                )
+                response = PhysicalAdMapDataView.as_view()(request)
+                payload = json.loads(response.content)
+                self.assertEqual(
+                    {row["marker_key"] for row in payload["ads"]},
+                    expected_keys,
+                )
+
     def test_map_data_truncates_and_emits_edit_urls_for_staff(self):
         self.user.user_permissions.add(Permission.objects.get(codename="change_physicaladvertisement"))
         self.user.user_permissions.add(Permission.objects.get(codename="delete_physicaladvertisement"))
@@ -144,8 +190,8 @@ class TerritorialAdsViewHelperTests(TestCase):
             owner_name="Dueño",
             owner_phone="099",
             address="Dir",
-            installed_latitude=Decimal("-2.05"),
-            installed_longitude=Decimal("-79.85"),
+            offered_latitude=Decimal("-2.05"),
+            offered_longitude=Decimal("-79.85"),
         )
         refusal = AdvertisingRefusal.objects.create(
             campaign=self.campaign,
@@ -168,7 +214,7 @@ class TerritorialAdsViewHelperTests(TestCase):
         marker = payload["ads"][0]
         self.assertIn(marker["marker_kind"], {"ad", "refusal"})
         if marker["marker_kind"] == "ad":
-            self.assertEqual(marker["kind"], "instalada")
+            self.assertEqual(marker["kind"], "solicitud")
             self.assertIn("update_url", marker)
             self.assertIn("delete_url", marker)
         else:
@@ -176,7 +222,7 @@ class TerritorialAdsViewHelperTests(TestCase):
             self.assertIn("update_url", marker)
             self.assertIn("delete_url", marker)
 
-    def test_map_data_without_campaign_uses_installed_coordinates_and_edit_urls(self):
+    def test_map_data_shows_request_installed_publicity_and_refusal(self):
         self.user.user_permissions.add(Permission.objects.get(codename="change_physicaladvertisement"))
         self.user.user_permissions.add(Permission.objects.get(codename="delete_physicaladvertisement"))
         ad = PhysicalAdvertisement.objects.create(
@@ -186,16 +232,37 @@ class TerritorialAdsViewHelperTests(TestCase):
             address="Dir 2",
             offered_latitude=Decimal("-2.10"),
             offered_longitude=Decimal("-79.90"),
-            installed_latitude=Decimal("-2.11"),
-            installed_longitude=Decimal("-79.91"),
+            state=PhysicalAdvertisement.workflow.INSTALADA,
+        )
+        item = ad.items.create(advertisement_type=self.ad_type, quantity=1)
+        unit = item.units.create(
+            state=PhysicalAdvertisementUnit.workflow.INSTALADA,
+            latitude=Decimal("-2.11"),
+            longitude=Decimal("-79.91"),
+        )
+        refusal = AdvertisingRefusal.objects.create(
+            campaign=self.campaign,
+            owner_reference="Casa rechazada",
+            reason="No autoriza",
+            latitude=Decimal("-2.12"),
+            longitude=Decimal("-79.92"),
+            reported_by=self.user,
         )
         request = self._request(reverse("territorial_ads:map_data"), active=False)
         response = PhysicalAdMapDataView.as_view()(request)
         payload = json.loads(response.content)
-        marker = next(item for item in payload["ads"] if item["id"] == ad.id)
-        self.assertEqual(marker["kind"], "instalada")
-        self.assertIn("update_url", marker)
-        self.assertIn("delete_url", marker)
+        markers = {item["marker_key"]: item for item in payload["ads"]}
+
+        request_marker = markers[f"request:{ad.id}"]
+        self.assertEqual(request_marker["kind"], "solicitud")
+        self.assertEqual(request_marker["lat"], float(ad.offered_latitude))
+
+        publicity_marker = markers[f"unit:{unit.id}"]
+        self.assertEqual(publicity_marker["kind"], "publicidad")
+        self.assertEqual(publicity_marker["lat"], float(unit.latitude))
+
+        refusal_marker = markers[f"refusal:{refusal.id}"]
+        self.assertEqual(refusal_marker["kind"], "rechazo")
 
     def test_map_data_hides_edit_url_outside_initial_state(self):
         self.user.user_permissions.add(Permission.objects.get(codename="change_physicaladvertisement"))
@@ -213,6 +280,26 @@ class TerritorialAdsViewHelperTests(TestCase):
         payload = json.loads(response.content)
         marker = next(item for item in payload["ads"] if item["id"] == ad.id)
         self.assertNotIn("update_url", marker)
+
+    def test_map_data_does_not_show_pending_unit_as_publicity(self):
+        ad = PhysicalAdvertisement.objects.create(
+            campaign=self.campaign,
+            owner_name="Pendiente",
+            owner_phone="099",
+            address="Dir pendiente",
+            offered_latitude=Decimal("-2.14"),
+            offered_longitude=Decimal("-79.94"),
+        )
+        item = ad.items.create(advertisement_type=self.ad_type, quantity=1)
+        unit = item.units.create()
+
+        request = self._request(reverse("territorial_ads:map_data"))
+        response = PhysicalAdMapDataView.as_view()(request)
+        payload = json.loads(response.content)
+        marker_keys = {item["marker_key"] for item in payload["ads"]}
+
+        self.assertIn(f"request:{ad.id}", marker_keys)
+        self.assertNotIn(f"unit:{unit.id}", marker_keys)
 
     def test_map_data_truncation_with_state_filter_skips_refusal_slice_branch(self):
         for idx in range(2):

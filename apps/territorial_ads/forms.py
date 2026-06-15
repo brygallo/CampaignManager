@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django_select2.forms import ModelSelect2Widget, Select2Widget
 
 from superadmin.forms import ModelForm
@@ -11,9 +12,12 @@ from apps.field_surveys.models import AdvertisingType
 from .models import (
     AdvertisingCostType,
     AdvertisingRefusal,
+    AdvertisingTypeSize,
     PhysicalAdvertisement,
     PhysicalAdvertisementItem,
 )
+
+
 
 
 class CostTypeSelect2Widget(Select2Widget):
@@ -239,32 +243,35 @@ class AdvertisingRefusalForm(ModelForm):
 
 
 class ApprovalForm(forms.Form):
-    # ChangeStateView passes the advertisement so one instructions textarea
-    # can be built per registered advertising type.
+    # ChangeStateView passes the advertisement so one size select per unit
+    # and one instructions textarea per item can be built dynamically.
     needs_object = True
-
-    width_meters = forms.DecimalField(
-        label="Ancho (m)",
-        max_digits=6,
-        decimal_places=2,
-        min_value=0,
-        required=True,
-    )
-    height_meters = forms.DecimalField(
-        label="Alto (m)",
-        max_digits=6,
-        decimal_places=2,
-        min_value=0,
-        required=True,
-    )
 
     def __init__(self, *args, obj=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.obj = obj
         items = (
-            obj.items.select_related("advertisement_type") if obj is not None else []
+            obj.items.select_related("advertisement_type").prefetch_related("units")
+            if obj is not None
+            else []
         )
         for item in items:
+            type_sizes = AdvertisingTypeSize.objects.filter(
+                advertisement_type=item.advertisement_type, is_active=True
+            ).order_by("order", "name")
+            # Sizes survive a previous approval (revert_to_offered keeps no
+            # units, but a plain re-render mid-validation does).
+            existing = {u.unit_number: u.size_id for u in item.units.all()}
+            if type_sizes.exists():
+                for number in range(1, item.quantity + 1):
+                    suffix = f" #{number}" if item.quantity > 1 else ""
+                    self.fields[f"item_size_{item.pk}_{number}"] = forms.ModelChoiceField(
+                        label=f"Tamaño — {item.advertisement_type.name}{suffix}",
+                        queryset=type_sizes,
+                        required=True,
+                        initial=existing.get(number),
+                        empty_label="Selecciona un tamaño…",
+                    )
             self.fields[f"item_instructions_{item.pk}"] = forms.CharField(
                 label=f"Indicaciones — {item.quantity}× {item.advertisement_type.name}",
                 help_text="Indica qué se requiere: escalera, andamio, permisos, etc.",
@@ -272,6 +279,33 @@ class ApprovalForm(forms.Form):
                 required=True,
                 initial=item.installation_instructions,
             )
+
+
+def installer_users_queryset():
+    """Active users that can actually register installations.
+
+    Filters by the ``install_physicaladvertisement`` permission (held
+    directly, via a group, or implicitly as superuser) so coordinators
+    can't assign someone who would later hit a 403 when installing.
+    """
+    has_perm = (
+        Q(
+            user_permissions__codename="install_physicaladvertisement",
+            user_permissions__content_type__app_label="territorial_ads",
+        )
+        | Q(
+            groups__permissions__codename="install_physicaladvertisement",
+            groups__permissions__content_type__app_label="territorial_ads",
+        )
+        | Q(is_superuser=True)
+    )
+    return (
+        get_user_model()
+        .objects.filter(is_active=True)
+        .filter(has_perm)
+        .distinct()
+        .order_by("first_name", "last_name", "username")
+    )
 
 
 class AssignInstallationForm(forms.Form):
@@ -299,6 +333,14 @@ class AssignInstallationForm(forms.Form):
     )
     installer_team = forms.CharField(label="Instalador externo", max_length=180, required=False)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        queryset = installer_users_queryset()
+        field = self.fields["assigned_installer"]
+        field.queryset = queryset
+        if hasattr(field.widget, "queryset"):
+            field.widget.queryset = queryset
+
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get("assigned_installer") and not cleaned_data.get("installer_team"):
@@ -306,45 +348,54 @@ class AssignInstallationForm(forms.Form):
         return cleaned_data
 
 
-class MultipleFileInput(forms.ClearableFileInput):
-    allow_multiple_selected = True
+class BulkAssignInstallationForm(AssignInstallationForm):
+    """Assign one installer to several approved advertisements at once."""
 
+    advertisements = forms.ModelMultipleChoiceField(
+        label="Publicidades aprobadas",
+        queryset=PhysicalAdvertisement.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        error_messages={"required": "Selecciona al menos una publicidad."},
+    )
 
-class MultipleImageField(forms.ImageField):
-    """ImageField that accepts several files from one ``multiple`` input."""
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("widget", MultipleFileInput())
+    def __init__(self, *args, queryset=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if queryset is not None:
+            self.fields["advertisements"].queryset = queryset
+        # The bulk modal renders the form manually (no select2 bootstrap),
+        # so swap the AJAX widget for a plain select. Choices must be
+        # re-bound by hand: ChoiceField only syncs them at __init__ time.
+        installer_field = self.fields["assigned_installer"]
+        plain_select = forms.Select(
+            attrs={"class": "form-select form-select-sm form-select-solid"}
+        )
+        installer_field.widget = plain_select
+        plain_select.choices = installer_field.choices
+        self.fields["installer_team"].widget.attrs.update(
+            {"class": "form-control form-control-sm form-control-solid"}
+        )
 
-    def clean(self, data, initial=None):
-        single_clean = super().clean
-        if isinstance(data, (list, tuple)):
-            return [single_clean(item, initial) for item in data]
-        return [single_clean(data, initial)]
 
+class UnitInstallForm(forms.Form):
+    """Installation evidence for ONE physical unit: photo + GPS + notes."""
 
-class InstallationEvidenceForm(forms.Form):
-    # ChangeStateView passes the advertisement so the photo count can be
-    # validated against the total of installed units.
     needs_object = True
 
-    installation_photos = MultipleImageField(
-        label="Fotos de evidencia",
+    photo = forms.ImageField(
+        label="Foto de evidencia",
         required=True,
-        help_text="Sube una foto por cada unidad instalada.",
+        help_text="Foto que verifica la instalación de esta publicidad.",
     )
-    installation_location = forms.CharField(
-        label="Ubicación GPS de instalación",
+    location = forms.CharField(
+        label="Ubicación GPS",
         required=False,
         widget=LeafletMapWidget(
-            lat_field="installed_latitude",
-            lng_field="installed_longitude",
+            lat_field="latitude",
+            lng_field="longitude",
             attrs={"column": 12},
         ),
     )
-    installed_latitude = forms.DecimalField(
-        label="Latitud GPS real",
+    latitude = forms.DecimalField(
         max_digits=9,
         decimal_places=6,
         min_value=-90,
@@ -352,8 +403,7 @@ class InstallationEvidenceForm(forms.Form):
         required=False,
         widget=forms.HiddenInput(),
     )
-    installed_longitude = forms.DecimalField(
-        label="Longitud GPS real",
+    longitude = forms.DecimalField(
         max_digits=9,
         decimal_places=6,
         min_value=-180,
@@ -361,40 +411,154 @@ class InstallationEvidenceForm(forms.Form):
         required=False,
         widget=forms.HiddenInput(),
     )
-    installation_notes = forms.CharField(
+    notes = forms.CharField(
         label="Notas de instalación",
-        widget=forms.Textarea,
         required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
     )
 
     def __init__(self, *args, obj=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.obj = obj
         if obj is not None:
-            total = obj.total_units
-            self.fields["installation_photos"].help_text = (
-                f"Sube exactamente {total} foto(s): una por cada unidad instalada "
-                f"({obj.items_summary})."
-            )
+            self.fields["photo"].label = f"Foto — {obj.display_label}"
 
     def clean(self):
         cleaned_data = super().clean()
-        photos = cleaned_data.get("installation_photos") or []
-        if self.obj is not None and photos:
-            total = self.obj.total_units
-            if len(photos) != total:
-                self.add_error(
-                    "installation_photos",
-                    f"Debes subir exactamente {total} foto(s): una por cada unidad "
-                    f"instalada (subiste {len(photos)}).",
-                )
-        if cleaned_data.get("installed_latitude") in (None, "") or cleaned_data.get(
-            "installed_longitude"
+        if cleaned_data.get("latitude") in (None, "") or cleaned_data.get(
+            "longitude"
         ) in (None, ""):
             self.add_error(
-                "installation_location",
-                "Marca la ubicación real de instalación en el mapa o usa tu ubicación actual.",
+                "location",
+                "Marca la ubicación real de esta publicidad en el mapa o usa "
+                "tu ubicación actual.",
             )
+        return cleaned_data
+
+
+class ContactUpdateForm(forms.Form):
+    """Fix contact data without reopening a read-only workflow state."""
+
+    needs_object = True
+
+    owner_name = forms.CharField(label="Propietario / contacto", max_length=180)
+    owner_phone = forms.CharField(label="Teléfono contacto", max_length=32)
+    reference = forms.CharField(label="Referencia", max_length=255, required=False)
+
+    def __init__(self, *args, obj=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.obj = obj
+        if obj is not None:
+            self.fields["owner_name"].initial = obj.owner_name
+            self.fields["owner_phone"].initial = obj.owner_phone
+            self.fields["reference"].initial = obj.reference
+
+
+class TypeSizeSelect(forms.Select):
+    """Select whose options expose ``data-type-id`` so the direct-install
+    form can filter sizes client-side by the chosen advertising type."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._type_map = None
+
+    def _type_lookup(self):
+        if self._type_map is None:
+            self._type_map = dict(
+                AdvertisingTypeSize.objects.values_list("pk", "advertisement_type_id")
+            )
+        return self._type_map
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        raw = getattr(value, "value", value)
+        try:
+            pk = int(raw)
+        except (TypeError, ValueError):
+            return option
+        type_id = self._type_lookup().get(pk)
+        if type_id:
+            option["attrs"]["data-type-id"] = str(type_id)
+        return option
+
+
+class DirectInstallForm(forms.Form):
+    """Register an already-installed advertisement in one step.
+
+    Creates a fast-tracked request (so contact data and audit trail are
+    preserved) plus its installed unit with photo + GPS + notes.
+    """
+
+    campaign = forms.ModelChoiceField(
+        label="Campaña",
+        queryset=Campaign.objects.filter(is_active=True).order_by("-start_date", "name"),
+    )
+    address = forms.CharField(label="Dirección", max_length=255)
+    reference = forms.CharField(label="Referencia", max_length=255, required=False)
+    owner_name = forms.CharField(label="Propietario / contacto", max_length=180)
+    owner_phone = forms.CharField(label="Teléfono contacto", max_length=32)
+    advertisement_type = forms.ModelChoiceField(
+        label="Tipo de publicidad",
+        queryset=AdvertisingType.objects.filter(is_active=True).order_by("order", "name"),
+        widget=forms.Select(attrs={"data-direct-type-select": "1"}),
+    )
+    size = forms.ModelChoiceField(
+        label="Tamaño",
+        queryset=AdvertisingTypeSize.objects.filter(is_active=True),
+        required=False,
+        widget=TypeSizeSelect(attrs={"data-direct-size-select": "1"}),
+        help_text="Opcional: según el tipo seleccionado.",
+    )
+    photo = forms.ImageField(
+        label="Foto de evidencia",
+        required=True,
+        help_text="Foto de la publicidad ya instalada.",
+    )
+    notes = forms.CharField(
+        label="Notas de instalación",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+    location = forms.CharField(
+        label="Ubicación en mapa",
+        required=False,
+        widget=LeafletMapWidget(
+            lat_field="latitude",
+            lng_field="longitude",
+            attrs={"column": 12},
+        ),
+    )
+    latitude = forms.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=-90,
+        max_value=90,
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+    longitude = forms.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=-180,
+        max_value=180,
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("latitude") in (None, "") or cleaned_data.get(
+            "longitude"
+        ) in (None, ""):
+            self.add_error(
+                "location",
+                "Marca la ubicación de la publicidad en el mapa o usa tu "
+                "ubicación actual.",
+            )
+        size = cleaned_data.get("size")
+        ad_type = cleaned_data.get("advertisement_type")
+        if size and ad_type and size.advertisement_type_id != ad_type.pk:
+            self.add_error("size", "El tamaño no corresponde al tipo seleccionado.")
         return cleaned_data
 
 
@@ -413,4 +577,15 @@ class RejectPhysicalAdForm(forms.Form):
         help_text="Detalla por qué no se acepta esta oferta.",
         widget=forms.Textarea(attrs={"rows": 3}),
         required=True,
+    )
+
+
+class DiscardUnitForm(forms.Form):
+    """Reason a physical unit won't be installed (optional)."""
+
+    notes = forms.CharField(
+        label="Motivo (opcional)",
+        help_text="Ej.: no se necesitó, no había espacio, el dueño se retractó.",
+        widget=forms.Textarea(attrs={"rows": 2}),
+        required=False,
     )

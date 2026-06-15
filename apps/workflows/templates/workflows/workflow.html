@@ -90,7 +90,7 @@
           {# LEFT: cancel/destructive (target = 0) + backward split #}
           <div class="d-flex flex-wrap align-items-center gap-2 me-auto">
             {% for transition in object.get_available_state_transitions %}
-              {% if transition.target == 0 and request.user|has_perm:transition.permission %}
+              {% if transition.target == 0 and not transition.custom.hidden and request.user|has_perm:transition.permission %}
                 <a href="#"
                    class="transition btn btn-sm btn-light-danger fw-bolder d-flex align-items-center gap-2"
                    data-transition="{{ transition.name }}"
@@ -152,6 +152,30 @@
               </div>
             {% endif %}
           </div>
+
+          {# MIDDLE: neutral actions (target=None — keep current state) #}
+          {% neutral_transitions object as neutral_list %}
+          {% if neutral_list %}
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              {% for transition in neutral_list %}
+                <a href="#"
+                   class="transition btn btn-sm btn-light-info fw-bolder d-flex align-items-center gap-2"
+                   data-transition="{{ transition.name }}"
+                   data-input="{{ transition.custom.input }}"
+                   data-max_size="{{ transition.custom.max_size }}"
+                   data-placeholder="{{ transition.custom.placeholder }}"
+                   data-title="{{ transition.custom.title }}"
+                   data-form="{{ transition.custom.form }}"
+                   data-text="{{ transition.custom.text }}"
+                   data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}"
+                   data-bs-toggle="tooltip" data-bs-placement="top"
+                   title="{{ transition.custom.verbose }}">
+                  <i data-lucide="{% firstof transition.custom.lucide 'pencil' %}" class="fs-3"></i>
+                  <span class="d-none d-xl-inline">{{ transition.custom.verbose }}</span>
+                </a>
+              {% endfor %}
+            </div>
+          {% endif %}
 
           {# RIGHT: forward primary CTA (split when multiple) #}
           {% split_forward_transitions object as fwd_split %}

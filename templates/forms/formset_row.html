@@ -5,8 +5,12 @@
   {% endfor %}
   {% for field in row_form.visible_fields %}
     <td>
+      {% comment %}Headers aren't tied to each cell input; expose the field label to assistive tech.{% endcomment %}
+      <label class="visually-hidden" for="{{ field.id_for_label }}">{{ field.label }}</label>
       {% if field.field.widget.input_type == "checkbox" %}
         {{ field }}
+      {% elif field.errors %}
+        {% render_field field class="form-control form-control-sm is-invalid" aria-invalid="true" %}
       {% else %}
         {% render_field field class="form-control form-control-sm" %}
       {% endif %}

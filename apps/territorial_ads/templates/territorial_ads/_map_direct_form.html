@@ -1,0 +1,9 @@
+<form method="post"
+      action="{{ action_url }}"
+      enctype="multipart/form-data"
+      class="form"
+      id="physical-ad-map-direct-form"
+      data-map-direct-form="true">
+  {% csrf_token %}
+  {% include "forms/form.html" with form=form %}
+</form>

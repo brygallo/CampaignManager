@@ -43,6 +43,11 @@
       lng: {{ tenant_map_center.lng|default:-78.1175|stringformat:"f" }},
       zoom: {{ tenant_map_center.zoom|default:13|stringformat:"d" }}
     };
+
+    // Subfolder-tenant routing rewrites request.path (dropping /<tenant>/),
+    // so JS that builds absolute paths by hand must re-add this prefix or it
+    // 404s. Empty on the public schema. Django's url tag / reverse() include it.
+    window.TENANT_PATH_PREFIX = "{{ request.tenant_path_prefix|default:'' }}";
   </script>
 
   <a href="#kt_app_content_container" class="visually-hidden-focusable position-absolute top-0 start-50 translate-middle-x mt-2 btn btn-sm btn-primary" style="z-index: 1101;">

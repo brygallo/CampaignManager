@@ -84,6 +84,77 @@ class AdvertisingCostTypeSite(BaseSite):
     filter_fields = ("requires_amount", "is_active:Activo")
 
 
+@register("territorial_ads.AdvertisingTypeSize")
+class AdvertisingTypeSizeSite(BaseSite):
+    """Catálogo de tamaños por tipo de publicidad (Sticker: pequeño…)."""
+
+    list_fields = ("advertisement_type", "name", "order", "is_active:Activo")
+    detail_fields = {
+        "Tamaño": (
+            ("advertisement_type",),
+            ("name", "order"),
+        ),
+    }
+    search_params = ("name__icontains", "advertisement_type__name__icontains")
+    filter_fields = ("advertisement_type", "is_active:Activo")
+
+
+@register("territorial_ads.PhysicalAdvertisementUnit")
+class PhysicalAdvertisementUnitSite(BaseSite):
+    """Las publicidades físicas se crean al aprobar una solicitud y se
+    gestionan vía transiciones, así que el sitio solo lista y muestra."""
+
+    allow_views = ("list", "detail")
+    detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
+
+    list_fields = (
+        "code:Código",
+        "display_label:Publicidad",
+        "request_code:Solicitud",
+        "request_campaign:Campaña",
+        "get_state_display:Estado",
+        "installed_at",
+        "installed_by",
+    )
+    detail_fields = {
+        "Publicidad": (
+            ("code:Código", "display_label:Publicidad"),
+            ("request_code:Solicitud", "size"),
+        ),
+        "Instalación": (
+            ("photo",),
+            ("latitude", "longitude"),
+            ("installed_at", "installed_by"),
+            ("notes",),
+        ),
+        "Daño": (
+            ("damage_reported_at", "damage_reported_by"),
+            ("damage_notes",),
+            ("damage_photo",),
+        ),
+        "Retiro": (("retired_at", "retired_by"),),
+    }
+    search_params = (
+        "item__advertisement__code__icontains",
+        "item__advertisement__address__icontains",
+        "item__advertisement_type__name__icontains",
+    )
+    filter_fields = ("state",)
+    detail_maps = (
+        {
+            "title": "Ubicación",
+            "points": [
+                {
+                    "label": "Instalada",
+                    "lat": "latitude",
+                    "lng": "longitude",
+                    "color": "#198754",
+                },
+            ],
+        },
+    )
+
+
 @register("territorial_ads.PhysicalAdvertisement")
 class PhysicalAdvertisementSite(BaseSite):
     form_class = PhysicalAdvertisementForm
@@ -91,6 +162,9 @@ class PhysicalAdvertisementSite(BaseSite):
     inlines = (PhysicalAdvertisementItemFormSet,)
     form_template_name = "territorial_ads/physicaladvertisement_form.html"
     list_template_name = "territorial_ads/physicaladvertisement_list.html"
+    # Custom detail: adds the per-unit "Publicidades" cards (state, evidence
+    # and per-unit transition buttons) under the regular fieldsets.
+    detail_template_name = "territorial_ads/physicaladvertisement_detail.html"
     list_mixins = (OrderingMixin, WorkflowStateFilterMixin)
     create_mixins = (
         PhysicalAdMapInitialLocationMixin,
@@ -139,7 +213,7 @@ class PhysicalAdvertisementSite(BaseSite):
         ),
         "Aprobación": (
             ("approved_by", "approved_at"),
-            ("width_meters", "height_meters"),
+            ("items_sizes_summary:Tamaños por unidad",),
             ("items_instructions_summary:Indicaciones por tipo",),
         ),
         "Asignación de instalación": (
@@ -147,15 +221,8 @@ class PhysicalAdvertisementSite(BaseSite):
             ("assigned_by", "assigned_at"),
         ),
         "Instalación": (
-            ("installation_photos_summary:Fotos de evidencia",),
-            ("installed_latitude", "installed_longitude"),
+            ("units_state_summary:Publicidades",),
             ("installed_at", "installed_by"),
-            ("installation_notes",),
-        ),
-        "Daño reportado": (
-            ("damage_reported_at", "damage_reported_by"),
-            ("damage_notes",),
-            ("damage_photo",),
         ),
         "Retiro": (("retired_at", "retired_by"),),
     }

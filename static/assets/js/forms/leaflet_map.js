@@ -332,11 +332,20 @@
     detailMaps.forEach(initDetailMap);
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
+  function startWhenLeafletReady() {
+    if (window.L || !window.cmEnsureLeaflet) {
       window.initLeafletMaps(document);
+      return;
+    }
+    // Leaflet (CDN) did not load: retry via the loader before giving up.
+    window.cmEnsureLeaflet(function (leaflet) {
+      if (leaflet) window.initLeafletMaps(document);
     });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startWhenLeafletReady);
   } else {
-    window.initLeafletMaps(document);
+    startWhenLeafletReady();
   }
 })(window, document);

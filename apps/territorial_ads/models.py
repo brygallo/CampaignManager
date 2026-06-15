@@ -5,7 +5,10 @@ from tracing.models import BaseModel
 
 from apps.campaigns.models import Campaign
 from apps.field_surveys.models import AdvertisingType
-from apps.territorial_ads.transitions import PhysicalAdTransitions
+from apps.territorial_ads.transitions import (
+    PhysicalAdTransitions,
+    PhysicalAdUnitTransitions,
+)
 from core.fields import CompressedImageField
 from core.validators import LATITUDE_VALIDATORS, LONGITUDE_VALIDATORS
 
@@ -31,6 +34,37 @@ class AdvertisingCostType(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class AdvertisingTypeSize(BaseModel):
+    """Catálogo de tamaños por tipo de publicidad.
+
+    E.g. Sticker: pequeño / mediano / grande; Lona: pared / cuadro. Al
+    aprobar una publicidad se elige el tamaño de cada unidad desde aquí.
+    """
+
+    advertisement_type = models.ForeignKey(
+        AdvertisingType,
+        on_delete=models.CASCADE,
+        related_name="sizes",
+        verbose_name="Tipo de publicidad",
+    )
+    name = models.CharField("Nombre", max_length=120)
+    order = models.PositiveSmallIntegerField("Orden", default=0)
+
+    class Meta:
+        verbose_name = "Tamaño de publicidad"
+        verbose_name_plural = "Tamaños de publicidad"
+        ordering = ["advertisement_type__order", "advertisement_type__name", "order", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["advertisement_type", "name"],
+                name="unique_size_name_per_type",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.advertisement_type.name} — {self.name}"
 
 
 class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
@@ -198,8 +232,8 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     )
 
     class Meta:
-        verbose_name = "Publicidad"
-        verbose_name_plural = "Publicidad"
+        verbose_name = "Solicitud de publicidad"
+        verbose_name_plural = "Solicitudes de publicidad"
         ordering = ["-created_date"]
         permissions = (
             ("approve_physicaladvertisement", "Puede aprobar publicidad"),
@@ -216,7 +250,8 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if not self.code:
-            self.code = f"PF-{self.pk:06d}"
+            # ``SOL-`` = solicitud; each physical unit carries its own ``PUB-`` code.
+            self.code = f"SOL-{self.pk:06d}"
             super().save(update_fields=["code"])
 
     @property
@@ -246,6 +281,100 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
     def installation_photos_summary(self):
         count = self.installation_photos.count()
         return f"{count} foto(s)" if count else ""
+
+    @property
+    def units(self):
+        """All physical units spawned by this request, across its items.
+
+        Iterates ``items`` so a ``prefetch_related("items__units")`` on the
+        request queryset is honored (map/popup render many requests).
+        """
+        return [
+            unit for item in self.items.all() for unit in item.units.all()
+        ]
+
+    @property
+    def items_sizes_summary(self):
+        """Approved unit sizes, e.g. ``Lona: Pared, Cuadro · Sticker: Mediano``."""
+        per_type = {}
+        for unit in self.units:
+            if unit.size_id:
+                per_type.setdefault(unit.item.advertisement_type.name, []).append(
+                    unit.size.name
+                )
+        return " · ".join(
+            f"{type_name}: {', '.join(sizes)}" for type_name, sizes in per_type.items()
+        )
+
+    @property
+    def units_state_summary(self):
+        """State counts like ``2 instaladas · 1 dañada`` for lists/popups."""
+        counts = {}
+        for unit in self.units:
+            label = unit.get_state_display().lower()
+            counts[label] = counts.get(label, 0) + 1
+        return " · ".join(f"{count} {label}" for label, count in counts.items())
+
+    @property
+    def installed_location(self):
+        """(lat, lng) shown on the map once installed.
+
+        Prefers the legacy ad-level GPS pair, then falls back to the first
+        unit that carries evidence coordinates.
+        """
+        if self.installed_latitude is not None and self.installed_longitude is not None:
+            return self.installed_latitude, self.installed_longitude
+        for unit in self.units:
+            if unit.latitude is not None and unit.longitude is not None:
+                return unit.latitude, unit.longitude
+        return None
+
+    def sync_state_with_units(self, user=None, pending_unit=None, pending_state=None):
+        """Aggregate unit states into the request workflow.
+
+        Called from unit transitions BEFORE the unit row is saved, so the
+        in-flight unit's target state is passed explicitly and overrides
+        whatever the DB still holds for it.
+
+        The request state is DERIVED from its units (never set by hand):
+        - every active unit retired → request RETIRADA;
+        - else no unit PENDIENTE and at least one INSTALADA/DAÑADA → INSTALADA;
+        - else some unit back to PENDIENTE → PENDIENTE_INSTALACION.
+        A DESCARTADA (won't install) unit counts as resolved (neither pending
+        nor active), so it never blocks completion nor forces retirement.
+        """
+        unit_workflow = PhysicalAdvertisementUnit.workflow
+        states = []
+        for unit in PhysicalAdvertisementUnit.objects.filter(item__advertisement=self):
+            if pending_unit is not None and unit.pk == pending_unit.pk:
+                states.append(pending_state)
+            else:
+                states.append(unit.state)
+        if not states:
+            return
+        changed = False
+        any_pending = any(s == unit_workflow.PENDIENTE for s in states)
+        any_installed = any(
+            s in (unit_workflow.INSTALADA, unit_workflow.DANADA) for s in states
+        )
+        # Units that were discarded never counted as physical advertising.
+        active = [s for s in states if s != unit_workflow.DESCARTADA]
+        all_retired = bool(active) and all(
+            s == unit_workflow.RETIRADA for s in active
+        )
+        if all_retired and self.state == self.workflow.INSTALADA:
+            self.retire_request(user=user)
+            changed = True
+        elif not any_pending and any_installed and (
+            self.state == self.workflow.PENDIENTE_INSTALACION
+        ):
+            self.mark_installed(user=user)
+            changed = True
+        elif any_pending and self.state == self.workflow.INSTALADA:
+            self.revert_to_pending(user=user)
+            changed = True
+        if changed:
+            self.save()
 
     @property
     def items_instructions_summary(self):
@@ -299,8 +428,150 @@ class PhysicalAdvertisementItem(BaseModel):
         return f"{self.quantity}× {self.advertisement_type.name}"
 
 
+class PhysicalAdvertisementUnit(BaseModel, PhysicalAdUnitTransitions):
+    """One physical advertisement (valla / lona / sticker) born from a request.
+
+    The request (``PhysicalAdvertisement``) handles the place: offer,
+    approval, installer assignment. Once approved, every unit materializes
+    as a row here and lives its own lifecycle: installation evidence
+    (photo + GPS + notes), damage reports and retirement are per unit.
+    """
+
+    workflow = PhysicalAdUnitTransitions.workflow
+
+    code = models.CharField("Código", max_length=32, blank=True)
+    item = models.ForeignKey(
+        PhysicalAdvertisementItem,
+        on_delete=models.CASCADE,
+        related_name="units",
+        verbose_name="Ítem solicitado",
+    )
+    unit_number = models.PositiveSmallIntegerField("Unidad", default=1)
+    size = models.ForeignKey(
+        AdvertisingTypeSize,
+        on_delete=models.PROTECT,
+        related_name="units",
+        verbose_name="Tamaño",
+        null=True,
+        blank=True,
+    )
+    state = FSMIntegerField(
+        "Estado",
+        choices=workflow.choices,
+        default=workflow.PENDIENTE,
+        protected=True,
+    )
+
+    photo = CompressedImageField(
+        "Foto de evidencia",
+        upload_to="territorial_ads/installations/",
+        null=True,
+        blank=True,
+    )
+    latitude = models.DecimalField(
+        "Latitud GPS",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=list(LATITUDE_VALIDATORS),
+    )
+    longitude = models.DecimalField(
+        "Longitud GPS",
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=list(LONGITUDE_VALIDATORS),
+    )
+    notes = models.TextField("Notas de instalación", blank=True)
+    installed_at = models.DateTimeField("Fecha/hora instalación", null=True, blank=True)
+    installed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="installed_ad_units",
+        verbose_name="Instalado por",
+        null=True,
+        blank=True,
+    )
+
+    damage_notes = models.TextField("Notas de daño", blank=True)
+    damage_photo = CompressedImageField(
+        "Foto de daño",
+        upload_to="territorial_ads/damages/",
+        null=True,
+        blank=True,
+    )
+    damage_reported_at = models.DateTimeField("Fecha reporte daño", null=True, blank=True)
+    damage_reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="damage_reported_ad_units",
+        verbose_name="Daño reportado por",
+        null=True,
+        blank=True,
+    )
+
+    retired_at = models.DateTimeField("Fecha retiro", null=True, blank=True)
+    retired_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="retired_ad_units",
+        verbose_name="Retirado por",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Publicidad"
+        verbose_name_plural = "Publicidades"
+        ordering = ["item__advertisement_type__order", "item_id", "unit_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["item", "unit_number"],
+                name="unique_unit_number_per_item",
+            )
+        ]
+
+    def __str__(self):
+        return self.code or self.display_label
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.code:
+            # ``PUB-`` = publicidad física (one installable advertisement).
+            self.code = f"PUB-{self.pk:06d}"
+            super().save(update_fields=["code"])
+
+    @property
+    def advertisement(self):
+        return self.item.advertisement
+
+    @property
+    def request_code(self):
+        return self.item.advertisement.code
+
+    @property
+    def request_campaign(self):
+        return self.item.advertisement.campaign
+
+    @property
+    def display_label(self):
+        """Human label like ``Lona (Pared) #2`` for cards and lists."""
+        label = self.item.advertisement_type.name
+        if self.size_id:
+            label += f" ({self.size.name})"
+        if self.item.quantity > 1:
+            label += f" #{self.unit_number}"
+        return label
+
+
 class InstallationPhoto(BaseModel):
-    """Installation evidence photo: one photo per installed unit (valla)."""
+    """Legacy installation evidence photo (pre per-unit redesign).
+
+    New evidence lives on ``PhysicalAdvertisementUnit.photo``; this model
+    only keeps historical galleries readable.
+    """
 
     advertisement = models.ForeignKey(
         PhysicalAdvertisement,

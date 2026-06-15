@@ -309,7 +309,8 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'assets/js/field_surveys/map.js' %}?v=20260519-zoom-gate"></script>
+<script src="{% static 'assets/js/core/map_kit.js' %}?v=20260615-mapkit"></script>
+<script src="{% static 'assets/js/field_surveys/map.js' %}?v=20260615-mapkit"></script>
 <script>
   // Gate duro: brigadistas en terreno necesitan su ubicación para registrar
   // visitas. Pre-aviso → pedido nativo → centrar en su ubicación reusando el

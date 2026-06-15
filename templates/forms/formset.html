@@ -11,10 +11,10 @@
     <thead>
       <tr class="text-gray-600 fw-bold fs-7 text-uppercase">
         {% for header in formset.headers %}
-          <th>{{ header }}</th>
+          <th scope="col">{{ header }}</th>
         {% endfor %}
         {% if formset.can_delete %}
-          <th>Eliminar</th>
+          <th scope="col">Eliminar</th>
         {% endif %}
       </tr>
     </thead>

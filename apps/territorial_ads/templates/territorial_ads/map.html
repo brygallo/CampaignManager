@@ -14,8 +14,9 @@
        class="physical-ad-map"
        data-url="{% url 'territorial_ads:map_data' %}"
        data-popup-url="{% url 'territorial_ads:map_popup' 0 %}"
-       data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"
-       data-refusal-create-url="{% url 'territorial_ads:refusal_create' %}"
+       {% if perms.territorial_ads.add_physicaladvertisement %}data-create-url="{% url 'site:territorial_ads_physicaladvertisement_crear' %}"{% endif %}
+       {% if perms.territorial_ads.add_physicaladvertisement and perms.territorial_ads.install_physicaladvertisement %}data-direct-create-url="{% url 'territorial_ads:direct_install_create' %}"{% endif %}
+       {% if perms.territorial_ads.add_advertisingrefusal %}data-refusal-create-url="{% url 'territorial_ads:refusal_create' %}"{% endif %}
        data-refusal-popup-url="{% url 'territorial_ads:refusal_popup' 0 %}"
        data-default-lat="{{ tenant_map_center.lat|stringformat:"f" }}"
        data-default-lng="{{ tenant_map_center.lng|stringformat:"f" }}"
@@ -38,6 +39,25 @@
       <strong data-truncated-total>0</strong> ubicaciones. Aplica filtros para
       reducir el resultado.
     </span>
+    <button type="button" class="btn btn-sm btn-light-warning ms-2" data-open-filters>
+      <i data-lucide="filter" class="fs-5"></i>Aplicar filtros
+    </button>
+  </div>
+
+  {# ===== Empty state (no results) ===== #}
+  <div class="cm-map-empty card shadow-sm d-none" data-map-empty hidden role="status" aria-live="polite">
+    <div class="card-body text-center py-6 px-5">
+      <i data-lucide="map-pin-off" class="fs-3x text-muted mb-3 d-block"></i>
+      <p class="fw-semibold text-gray-800 fs-6 mb-1" data-map-empty-text-filtered hidden>
+        Sin resultados con los filtros aplicados.
+      </p>
+      <p class="fw-semibold text-gray-800 fs-6 mb-1" data-map-empty-text-blank hidden>
+        Aún no hay registros en el mapa.
+      </p>
+      <button type="button" class="btn btn-sm btn-light-primary mt-2" data-map-empty-clear>
+        <i data-lucide="eraser" class="fs-5"></i>Limpiar filtros
+      </button>
+    </div>
   </div>
 
   {# ===== Filter trigger (top-right, icon-only round) ===== #}
@@ -109,6 +129,20 @@
           {% endfor %}
         </select>
       </div>
+      <div class="physical-ad-map-field">
+        <label for="pa-map-filter-kind" class="form-label fs-7 fw-semibold text-gray-700">Tipo de registro</label>
+        <select id="pa-map-filter-kind"
+                name="kind"
+                class="form-select form-select-sm form-select-solid django-select2"
+                data-allow-clear="true">
+          <option value="">Todos</option>
+          <option value="request">Solicitudes</option>
+          <option value="publicity">Publicidades</option>
+          {% if perms.territorial_ads.view_advertisingrefusal %}
+            <option value="refusal">Rechazos</option>
+          {% endif %}
+        </select>
+      </div>
 
       <div class="physical-ad-map-panel__actions">
         <button type="button"
@@ -171,13 +205,90 @@
        aria-live="polite"
        hidden></div>
 
+  {# ===== Map legend (toggle + panel), state colors of pins ===== #}
+  <button type="button"
+          id="physical-ad-map-legend-toggle"
+          class="physical-ad-map-legend-toggle"
+          aria-controls="physical-ad-map-legend"
+          aria-expanded="false"
+          aria-label="Mostrar leyenda del mapa"
+          title="Leyenda">
+    <i data-lucide="info"></i>
+  </button>
+
+  <aside id="physical-ad-map-legend"
+         class="physical-ad-map-legend"
+         aria-hidden="true"
+         aria-label="Leyenda de pines del mapa">
+    <div class="physical-ad-map-legend__head">
+      <span class="physical-ad-map-legend__title">Leyenda</span>
+      <button type="button"
+              class="physical-ad-map-legend__close"
+              data-legend-close
+              aria-label="Cerrar leyenda">
+        <i data-lucide="x" class="fs-5"></i>
+      </button>
+    </div>
+
+    <div class="physical-ad-map-legend__group">
+      <div class="physical-ad-map-legend__group-title">Solicitudes (rombo)</div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--request" style="background:#3e97ff;"><i data-lucide="clipboard-list"></i></span>
+        <span>Ofrecida</span>
+      </div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--request" style="background:#7239ea;"><i data-lucide="clipboard-list"></i></span>
+        <span>Aprobada</span>
+      </div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--request" style="background:#ffc700;"><i data-lucide="clipboard-list"></i></span>
+        <span>Pendiente instalación</span>
+      </div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--request" style="background:#f1416c;"><i data-lucide="clipboard-list"></i></span>
+        <span>Rechazada</span>
+      </div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--request" style="background:#50cd89;"><i data-lucide="clipboard-list"></i></span>
+        <span>Instalada</span>
+      </div>
+    </div>
+
+    <div class="physical-ad-map-legend__group">
+      <div class="physical-ad-map-legend__group-title">Publicidades (círculo)</div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--unit" style="background:#50cd89;"><i data-lucide="check"></i></span>
+        <span>Instalada</span>
+      </div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--unit" style="background:#fd7e14;"><i data-lucide="alert-triangle"></i></span>
+        <span>Dañada</span>
+      </div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--unit" style="background:#7e8299;"><i data-lucide="archive"></i></span>
+        <span>Retirada</span>
+      </div>
+    </div>
+
+    <div class="physical-ad-map-legend__group">
+      <div class="physical-ad-map-legend__group-title">Otros</div>
+      <div class="physical-ad-map-legend__row">
+        <span class="physical-ad-map-legend__swatch physical-ad-map-legend__swatch--refusal" style="background:#7e8299;"><i data-lucide="x-square"></i></span>
+        <span>No quiere publicidad</span>
+      </div>
+    </div>
+  </aside>
+
 </div>
 
-{# Modal: choose between registering advertising or logging a refusal. #}
+{# Modal: choose an action allowed by the current user's permissions. #}
 {% include "base/_sheet_modal.html" with modal_id="physical-ad-choice-modal" variant="choice" tone="primary" icon="help-circle" title="¿Qué quieres registrar?" subtitle="Elige una opción para este lugar" size="md" scrollable=True default_state="full" extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_choose_modal_body.html" %}
 
-{# Modal: empty map click → publicidad create form #}
-{% include "base/_sheet_modal.html" with modal_id="physical-ad-create-modal" variant="form" tone="primary" icon="square-plus" title="Nueva publicidad" subtitle="Completa los datos del lugar ofrecido" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_create_modal_body.html" footer_template="territorial_ads/_create_modal_footer.html" %}
+{# Modal: empty map click → solicitud create form #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-create-modal" variant="form" tone="primary" icon="square-plus" title="Nueva solicitud" subtitle="Completa los datos del lugar ofrecido" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_create_modal_body.html" footer_template="territorial_ads/_create_modal_footer.html" %}
+
+{# Modal: register an advertisement that is already installed. #}
+{% include "base/_sheet_modal.html" with modal_id="physical-ad-direct-modal" variant="form" tone="success" icon="badge-check" title="Registrar publicidad" subtitle="Registra una publicidad ya instalada con foto y ubicación" size="xl" scrollable=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_direct_modal_body.html" footer_template="territorial_ads/_direct_modal_footer.html" %}
 
 {# Modal: rechazo registrado — hero rojo + form de motivo. #}
 {% include "base/_sheet_modal.html" with modal_id="physical-ad-refusal-modal" variant="confirm" tone="danger" icon="x-circle" title="Registrar rechazo de publicidad" subtitle="Indica el motivo del rechazo en este lugar" size="lg" scrollable=True backdrop_static=True extra_classes="physical-ad-map-modal physical-ad-map-sheet-modal" dialog_classes="physical-ad-map-sheet-dialog" body_template="territorial_ads/_refusal_modal_body.html" footer_template="territorial_ads/_refusal_modal_footer.html" %}
@@ -205,7 +316,8 @@
 {{ block.super }}
 <script src="{% static 'vendors/formset/jquery.formset.js' %}"></script>
 <script src="{% static 'vendors/formset/formsets.init.js' %}"></script>
-<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260519-create-gate-50m"></script>
+<script src="{% static 'assets/js/core/map_kit.js' %}?v=20260615-tenantfix"></script>
+<script src="{% static 'assets/js/territorial_ads/map.js' %}?v=20260615-tenantfix"></script>
 <script>
   // Gate suave: a veces se planifica desde la oficina. Solo pedimos ubicación
   // una vez por sesión; si la ignoran, queda el banner persistente.

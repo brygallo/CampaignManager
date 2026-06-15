@@ -3,6 +3,7 @@
 <script src="{% static 'assets/js/scripts.bundle.js' %}"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="{% static 'assets/js/forms/leaflet_loader.js' %}"></script>
 <script src="{% static 'vendors/select2/django-select2.js' %}"></script>
 <script src="{% static 'assets/js/forms/select2.js' %}?v=20260508-1"></script>
 <script src="{% static 'assets/js/forms/leaflet_map.js' %}"></script>
@@ -13,6 +14,8 @@
 <script src="{% static 'assets/js/forms/geolocation_gate.js' %}?v=20260508-5"></script>
 <script src="{% static 'assets/js/forms/field_validation.js' %}?v=20260508-1"></script>
 <script src="{% static 'assets/js/forms/delete_modal.js' %}?v=20260508-1"></script>
+{% if dev_prefill_enabled %}<script src="{% static 'assets/js/forms/dev_prefill.js' %}?v=20260615-2"></script>{% endif %}
+<script src="{% static 'assets/js/core/map_kit.js' %}?v=20260612-2"></script>
 
 <script src="https://unpkg.com/lucide@0.456.0/dist/umd/lucide.min.js"></script>
 <script>

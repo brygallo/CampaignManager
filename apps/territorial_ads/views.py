@@ -7,6 +7,7 @@ spots where owners have already declined.
 """
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -26,8 +27,16 @@ from core.map_mixins import (
     MapInitialLocationMixin,
 )
 
-from .forms import AdvertisingRefusalForm
-from .models import AdvertisingRefusal, PhysicalAdvertisement
+from .forms import (
+    AdvertisingRefusalForm,
+    BulkAssignInstallationForm,
+    DirectInstallForm,
+)
+from .models import (
+    AdvertisingRefusal,
+    PhysicalAdvertisement,
+    PhysicalAdvertisementUnit,
+)
 
 
 class PhysicalAdMapInitialLocationMixin(MapInitialLocationMixin):
@@ -56,26 +65,40 @@ STATE_COLORS = {
     2: "#7239ea",  # APROBADA
     3: "#ffc700",  # PENDIENTE_INSTALACION
     4: "#50cd89",  # INSTALADA
-    5: "#fd7e14",  # DAÑADA
-    6: "#7e8299",  # RETIRADA
+    5: "#7e8299",  # RETIRADA (auto: every unit retired)
+}
+
+# Unit (publicidad física) workflow colors: RETIRADA, PENDIENTE, INSTALADA, DANADA.
+UNIT_STATE_COLORS = {
+    0: "#7e8299",
+    1: "#ffc700",
+    2: "#50cd89",
+    3: "#fd7e14",
 }
 
 REFUSAL_COLOR = "#7e8299"
 REFUSAL_ICON = "cross-square"
 
-# Forward-path stepper. RECHAZADA (0) is rendered separately as a terminal state
-# alert so it does not pollute the linear progress display.
+# Every request (solicitud) pin shows the same generic icon; the advertising
+# type icon belongs to each installed publicidad (unit) instead. Shape
+# (diamond) + color (state) carry the meaning for requests.
+REQUEST_ICON = "clipboard-list"
+
+# Forward-path stepper for the REQUEST. RECHAZADA (0) and RETIRADA (6) are
+# rendered separately as terminal alerts; damage now lives on each unit.
 STEPPER_STEPS = (
     {"value": 1, "label": "Ofrecida", "icon": "send"},
     {"value": 2, "label": "Aprobada", "icon": "verify"},
     {"value": 3, "label": "Pendiente", "icon": "time"},
     {"value": 4, "label": "Instalada", "icon": "check-circle"},
-    {"value": 5, "label": "Dañada", "icon": "information-5"},
-    {"value": 6, "label": "Retirada", "icon": "cross-square"},
 )
 
 def physicalad_detail_url(pk):
     return reverse("site:territorial_ads_physicaladvertisement_", kwargs={"pk": pk})
+
+
+def refusal_detail_url(pk):
+    return reverse("site:territorial_ads_advertisingrefusal_", kwargs={"pk": pk})
 
 
 class PhysicalAdMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
@@ -111,12 +134,29 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
     MAX_POINTS = 5000
 
     def get(self, request, *args, **kwargs):
+        # Requests and physical units are separate map concepts. A request
+        # keeps its offered-location pin throughout its lifecycle, while each
+        # installed unit gets its own evidence-location pin.
         queryset = (
             PhysicalAdvertisement.objects.select_related("campaign")
-            .prefetch_related("items__advertisement_type")
+            .prefetch_related("items__advertisement_type", "items__units")
+            # Same soft-delete contract as the refusal queryset below:
+            # deactivated records must not surface on the map.
+            .filter(is_active=True)
             .filter(
-                Q(installed_latitude__isnull=False, installed_longitude__isnull=False)
-                | Q(offered_latitude__isnull=False, offered_longitude__isnull=False)
+                offered_latitude__isnull=False, offered_longitude__isnull=False
+            )
+        )
+        unit_qs = (
+            PhysicalAdvertisementUnit.objects.select_related(
+                "item__advertisement__campaign",
+                "item__advertisement_type",
+                "size",
+            )
+            .filter(
+                item__advertisement__is_active=True,
+                latitude__isnull=False,
+                longitude__isnull=False,
             )
         )
         # Active-campaign fallback: explicit ``?campaign=`` in the URL wins
@@ -127,9 +167,20 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
             campaign_id = str(request.active_campaign.pk)
         if campaign_id:
             queryset = queryset.filter(campaign_id=campaign_id)
+            unit_qs = unit_qs.filter(item__advertisement__campaign_id=campaign_id)
+        marker_kind = request.GET.get("kind", "")
         state = request.GET.get("state")
-        if state:
+        if state and marker_kind != "refusal":
             queryset = queryset.filter(state=state)
+            unit_qs = unit_qs.filter(item__advertisement__state=state)
+
+        if marker_kind == "request":
+            unit_qs = unit_qs.none()
+        elif marker_kind == "publicity":
+            queryset = queryset.none()
+        elif marker_kind == "refusal":
+            queryset = queryset.none()
+            unit_qs = unit_qs.none()
 
         # Refusals share the same map but live in a different model; we
         # build their queryset early so the count() feeds the truncation
@@ -138,7 +189,12 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
         # workflow.
         refusal_qs = None
         refusal_total = 0
-        if not state:
+        include_refusals = marker_kind == "refusal" or (
+            marker_kind == "" and not state
+        )
+        if include_refusals and request.user.has_perm(
+            "territorial_ads.view_advertisingrefusal"
+        ):
             refusal_qs = AdvertisingRefusal.objects.select_related("campaign").filter(
                 latitude__isnull=False, longitude__isnull=False, is_active=True
             )
@@ -147,12 +203,15 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
             refusal_total = refusal_qs.count()
 
         ad_total = queryset.count()
-        grand_total = ad_total + refusal_total
+        unit_total = unit_qs.count()
+        grand_total = ad_total + unit_total + refusal_total
         truncated = grand_total > self.MAX_POINTS
         if truncated:
             ad_cap = int(self.MAX_POINTS * ad_total / grand_total)
-            refusal_cap = self.MAX_POINTS - ad_cap
+            unit_cap = int(self.MAX_POINTS * unit_total / grand_total)
+            refusal_cap = self.MAX_POINTS - ad_cap - unit_cap
             queryset = queryset.order_by("-id")[:ad_cap]
+            unit_qs = unit_qs.order_by("-id")[:unit_cap]
             if refusal_qs is not None:
                 refusal_qs = refusal_qs.order_by("-id")[:refusal_cap]
 
@@ -164,21 +223,18 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
         ads = []
         for ad in queryset:
-            if ad.installed_latitude is not None and ad.installed_longitude is not None:
-                lat, lng, kind = ad.installed_latitude, ad.installed_longitude, "instalada"
-            else:
-                lat, lng, kind = ad.offered_latitude, ad.offered_longitude, "ofrecida"
             ad_urls = get_urls_of_site(ad_site, object=ad, user=request.user)
             item = {
                 "id": ad.id,
-                "lat": float(lat),
-                "lng": float(lng),
-                "kind": kind,
+                "marker_key": f"request:{ad.id}",
+                "lat": float(ad.offered_latitude),
+                "lng": float(ad.offered_longitude),
+                "kind": "solicitud",
                 "label": ad.code or str(ad),
                 "state_code": ad.state,
                 "state_label": ad.get_state_display(),
                 "color": STATE_COLORS.get(ad.state, "#3388ff"),
-                "type_icon": ad.primary_type_icon,
+                "type_icon": REQUEST_ICON,
                 "type_label": ad.items_summary,
                 "url": physicalad_detail_url(ad.id),
                 "campaign": ad.campaign.name if ad.campaign_id else "",
@@ -193,11 +249,36 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 item["delete_url"] = ad_urls["delete"]
             ads.append(item)
 
+        for unit in unit_qs:
+            ad = unit.item.advertisement
+            ads.append(
+                {
+                    "id": unit.id,
+                    "marker_key": f"unit:{unit.id}",
+                    "lat": float(unit.latitude),
+                    "lng": float(unit.longitude),
+                    "kind": "publicidad",
+                    "label": f"{unit.code or ad.code} · {unit.display_label}",
+                    "state_code": unit.state,
+                    "state_label": unit.get_state_display(),
+                    "color": UNIT_STATE_COLORS.get(unit.state, "#50cd89"),
+                    "type_icon": unit.item.advertisement_type.icon,
+                    "type_label": unit.display_label,
+                    # Unit pins open the request detail (it lists every unit
+                    # with its evidence and per-unit actions).
+                    "url": physicalad_detail_url(ad.id),
+                    "campaign": ad.campaign.name if ad.campaign_id else "",
+                    "address": ad.address or "",
+                    "marker_kind": "unit",
+                }
+            )
+
         if refusal_qs is not None:
             for refusal in refusal_qs:
                 refusal_urls = get_urls_of_site(refusal_site, object=refusal, user=request.user)
                 item = {
                     "id": refusal.id,
+                    "marker_key": f"refusal:{refusal.id}",
                     "lat": float(refusal.latitude),
                     "lng": float(refusal.longitude),
                     "kind": "rechazo",
@@ -207,7 +288,9 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     "color": REFUSAL_COLOR,
                     "type_icon": REFUSAL_ICON,
                     "type_label": "Rechazo",
-                    "url": reverse("territorial_ads:refusal_popup", kwargs={"pk": refusal.id}),
+                    # Full detail page so the click opens the same modal as
+                    # requests/units (the map JS uses openDetailModal).
+                    "url": refusal_detail_url(refusal.id),
                     "campaign": refusal.campaign.name if refusal.campaign_id else "",
                     "address": refusal.owner_reference or "",
                     "marker_kind": "refusal",
@@ -246,7 +329,12 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "rejected_by",
                 "damage_reported_by",
                 "retired_by",
-            ).prefetch_related("items__advertisement_type", "installation_photos"),
+            ).prefetch_related(
+                "items__advertisement_type",
+                "items__units__size",
+                "items__units__installed_by",
+                "installation_photos",
+            ),
             request,
         )
         ad = get_object_or_404(
@@ -261,22 +349,26 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
             }
             for step in STEPPER_STEPS
         ]
-        if ad.installed_latitude is not None and ad.installed_longitude is not None:
+        installed = ad.installed_location
+        if installed is not None:
             pin_kind = "instalada"
-            pin_lat, pin_lng = ad.installed_latitude, ad.installed_longitude
+            pin_lat, pin_lng = installed
         elif ad.offered_latitude is not None and ad.offered_longitude is not None:
             pin_kind = "ofrecida"
             pin_lat, pin_lng = ad.offered_latitude, ad.offered_longitude
         else:
             pin_kind, pin_lat, pin_lng = None, None, None
+        units = ad.units
         html = render_to_string(
             "territorial_ads/_map_popup.html",
             {
                 "ad": ad,
+                "units": units,
                 "state_color": STATE_COLORS.get(ad.state, "#3388ff"),
                 "stepper_steps": steps,
                 "is_rejected": ad.state == 0,
-                "type_icon": ad.primary_type_icon,
+                "is_retired": ad.state == 5,
+                "type_icon": REQUEST_ICON,
                 "pin_kind": pin_kind,
                 "pin_lat": pin_lat,
                 "pin_lng": pin_lng,
@@ -288,6 +380,179 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "html": html,
                 "title": ad.code or str(ad),
                 "url": physicalad_detail_url(ad.id),
+            }
+        )
+
+
+class PhysicalAdBulkAssignView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """Assign one installer to several APROBADA ads in a single step.
+
+    AJAX endpoint behind the "Asignación masiva" button on the list view:
+    GET returns the form HTML for the modal, POST runs the
+    ``assign_installation`` transition for every selected ad atomically.
+    """
+
+    permission_required = "territorial_ads.assign_physicaladvertisement"
+    raise_exception = True
+    template_name = "territorial_ads/_bulk_assign_form.html"
+
+    def _queryset(self, request):
+        queryset = (
+            PhysicalAdvertisement.objects.filter(
+                is_active=True,
+                state=PhysicalAdvertisement.workflow.APROBADA,
+            )
+            .select_related("campaign")
+            .prefetch_related("items__advertisement_type")
+            .order_by("-id")
+        )
+        active = getattr(request, "active_campaign", None)
+        if active is not None:
+            queryset = queryset.filter(campaign=active)
+        return queryset
+
+    def _render_form(self, request, form):
+        return render_to_string(
+            self.template_name,
+            {"form": form, "action_url": reverse("territorial_ads:bulk_assign")},
+            request=request,
+        )
+
+    def get(self, request, *args, **kwargs):
+        queryset = self._queryset(request)
+        form = BulkAssignInstallationForm(queryset=queryset)
+        return JsonResponse(
+            {"html": self._render_form(request, form), "count": queryset.count()}
+        )
+
+    def post(self, request, *args, **kwargs):
+        form = BulkAssignInstallationForm(
+            request.POST, queryset=self._queryset(request)
+        )
+        if not form.is_valid():
+            return JsonResponse(
+                {"ok": False, "html": self._render_form(request, form)},
+                status=400,
+            )
+        installer = form.cleaned_data.get("assigned_installer")
+        team = form.cleaned_data.get("installer_team") or ""
+        ads = list(form.cleaned_data["advertisements"])
+        with transaction.atomic():
+            for ad in ads:
+                ad.assign_installation(
+                    user=request.user,
+                    assigned_installer=installer.pk if installer else None,
+                    installer_team=team,
+                )
+                ad.save()
+        return JsonResponse({"ok": True, "count": len(ads)})
+
+
+class DirectInstallCreateView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """One-step registration of an already-installed advertisement.
+
+    Creates a fast-tracked request (keeping contact data and the audit
+    trail) and its installed unit with photo + GPS + notes. Opened from the
+    map's choice modal.
+    """
+
+    permission_required = (
+        "territorial_ads.add_physicaladvertisement",
+        "territorial_ads.install_physicaladvertisement",
+    )
+    raise_exception = True
+    template_name = "territorial_ads/_map_direct_form.html"
+
+    def _initial_from_query(self, request):
+        initial = {}
+        for source, target in (
+            ("offered_latitude", "latitude"),
+            ("offered_longitude", "longitude"),
+            ("latitude", "latitude"),
+            ("longitude", "longitude"),
+        ):
+            value = request.GET.get(source)
+            if value and target not in initial:
+                initial[target] = value
+        return initial
+
+    def _render_form(self, request, form):
+        return render_to_string(
+            self.template_name,
+            {"form": form, "action_url": request.get_full_path()},
+            request=request,
+        )
+
+    def _build_form(self, request, *args, **kwargs):
+        form = DirectInstallForm(*args, **kwargs)
+        active = getattr(request, "active_campaign", None)
+        field = form.fields["campaign"]
+        if active is not None:
+            field.queryset = field.queryset.filter(pk=active.pk)
+            field.initial = active.pk
+            field.widget = forms.HiddenInput()
+        return form
+
+    def get(self, request, *args, **kwargs):
+        initial = self._initial_from_query(request)
+        active = getattr(request, "active_campaign", None)
+        if active is not None:
+            initial.setdefault("campaign", active.pk)
+        form = self._build_form(request, initial=initial)
+        return JsonResponse({"html": self._render_form(request, form)})
+
+    def post(self, request, *args, **kwargs):
+        data = request.POST.copy()
+        active = getattr(request, "active_campaign", None)
+        if active is not None:
+            data["campaign"] = str(active.pk)
+        form = self._build_form(request, data, request.FILES)
+        if not form.is_valid():
+            return JsonResponse(
+                {"ok": False, "html": self._render_form(request, form)},
+                status=400,
+            )
+        cleaned = form.cleaned_data
+        with transaction.atomic():
+            ad = PhysicalAdvertisement.objects.create(
+                campaign=cleaned["campaign"],
+                address=cleaned["address"],
+                reference=cleaned.get("reference") or "",
+                owner_name=cleaned["owner_name"],
+                owner_phone=cleaned["owner_phone"],
+                offered_latitude=cleaned["latitude"],
+                offered_longitude=cleaned["longitude"],
+            )
+            item = ad.items.create(
+                advertisement_type=cleaned["advertisement_type"], quantity=1
+            )
+            size = cleaned.get("size")
+            approve_kwargs = {}
+            if size is not None:
+                approve_kwargs[f"item_size_{item.pk}_1"] = size.pk
+            # Fast-track the request through the normal transitions so the
+            # audit trail (who/when) stays consistent with the manual flow.
+            ad.approve(user=request.user, **approve_kwargs)
+            ad.save()
+            ad.assign_installation(
+                user=request.user, assigned_installer=request.user.pk
+            )
+            ad.save()
+            unit = item.units.first()
+            unit.mark_installed(
+                user=request.user,
+                photo=cleaned["photo"],
+                latitude=cleaned["latitude"],
+                longitude=cleaned["longitude"],
+                notes=cleaned.get("notes") or "",
+            )
+            unit.save()
+        return JsonResponse(
+            {
+                "ok": True,
+                "id": ad.pk,
+                "label": ad.code or str(ad),
+                "url": physicalad_detail_url(ad.pk),
             }
         )
 
@@ -394,6 +659,8 @@ class AdvertisingRefusalPopupView(LoginRequiredMixin, PermissionRequiredMixin, V
             {
                 "html": html,
                 "title": refusal.owner_reference or f"Rechazo #{refusal.pk}",
-                "url": "",
+                # Full detail page, so the map modal can offer "open record"
+                # for refusals just like it does for advertisements.
+                "url": refusal_detail_url(refusal.pk),
             }
         )

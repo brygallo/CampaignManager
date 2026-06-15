@@ -3,4 +3,131 @@
 {% block list_extra_actions %}
   {{ block.super }}
   {% include "territorial_ads/_section_nav.html" with active="list" %}
+  {% if perms.territorial_ads.assign_physicaladvertisement %}
+    <button type="button"
+            class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-2"
+            data-bs-toggle="modal"
+            data-bs-target="#bulk-assign-modal">
+      <i data-lucide="users" class="fs-4" aria-hidden="true"></i>
+      <span class="d-none d-md-inline">Asignación masiva</span>
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {% if perms.territorial_ads.assign_physicaladvertisement %}
+    <div class="modal fade" id="bulk-assign-modal" tabindex="-1" aria-labelledby="bulk-assign-modal-title" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="bulk-assign-modal-title">Asignación masiva de instalación</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body" data-bulk-assign-body aria-live="polite">
+            <div class="d-flex justify-content-center py-10">
+              <span class="spinner-border text-primary" role="status" aria-label="Cargando"></span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary btn-sm" data-bulk-assign-submit disabled>
+              <span data-bulk-assign-submit-label>Asignar seleccionadas</span>
+              <span class="spinner-border spinner-border-sm ms-2 d-none" data-bulk-assign-spinner role="status" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var modalEl = document.getElementById("bulk-assign-modal");
+        if (!modalEl) return;
+        var body = modalEl.querySelector("[data-bulk-assign-body]");
+        var submitBtn = modalEl.querySelector("[data-bulk-assign-submit]");
+        var spinner = modalEl.querySelector("[data-bulk-assign-spinner]");
+        var endpoint = "{% url 'territorial_ads:bulk_assign' %}";
+
+        function renderIcons() {
+          if (window.cmRenderIcons) window.cmRenderIcons(modalEl);
+          else if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+        }
+
+        function wireSelectAll() {
+          var all = body.querySelector("[data-bulk-select-all]");
+          if (!all) return;
+          all.addEventListener("change", function () {
+            body.querySelectorAll('[data-bulk-assign-list] input[type="checkbox"]').forEach(function (cb) {
+              cb.checked = all.checked;
+            });
+          });
+        }
+
+        function setBusy(busy) {
+          submitBtn.disabled = busy;
+          spinner.classList.toggle("d-none", !busy);
+        }
+
+        function loadForm() {
+          submitBtn.disabled = true;
+          fetch(endpoint, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin",
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              body.innerHTML = data.html;
+              submitBtn.disabled = !data.count;
+              wireSelectAll();
+              renderIcons();
+            })
+            .catch(function () {
+              body.innerHTML = '<div class="alert alert-danger mb-0" role="alert">No se pudo cargar el formulario. Intenta de nuevo.</div>';
+            });
+        }
+
+        modalEl.addEventListener("shown.bs.modal", loadForm);
+
+        submitBtn.addEventListener("click", function () {
+          var form = body.querySelector("[data-bulk-assign-form]");
+          if (!form) return;
+          setBusy(true);
+          fetch(endpoint, {
+            method: "POST",
+            body: new FormData(form),
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin",
+          })
+            .then(function (res) {
+              return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+            })
+            .then(function (result) {
+              if (result.ok && result.data.ok) {
+                body.innerHTML =
+                  '<div class="alert alert-success d-flex align-items-center gap-2 mb-0" role="status">' +
+                  '<i data-lucide="check-circle" class="fs-3" aria-hidden="true"></i>' +
+                  "<div>Se asignaron <strong>" + result.data.count + "</strong> publicidad(es). Actualizando…</div></div>";
+                renderIcons();
+                setTimeout(function () { window.location.reload(); }, 900);
+                return;
+              }
+              setBusy(false);
+              if (result.data.html) {
+                body.innerHTML = result.data.html;
+                wireSelectAll();
+                renderIcons();
+              }
+            })
+            .catch(function () {
+              setBusy(false);
+              body.insertAdjacentHTML(
+                "afterbegin",
+                '<div class="alert alert-danger" role="alert">No se pudo completar la asignación. Intenta de nuevo.</div>'
+              );
+            });
+        });
+      });
+    </script>
+  {% endif %}
 {% endblock %}
