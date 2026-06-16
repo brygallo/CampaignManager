@@ -21,21 +21,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
-
-SAFE_NAME_CHARS = set("abcdefghijklmnopqrstuvwxyz0123456789_")
-
-
-def _normalize_schema_name(slug: str) -> str:
-    """Convert a slug to a valid PostgreSQL schema name."""
-    name = slug.lower().replace("-", "_")
-    if not name or not all(c in SAFE_NAME_CHARS for c in name):
-        raise CommandError(
-            f"Invalid schema name derived from slug: {name!r}. "
-            "Use only lowercase letters, digits, hyphens, and underscores."
-        )
-    if name[0].isdigit():
-        raise CommandError(f"Schema name cannot start with a digit: {name!r}.")
-    return name
+from apps.tenancy.services import TenantProvisioningService
+from apps.tenancy.utils import normalize_schema_name
 
 
 class Command(BaseCommand):
@@ -81,7 +68,7 @@ class Command(BaseCommand):
         brand_name = opts.get("brand_name") or name
         dry_run = opts["dry_run"]
 
-        schema_name = _normalize_schema_name(slug)
+        schema_name = normalize_schema_name(slug)
 
         self._sanity_checks(schema_name)
 
@@ -178,23 +165,16 @@ class Command(BaseCommand):
         call_command("migrate_schemas", shared=True, verbosity=1)
 
     def _create_tenant_record(self, *, slug, schema_name, name, domain, brand_name):
-        # Imported here so Django finishes app loading before we touch the model.
-        from apps.tenancy.models import Domain, Tenant, TenantBranding
-
-        tenant = Tenant(
-            schema_name=schema_name,
+        # CRITICAL: schema already exists (we just renamed it). Don't recreate it,
+        # hence auto_create_schema=False.
+        tenant = TenantProvisioningService.create_tenant_record(
             slug=slug,
+            schema_name=schema_name,
             name=name,
-            is_active=True,
+            domain=domain,
+            brand_name=brand_name,
+            auto_create_schema=False,
         )
-        # CRITICAL: schema already exists (we just renamed it). Don't recreate it.
-        tenant.auto_create_schema = False
-        tenant.save()
-
-        if domain:
-            Domain.objects.create(domain=domain, tenant=tenant, is_primary=True)
-
-        TenantBranding.objects.create(tenant=tenant, brand_name=brand_name)
 
         self.stdout.write(
             self.style.SUCCESS(
