@@ -9,50 +9,24 @@ from django.contrib.auth.views import PasswordChangeView as AuthPasswordChangeVi
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import UpdateView
 from tracing.middleware import TracingMiddleware
 
+from .constants import CHANGE_FULL_OWN_PROFILE_PERM, REMEMBER_ME_AGE_SECONDS
 from .forms import EmailOrUsernameAuthenticationForm, MyProfileEditForm, UserPermissionForm
 from .permissions import build_user_permission_context, resolve_posted_permissions
+from .utils import safe_redirect_target, site_urls_for
 
 User = get_user_model()
-
-
-def _safe_redirect_target(request, candidate):
-    """Return ``candidate`` only if it is an internal URL; otherwise ``"/"``."""
-    if candidate and url_has_allowed_host_and_scheme(
-        candidate,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return candidate
-    return "/"
-
-
-def _site_urls_for(model, instance, user=None):
-    """Resolve list/detail/update/delete URLs of a model registered in superadmin."""
-    try:
-        from superadmin import site as superadmin_site
-        from superadmin.shortcuts import get_urls_of_site
-    except ImportError:
-        return {}
-    if not superadmin_site.is_registered(model):
-        return {}
-    model_site = superadmin_site.get_modelsite(model)
-    return get_urls_of_site(model_site, object=instance, user=user)
-
-
-REMEMBER_ME_AGE_SECONDS = 30 * 24 * 60 * 60  # 30 días
 
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect(_safe_redirect_target(request, request.GET.get("next")))
+        return redirect(safe_redirect_target(request, request.GET.get("next")))
     form = EmailOrUsernameAuthenticationForm(request, data=request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.get_user()
@@ -69,7 +43,7 @@ def login_view(request):
         else:
             request.session.set_expiry(0)
         target = request.POST.get("next") or request.GET.get("next")
-        return redirect(_safe_redirect_target(request, target))
+        return redirect(safe_redirect_target(request, target))
     return render(request, "registration/login.html", {"form": form, "next": request.GET.get("next", "")})
 
 
@@ -89,7 +63,7 @@ def profile_view(request):
             "page_title": "Mi perfil",
             "breadcrumbs": [("Inicio", "/"), ("Mi perfil", None)],
             "can_edit_full_profile": request.user.has_perm(
-                "authentication.change_full_own_profile"
+                CHANGE_FULL_OWN_PROFILE_PERM
             ),
         },
     )
@@ -216,7 +190,7 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         target_user = self.object
-        target_user_urls = _site_urls_for(User, target_user, user=self.request.user)
+        target_user_urls = site_urls_for(User, target_user, user=self.request.user)
 
         context.update(build_user_permission_context(target_user, enabled=True))
         context["target_user"] = target_user

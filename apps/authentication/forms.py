@@ -10,6 +10,7 @@ from django_select2 import forms as s2forms
 from superadmin.forms import ModelForm
 from tracing.models import Rule
 
+from .constants import CHANGE_FULL_OWN_PROFILE_PERM
 from .models import Profile, User
 
 
@@ -181,7 +182,7 @@ class MyProfileEditForm(forms.Form):
     single ``save`` call so the view only deals with one form object.
     """
 
-    _FULL_PROFILE_PERM = "authentication.change_full_own_profile"
+    _FULL_PROFILE_PERM = CHANGE_FULL_OWN_PROFILE_PERM
     _USER_FIELDS_MINIMUM = ("first_name", "last_name", "alias")
     _USER_FIELDS_FULL = _USER_FIELDS_MINIMUM + ("email",)
     _PROFILE_FIELDS_FULL = ("phone_number", "bio")
