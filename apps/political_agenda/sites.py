@@ -10,14 +10,10 @@ from core.form_mixins import SaveOptionsMixin
 from core.list_mixins import DropdownFilterMixin, OrderingMixin, WorkflowStateFilterMixin
 from core.map_mixins import MapInitialLocationMixin
 
+from .conditions import can_view_private_events
+from .constants import DEFAULT_EVENT_COLOR
 from .forms import PoliticalAgendaEventForm, PoliticalAgendaRequestForm
 from .models import PoliticalAgendaRequest
-
-VIEW_PRIVATE_AGENDA_EVENT_PERM = "political_agenda.view_private_politicalagendaevent"
-
-
-def _user_can_view_private_events(user):
-    return bool(user and user.is_active and (user.is_superuser or user.has_perm(VIEW_PRIVATE_AGENDA_EVENT_PERM)))
 
 
 class AgendaEventVisibilityQuerysetMixin:
@@ -30,7 +26,7 @@ class AgendaEventVisibilityQuerysetMixin:
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if not _user_can_view_private_events(self.request.user):
+        if not can_view_private_events(self.request.user):
             queryset = queryset.filter(is_public=True)
         return queryset
 
@@ -176,7 +172,7 @@ class PoliticalAgendaRequestSite(BaseSite):
                     "label": "Tentativa",
                     "lat": "latitude",
                     "lng": "longitude",
-                    "color": "#3e97ff",
+                    "color": DEFAULT_EVENT_COLOR,
                 },
             ],
         },

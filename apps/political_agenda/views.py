@@ -4,61 +4,48 @@ Single-page FullCalendar showing one entry per ``PoliticalAgendaEvent``.
 Color comes from the ``AgendaEventType`` lookup; border encodes workflow state.
 Cancelled events are hidden by default.
 """
-from datetime import datetime
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.utils.dateparse import parse_datetime
 from django.views import View
 from django.views.generic import TemplateView
 
 from apps.campaigns.active import scope_queryset_to_active_campaign
 from apps.campaigns.querysets import visible_campaign_choices
 
+from .conditions import can_view_private_events
+from .constants import (
+    DEFAULT_EVENT_COLOR,
+    MASKED_EVENT_COLOR,
+    STATE_BORDERS,
+    VIEW_PRIVATE_EVENT_PERM,
+)
 from .models import AgendaEventType, PoliticalAgendaEvent
+from .utils import event_detail_url, parse_iso
 
+# Names re-exported here keep ``from apps.political_agenda.views import ...``
+# working for callers (tests) after the helpers/constants moved to
+# constants.py / conditions.py / utils.py.
+_can_view_private_events = can_view_private_events
+_parse_iso = parse_iso
+VIEW_PRIVATE_PERM = VIEW_PRIVATE_EVENT_PERM
 
-# Border encodes workflow state. Fill comes from AgendaEventType.color, so the
-# border has to remain readable on top of any catalog color.
-STATE_BORDERS = {
-    0: "#9aa0a6",   # CANCELED (hidden by default)
-    1: "#3e97ff",   # DRAFT
-    2: "#50cd89",   # SCHEDULED
-    3: "#ffc700",   # RESCHEDULED
-    4: "#7e8299",   # DONE
-}
-
-VIEW_PRIVATE_PERM = "political_agenda.view_private_politicalagendaevent"
-
-# Neutral gray used for private events shown as "Ocupado" to users without
-# the view-private permission.
-MASKED_EVENT_COLOR = "#7e8299"
-
-
-def _can_view_private_events(user):
-    """User can see private events if staff or holds the explicit permission."""
-    return bool(user and user.is_active and (user.is_superuser or user.has_perm(VIEW_PRIVATE_PERM)))
-
-
-def event_detail_url(pk):
-    return reverse("site:political_agenda_politicalagendaevent_", kwargs={"pk": pk})
-
-
-def _parse_iso(raw):
-    if not raw:
-        return None
-    parsed = parse_datetime(raw)
-    if parsed is not None:
-        return parsed
-    # FullCalendar sometimes sends a bare YYYY-MM-DD.
-    try:
-        return datetime.fromisoformat(raw)
-    except ValueError:
-        return None
+__all__ = [
+    "PoliticalAgendaCalendarView",
+    "PoliticalAgendaCalendarDataView",
+    "PoliticalAgendaEventPopupView",
+    "MASKED_EVENT_COLOR",
+    "STATE_BORDERS",
+    "VIEW_PRIVATE_PERM",
+    "can_view_private_events",
+    "event_detail_url",
+    "parse_iso",
+    "_can_view_private_events",
+    "_parse_iso",
+]
 
 
 class PoliticalAgendaCalendarView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
@@ -112,10 +99,10 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
             campaign_id = str(request.active_campaign.pk)
         if campaign_id:
             queryset = queryset.filter(campaign_id=campaign_id)
-        can_view_private = _can_view_private_events(request.user)
+        can_view_private = can_view_private_events(request.user)
 
-        start = _parse_iso(request.GET.get("start"))
-        end = _parse_iso(request.GET.get("end"))
+        start = parse_iso(request.GET.get("start"))
+        end = parse_iso(request.GET.get("end"))
         if start and end:
             queryset = queryset.filter(start_at__lt=end, end_at__gt=start)
 
@@ -173,7 +160,7 @@ class PoliticalAgendaCalendarDataView(LoginRequiredMixin, PermissionRequiredMixi
                     }
                 )
                 continue
-            color = event.event_type.color if event.event_type_id else "#3e97ff"
+            color = event.event_type.color if event.event_type_id else DEFAULT_EVENT_COLOR
             border = STATE_BORDERS.get(event.state, color)
             events.append(
                 {
@@ -224,7 +211,7 @@ class PoliticalAgendaEventPopupView(LoginRequiredMixin, PermissionRequiredMixin,
             queryset,
             pk=pk,
         )
-        if not event.is_public and not _can_view_private_events(request.user):
+        if not event.is_public and not can_view_private_events(request.user):
             # Show a minimal "Ocupado" card: schedule plus the optional
             # reference, with no title, place or organizational details.
             html = render_to_string(
@@ -239,7 +226,7 @@ class PoliticalAgendaEventPopupView(LoginRequiredMixin, PermissionRequiredMixin,
                     "url": "",
                 }
             )
-        color = event.event_type.color if event.event_type_id else "#3e97ff"
+        color = event.event_type.color if event.event_type_id else DEFAULT_EVENT_COLOR
         border = STATE_BORDERS.get(event.state, color)
         html = render_to_string(
             "political_agenda/_calendar_popup.html",
