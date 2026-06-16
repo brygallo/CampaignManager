@@ -13,6 +13,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -77,7 +78,7 @@ UNIT_STATE_COLORS = {
 }
 
 REFUSAL_COLOR = "#7e8299"
-REFUSAL_ICON = "cross-square"
+REFUSAL_ICON = "x-square"
 
 # Every request (solicitud) pin shows the same generic icon; the advertising
 # type icon belongs to each installed publicidad (unit) instead. Shape
@@ -99,6 +100,10 @@ def physicalad_detail_url(pk):
 
 def refusal_detail_url(pk):
     return reverse("site:territorial_ads_advertisingrefusal_", kwargs={"pk": pk})
+
+
+def physicalad_unit_detail_url(pk):
+    return reverse("site:territorial_ads_physicaladvertisementunit_", kwargs={"pk": pk})
 
 
 class PhysicalAdMapView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
@@ -264,9 +269,7 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     "color": UNIT_STATE_COLORS.get(unit.state, "#50cd89"),
                     "type_icon": unit.item.advertisement_type.icon,
                     "type_label": unit.display_label,
-                    # Unit pins open the request detail (it lists every unit
-                    # with its evidence and per-unit actions).
-                    "url": physicalad_detail_url(ad.id),
+                    "url": physicalad_unit_detail_url(unit.id),
                     "campaign": ad.campaign.name if ad.campaign_id else "",
                     "address": ad.address or "",
                     "marker_kind": "unit",
@@ -323,8 +326,6 @@ class PhysicalAdMapPopupView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 "campaign",
                 "cost_type",
                 "approved_by",
-                "assigned_installer",
-                "assigned_by",
                 "installed_by",
                 "rejected_by",
                 "damage_reported_by",
@@ -437,14 +438,28 @@ class PhysicalAdBulkAssignView(LoginRequiredMixin, PermissionRequiredMixin, View
         installer = form.cleaned_data.get("assigned_installer")
         team = form.cleaned_data.get("installer_team") or ""
         ads = list(form.cleaned_data["advertisements"])
+        pending = PhysicalAdvertisementUnit.workflow.PENDIENTE
         with transaction.atomic():
             for ad in ads:
-                ad.assign_installation(
-                    user=request.user,
-                    assigned_installer=installer.pk if installer else None,
-                    installer_team=team,
-                )
-                ad.save()
+                # Assign the installer/team to every pending unit of the
+                # request, then move the request into the installation stage.
+                for item in ad.items.all():
+                    for unit in item.units.filter(state=pending):
+                        unit.assigned_installer = installer
+                        unit.installer_team = team
+                        unit.assigned_by = request.user
+                        unit.assigned_at = timezone.now()
+                        unit.save(
+                            update_fields=[
+                                "assigned_installer",
+                                "installer_team",
+                                "assigned_by",
+                                "assigned_at",
+                            ]
+                        )
+                if ad.state == PhysicalAdvertisement.workflow.APROBADA:
+                    ad.assign_installation(user=request.user)
+                    ad.save()
         return JsonResponse({"ok": True, "count": len(ads)})
 
 
@@ -527,18 +542,21 @@ class DirectInstallCreateView(LoginRequiredMixin, PermissionRequiredMixin, View)
                 advertisement_type=cleaned["advertisement_type"], quantity=1
             )
             size = cleaned.get("size")
-            approve_kwargs = {}
+            # Direct install always approves its single unit.
+            approve_kwargs = {f"unit_approved_{item.pk}_1": "on"}
             if size is not None:
                 approve_kwargs[f"item_size_{item.pk}_1"] = size.pk
             # Fast-track the request through the normal transitions so the
             # audit trail (who/when) stays consistent with the manual flow.
             ad.approve(user=request.user, **approve_kwargs)
             ad.save()
-            ad.assign_installation(
-                user=request.user, assigned_installer=request.user.pk
-            )
+            ad.assign_installation(user=request.user)
             ad.save()
             unit = item.units.first()
+            # Direct install: the operator both assigns and installs the unit.
+            unit.assigned_installer = request.user
+            unit.assigned_by = request.user
+            unit.assigned_at = timezone.now()
             unit.mark_installed(
                 user=request.user,
                 photo=cleaned["photo"],

@@ -1,0 +1,32 @@
+{% comment %}
+Global shared modal for insoles object actions (complex forms: signing,
+calculations, multi/related forms). Driven by static/assets/js/insoles_actions.js
+and backed by the InstanceBase* views in apps/insoles. Reuses the cm-sheet-modal
+look of the select2 "create new" modal (#insoles-forms) but is a separate
+element so the two submit flows never collide.
+{% endcomment %}
+<div class="modal fade cm-sheet-modal" id="insoles-instance-forms" tabindex="-1" aria-labelledby="insolesInstanceLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <button type="button" class="cm-sheet-modal__handle" data-sheet-toggle aria-label="Expandir o contraer"><span class="cm-sheet-modal__grip"></span></button>
+      <div class="modal-header">
+        <h2 class="modal-title fw-bold" id="insolesInstanceLabel" data-insoles-title>Formulario</h2>
+        <button type="button" class="btn btn-icon btn-sm btn-active-light-primary ms-2" data-bs-dismiss="modal" aria-label="Cerrar">
+          <i data-lucide="x" class="fs-1"></i>
+        </button>
+      </div>
+      <form action="" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="modal-body"></div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i data-lucide="check" class="fs-3"></i><span data-insoles-confirm>Guardar</span>
+          </button>
+          <button type="button" class="btn btn-light-danger btn-sm" data-bs-dismiss="modal">
+            <i data-lucide="x" class="fs-3"></i>Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

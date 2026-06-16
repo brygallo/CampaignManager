@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils.html import format_html_join
 from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
 
@@ -147,24 +148,6 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         blank=True,
     )
     approved_at = models.DateTimeField("Fecha de aprobación", null=True, blank=True)
-    assigned_installer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="assigned_physical_ads",
-        verbose_name="Instalador asignado",
-        null=True,
-        blank=True,
-    )
-    installer_team = models.CharField("Instalador externo", max_length=180, blank=True)
-    assigned_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="assigned_physical_ad_jobs",
-        verbose_name="Asignado por",
-        null=True,
-        blank=True,
-    )
-    assigned_at = models.DateTimeField("Fecha de asignación", null=True, blank=True)
 
     installed_latitude = models.DecimalField(
         "Latitud GPS instalación",
@@ -273,6 +256,41 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         )
 
     @property
+    def items_summary_badges(self):
+        """``items_summary`` as Bootstrap badges for the detail page."""
+        return format_html_join(
+            " ",
+            '<span class="badge badge-light-primary fw-semibold">{}× {}</span>',
+            (
+                (item.quantity, item.advertisement_type.name)
+                for item in self.items.select_related("advertisement_type")
+            ),
+        )
+
+    @property
+    def addable_advertisement_types(self):
+        """Active types not yet in the request — offered when adding a new
+        advertisement to an already-approved request."""
+        existing = self.items.values_list("advertisement_type_id", flat=True)
+        return (
+            AdvertisingType.objects.filter(is_active=True)
+            .exclude(pk__in=existing)
+            .order_by("order", "name")
+        )
+
+    @property
+    def addable_advertisement_sizes(self):
+        """Active sizes for the types that can still be added (carry the type
+        id so the UI can filter by chosen type)."""
+        return (
+            AdvertisingTypeSize.objects.filter(
+                is_active=True, advertisement_type__in=self.addable_advertisement_types
+            )
+            .select_related("advertisement_type")
+            .order_by("advertisement_type__order", "order", "name")
+        )
+
+    @property
     def total_units(self):
         """Total physical units across all items (one installation photo each)."""
         return sum(item.quantity for item in self.items.all())
@@ -378,11 +396,11 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
 
     @property
     def items_instructions_summary(self):
-        """Per-type installation instructions for detail pages."""
+        """Per-unit installation instructions for detail pages."""
         return "\n".join(
-            f"{item.quantity}× {item.advertisement_type.name}: {item.installation_instructions}"
-            for item in self.items.select_related("advertisement_type")
-            if item.installation_instructions
+            f"{unit.display_label}: {unit.installation_instructions}"
+            for unit in self.units
+            if unit.installation_instructions
         )
 
 
@@ -390,8 +408,8 @@ class PhysicalAdvertisementItem(BaseModel):
     """One advertising type (with quantity) inside a physical advertisement.
 
     A single offered spot can host several preloaded advertising types at
-    once (e.g. 2 vallas + 3 lonas); each line keeps its own quantity and,
-    once approved, its own installation instructions.
+    once (e.g. 2 vallas + 3 lonas); each line keeps its own quantity. Once
+    approved, installation instructions live per physical unit.
     """
 
     advertisement = models.ForeignKey(
@@ -407,11 +425,6 @@ class PhysicalAdvertisementItem(BaseModel):
         verbose_name="Tipo de publicidad",
     )
     quantity = models.PositiveSmallIntegerField("Cantidad", default=1)
-    installation_instructions = models.TextField(
-        "Indicaciones para instalación",
-        blank=True,
-        help_text="Indica qué se requiere para instalar este tipo (escalera, andamio, permisos, etc.).",
-    )
 
     class Meta:
         verbose_name = "Tipo de publicidad del lugar"
@@ -455,6 +468,11 @@ class PhysicalAdvertisementUnit(BaseModel, PhysicalAdUnitTransitions):
         null=True,
         blank=True,
     )
+    installation_instructions = models.TextField(
+        "Indicaciones para instalación",
+        blank=True,
+        help_text="Indica qué se requiere para instalar esta unidad (escalera, andamio, permisos, etc.).",
+    )
     state = FSMIntegerField(
         "Estado",
         choices=workflow.choices,
@@ -484,6 +502,27 @@ class PhysicalAdvertisementUnit(BaseModel, PhysicalAdUnitTransitions):
         blank=True,
         validators=list(LONGITUDE_VALIDATORS),
     )
+    # Installer assignment lives per unit: each physical advertisement is
+    # assigned and installed independently.
+    assigned_installer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="assigned_ad_units",
+        verbose_name="Instalador asignado",
+        null=True,
+        blank=True,
+    )
+    installer_team = models.CharField("Instalador externo", max_length=180, blank=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="assigned_ad_unit_jobs",
+        verbose_name="Asignado por",
+        null=True,
+        blank=True,
+    )
+    assigned_at = models.DateTimeField("Fecha de asignación", null=True, blank=True)
+
     notes = models.TextField("Notas de instalación", blank=True)
     installed_at = models.DateTimeField("Fecha/hora instalación", null=True, blank=True)
     installed_by = models.ForeignKey(

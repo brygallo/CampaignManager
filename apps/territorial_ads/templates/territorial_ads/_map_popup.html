@@ -259,26 +259,28 @@
         </div>
       </div>
     {% endif %}
-    {% if ad.assigned_installer or ad.installer_team %}
-      <div class="col-12 col-sm-6">
-        <div class="map-popup__fact">
-          <span class="symbol symbol-40px symbol-circle">
-            <span class="symbol-label bg-light-warning"><i data-lucide="user-check" class="fs-3 text-warning" aria-hidden="true"></i></span>
-          </span>
-          <div class="map-popup__fact-body">
-            <div class="map-popup__fact-label">Instalador</div>
-            <div class="fw-bold text-dark">{% firstof ad.assigned_installer ad.installer_team %}</div>
-            {% if ad.assigned_installer and ad.installer_team %}
-              <div class="text-muted fs-8">{{ ad.installer_team }}</div>
-            {% endif %}
+    {% for unit in ad.units %}
+      {% if unit.assigned_installer or unit.installer_team %}
+        <div class="col-12 col-sm-6">
+          <div class="map-popup__fact">
+            <span class="symbol symbol-40px symbol-circle">
+              <span class="symbol-label bg-light-warning"><i data-lucide="user-check" class="fs-3 text-warning" aria-hidden="true"></i></span>
+            </span>
+            <div class="map-popup__fact-body">
+              <div class="map-popup__fact-label">Instalador · {{ unit.display_label }}</div>
+              <div class="fw-bold text-dark">{% firstof unit.assigned_installer unit.installer_team %}</div>
+              {% if unit.assigned_installer and unit.installer_team %}
+                <div class="text-muted fs-8">{{ unit.installer_team }}</div>
+              {% endif %}
+            </div>
           </div>
         </div>
-      </div>
-    {% endif %}
+      {% endif %}
+    {% endfor %}
   </section>
 
   {# ===== Activity log (damage entries now live on each unit) ===== #}
-  {% if ad.rejected_at or ad.approved_at or ad.assigned_at or ad.installed_at or ad.retired_at %}
+  {% if ad.rejected_at or ad.approved_at or ad.installed_at or ad.retired_at %}
     <div class="separator separator-dashed my-5"></div>
     <h6 class="text-gray-600 fw-bold text-uppercase fs-8 mb-4">
       <i data-lucide="clock" class="fs-7 me-1" aria-hidden="true"></i>Bitácora
@@ -306,26 +308,14 @@
               <span class="fw-bolder text-dark">Aprobada</span>
               <span class="text-muted fs-8">{{ ad.approved_at|date:"d M Y · H:i" }}{% if ad.approved_by %} · {{ ad.approved_by }}{% endif %}</span>
             </div>
-            {% for item in ad.items.all %}
-              {% if item.installation_instructions %}
+            {% for unit in ad.units %}
+              {% if unit.installation_instructions %}
                 <div class="text-gray-700 fs-7 mt-1">
-                  <span class="fw-semibold">{{ item.quantity }}× {{ item.advertisement_type.name }}:</span>
-                  {{ item.installation_instructions|linebreaksbr }}
+                  <span class="fw-semibold">{{ unit.display_label }}:</span>
+                  {{ unit.installation_instructions|linebreaksbr }}
                 </div>
               {% endif %}
             {% endfor %}
-          </div>
-        </li>
-      {% endif %}
-
-      {% if ad.assigned_at %}
-        <li class="map-popup__activity-item is-info">
-          <span class="map-popup__activity-icon"><i data-lucide="user-check" aria-hidden="true"></i></span>
-          <div class="map-popup__activity-body">
-            <div class="map-popup__activity-head">
-              <span class="fw-bolder text-dark">Instalación asignada</span>
-              <span class="text-muted fs-8">{{ ad.assigned_at|date:"d M Y · H:i" }}{% if ad.assigned_by %} · {{ ad.assigned_by }}{% endif %}</span>
-            </div>
           </div>
         </li>
       {% endif %}

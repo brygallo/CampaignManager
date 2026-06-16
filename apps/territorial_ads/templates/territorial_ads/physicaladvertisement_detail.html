@@ -1,4 +1,5 @@
 {% extends "base/base_detail.html" %}
+{% load static %}
 {% load superadmin_utils %}
 
 {% block content %}
@@ -79,6 +80,13 @@
                   </div>
                 {% endif %}
 
+                {% if unit.installation_instructions %}
+                  <div class="text-muted fs-8">
+                    <i data-lucide="clipboard-list" class="fs-8 me-1"></i>Indicaciones:
+                    <span class="fw-semibold text-gray-700">{{ unit.installation_instructions|linebreaksbr }}</span>
+                  </div>
+                {% endif %}
+
                 {% if unit.notes %}
                   <div class="text-gray-700 fs-7">{{ unit.notes|linebreaksbr }}</div>
                 {% endif %}
@@ -87,6 +95,13 @@
                   <div class="text-muted fs-8">
                     <i data-lucide="check-circle-2" class="fs-8 me-1 text-success"></i>
                     Instalada {{ unit.installed_at|date:"d M Y · H:i" }}{% if unit.installed_by %} · {{ unit.installed_by }}{% endif %}
+                  </div>
+                {% endif %}
+
+                {% if unit.assigned_installer or unit.installer_team %}
+                  <div class="text-muted fs-8">
+                    <i data-lucide="user" class="fs-8 me-1"></i>Instalador:
+                    <span class="fw-semibold text-gray-700">{% firstof unit.assigned_installer unit.installer_team %}</span>
                   </div>
                 {% endif %}
 
@@ -157,4 +172,10 @@
     {% endif %}
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'assets/js/territorial_ads/approval_form.js' %}?v=20260615-approvalui2"></script>
 {% endblock %}

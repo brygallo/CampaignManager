@@ -260,6 +260,10 @@ class TerritorialAdsViewHelperTests(TestCase):
         publicity_marker = markers[f"unit:{unit.id}"]
         self.assertEqual(publicity_marker["kind"], "publicidad")
         self.assertEqual(publicity_marker["lat"], float(unit.latitude))
+        self.assertEqual(
+            publicity_marker["url"],
+            reverse("site:territorial_ads_physicaladvertisementunit_", kwargs={"pk": unit.pk}),
+        )
 
         refusal_marker = markers[f"refusal:{refusal.id}"]
         self.assertEqual(refusal_marker["kind"], "rechazo")

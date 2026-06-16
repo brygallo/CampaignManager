@@ -1,7 +1,7 @@
 {% comment %}
 Cross-navigation between the pages of "Publicidad territorial".
 Receives:
-  - active: one of "map", "list", "units"
+  - active: one of "map", "list", "units", "refusals"
 {% endcomment %}
 <div class="btn-group btn-group-sm" role="group" aria-label="Navegación de publicidad territorial">
   <a href="{% url 'territorial_ads:map' %}"
@@ -28,4 +28,14 @@ Receives:
     <i data-lucide="flag" class="fs-3"></i>
     <span class="d-none d-md-inline">Publicidades</span>
   </a>
+  {% if perms.territorial_ads.view_advertisingrefusal %}
+    <a href="{% url 'site:territorial_ads_advertisingrefusal_listar' %}"
+       class="btn d-flex align-items-center gap-1 {% if active == 'refusals' %}btn-light-primary active{% else %}btn-light{% endif %}"
+       aria-label="Rechazos"
+       title="Rechazos"
+       {% if active == 'refusals' %}aria-current="page"{% endif %}>
+      <i data-lucide="x-square" class="fs-3"></i>
+      <span class="d-none d-md-inline">Rechazos</span>
+    </a>
+  {% endif %}
 </div>

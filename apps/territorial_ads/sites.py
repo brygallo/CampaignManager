@@ -26,6 +26,7 @@ from .views import (
 @register("territorial_ads.AdvertisingRefusal")
 class AdvertisingRefusalSite(BaseSite):
     form_class = AdvertisingRefusalForm
+    list_template_name = "territorial_ads/advertisingrefusal_list.html"
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
     update_mixins = (RefusalMapAjaxUpdateMixin,)
     delete_mixins = (MapAjaxDeleteMixin,)
@@ -105,6 +106,7 @@ class PhysicalAdvertisementUnitSite(BaseSite):
     gestionan vía transiciones, así que el sitio solo lista y muestra."""
 
     allow_views = ("list", "detail")
+    list_template_name = "territorial_ads/physicaladvertisementunit_list.html"
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
 
     list_fields = (
@@ -113,6 +115,8 @@ class PhysicalAdvertisementUnitSite(BaseSite):
         "request_code:Solicitud",
         "request_campaign:Campaña",
         "get_state_display:Estado",
+        "assigned_installer",
+        "installer_team",
         "installed_at",
         "installed_by",
     )
@@ -120,6 +124,10 @@ class PhysicalAdvertisementUnitSite(BaseSite):
         "Publicidad": (
             ("code:Código", "display_label:Publicidad"),
             ("request_code:Solicitud", "size"),
+        ),
+        "Asignación": (
+            ("assigned_installer", "installer_team"),
+            ("assigned_by", "assigned_at"),
         ),
         "Instalación": (
             ("photo",),
@@ -187,13 +195,11 @@ class PhysicalAdvertisementSite(BaseSite):
         "owner_name",
         "cost_type:Costo",
         "get_state_display:Estado",
-        "assigned_installer",
-        "installer_team",
     )
     detail_fields = {
         "Publicidad": (
             ("campaign",),
-            ("items_summary:Tipos de publicidad",),
+            ("items_summary_badges:Tipos de publicidad",),
         ),
         "Contacto que ofreció el lugar": (
             ("owner_name", "owner_phone"),
@@ -214,11 +220,7 @@ class PhysicalAdvertisementSite(BaseSite):
         "Aprobación": (
             ("approved_by", "approved_at"),
             ("items_sizes_summary:Tamaños por unidad",),
-            ("items_instructions_summary:Indicaciones por tipo",),
-        ),
-        "Asignación de instalación": (
-            ("assigned_installer", "installer_team"),
-            ("assigned_by", "assigned_at"),
+            ("items_instructions_summary:Indicaciones por unidad",),
         ),
         "Instalación": (
             ("units_state_summary:Publicidades",),
@@ -236,7 +238,6 @@ class PhysicalAdvertisementSite(BaseSite):
         "state",
         "campaign",
         "cost_type",
-        "assigned_installer",
         "is_active",
     )
     detail_maps = (

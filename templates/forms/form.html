@@ -28,6 +28,10 @@
   </div>
 {% endif %}
 
+{% if form.after_fields_template %}
+  {% include form.after_fields_template with form=form %}
+{% endif %}
+
 {% for field in form.hidden_fields %}
   {{ field }}
 {% endfor %}

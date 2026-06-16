@@ -278,22 +278,16 @@
           return;
         }
         kit.setHtml(bodyEl, kit.loadingHtml("Actualizando..."));
-        var isRefusal = modalEl.dataset.markerKind === "refusal";
         fetch(detailUrl, {
           headers: { "X-Requested-With": "XMLHttpRequest" },
           credentials: "same-origin"
         })
-          .then(function (r) { return isRefusal ? r.json() : r.text(); })
+          .then(function (r) { return r.text(); })
           .then(function (payload) {
-            if (isRefusal) {
-              kit.setHtml(bodyEl, (payload && payload.html) || "");
-              kit.initDynamicContent(bodyEl);
-            } else {
-              var detailHtml = kit.detailHtmlFromPage(payload);
-              if (!detailHtml) throw new Error("Empty detail content");
-              kit.setHtml(bodyEl, detailHtml);
-              kit.initDynamicContent(bodyEl);
-            }
+            var detailHtml = kit.detailHtmlFromPage(payload);
+            if (!detailHtml) throw new Error("Empty detail content");
+            kit.setHtml(bodyEl, detailHtml);
+            kit.initDynamicContent(bodyEl);
             ctx.load();
           })
           .catch(function () {
@@ -373,13 +367,11 @@
                 errorText: "No se pudo cargar la información del rechazo."
               });
             } else {
-              // "ad" (solicitud) and "unit" (publicidad instalada) both open
-              // the request detail page inside the modal.
               kit.openDetailModal({
                 modalEl: state.modalEl,
                 item: ad,
                 fallbackTitle: "Publicidad",
-                markerKind: "ad",
+                markerKind: ad.marker_kind === "unit" ? "unit" : "ad",
                 errorText: "No se pudo cargar la información del aviso."
               });
             }

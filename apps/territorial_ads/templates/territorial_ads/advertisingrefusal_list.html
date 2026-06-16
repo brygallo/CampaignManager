@@ -1,0 +1,6 @@
+{% extends "base/base_list.html" %}
+
+{% block list_extra_actions %}
+  {{ block.super }}
+  {% include "territorial_ads/_section_nav.html" with active="refusals" %}
+{% endblock %}

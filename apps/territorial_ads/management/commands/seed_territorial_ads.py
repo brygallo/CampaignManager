@@ -16,6 +16,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 from PIL import Image
 
 from apps.campaigns.models import Campaign
@@ -163,21 +164,33 @@ class Command(BaseCommand):
         if ad.state == wf.OFRECIDA:
             kwargs = {}
             for item in ad.items.all():
-                kwargs[f"item_instructions_{item.pk}"] = (
-                    "Se requiere escalera y dos personas para colocación segura."
-                )
                 first_size = AdvertisingTypeSize.objects.filter(
                     advertisement_type=item.advertisement_type, is_active=True
                 ).order_by("order", "name").first()
-                if first_size:
-                    for number in range(1, item.quantity + 1):
+                for number in range(1, item.quantity + 1):
+                    kwargs[f"unit_approved_{item.pk}_{number}"] = "on"
+                    kwargs[f"unit_instructions_{item.pk}_{number}"] = (
+                        "Se requiere escalera y dos personas para colocación segura."
+                    )
+                    if first_size:
                         kwargs[f"item_size_{item.pk}_{number}"] = first_size.pk
             ad.approve(user=user, **kwargs)
             ad.save()
         if target == "APROBADA":
             return
         if ad.state == wf.APROBADA:
-            ad.assign_installation(user=user, installer_team="Brigada Macas A")
+            # Installer/team are assigned per unit now.
+            for item in ad.items.all():
+                for unit in item.units.all():
+                    if unit.state != unit.workflow.PENDIENTE:
+                        continue
+                    unit.installer_team = "Brigada Macas A"
+                    unit.assigned_by = user
+                    unit.assigned_at = timezone.now()
+                    unit.save(
+                        update_fields=["installer_team", "assigned_by", "assigned_at"]
+                    )
+            ad.assign_installation(user=user)
             ad.save()
         if target == "PENDIENTE_INSTALACION":
             return

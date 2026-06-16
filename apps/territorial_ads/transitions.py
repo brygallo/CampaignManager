@@ -51,23 +51,70 @@ class PhysicalAdTransitions:
         if height_meters is not None:
             self.height_meters = height_meters
         for item in self.items.all():
-            instructions = kwargs.get(f"item_instructions_{item.pk}")
-            if instructions is not None:
-                item.installation_instructions = instructions
-                item.save(update_fields=["installation_instructions"])
             # Approval materializes the physical units. A re-approval (after
             # ``revert_to_offered``) recreates them: at that point units are
             # still PENDIENTE, so nothing meaningful is lost.
             item.units.all().delete()
+            unit_states = PhysicalAdUnitWorkflow()
             for number in range(1, item.quantity + 1):
+                approved = bool(kwargs.get(f"unit_approved_{item.pk}_{number}"))
                 raw = kwargs.get(f"item_size_{item.pk}_{number}")
                 size_id = None
                 if raw not in (None, ""):
                     # ChangeStateView forwards raw POST strings.
                     size_id = int(getattr(raw, "pk", raw))
-                item.units.create(unit_number=number, size_id=size_id)
+                instructions = kwargs.get(f"unit_instructions_{item.pk}_{number}") or ""
+                # A unit left unchecked is kept as DESCARTADA ("No instalada")
+                # so it stays visible and can be reactivated later, instead of
+                # silently vanishing.
+                item.units.create(
+                    unit_number=number,
+                    size_id=size_id,
+                    installation_instructions=instructions,
+                    state=unit_states.PENDIENTE if approved else unit_states.DESCARTADA,
+                )
+        self._create_new_items_from_approval(kwargs)
         self.approved_by = user
         self.approved_at = timezone.now()
+
+    def _create_new_items_from_approval(self, kwargs):
+        """Materialize brand-new advertisements added in the approval form.
+
+        Rows carry indexed names (``new_type_0``, ``new_quantity_0``…). The
+        form has already validated that each type is new and not duplicated,
+        so creating the item can't hit the unique-per-type constraint.
+        """
+        prefix = "new_type_"
+        indices = sorted(
+            int(key[len(prefix):])
+            for key in kwargs
+            if key.startswith(prefix) and key[len(prefix):].isdigit()
+        )
+        for i in indices:
+            type_raw = kwargs.get(f"new_type_{i}")
+            if not type_raw:
+                continue
+            type_id = int(getattr(type_raw, "pk", type_raw))
+            try:
+                quantity = max(1, int(kwargs.get(f"new_quantity_{i}") or 1))
+            except (TypeError, ValueError):
+                quantity = 1
+            size_raw = kwargs.get(f"new_size_{i}")
+            size_id = (
+                int(getattr(size_raw, "pk", size_raw))
+                if size_raw not in (None, "")
+                else None
+            )
+            instructions = kwargs.get(f"new_instructions_{i}") or ""
+            new_item = self.items.create(
+                advertisement_type_id=type_id, quantity=quantity
+            )
+            for number in range(1, quantity + 1):
+                new_item.units.create(
+                    unit_number=number,
+                    size_id=size_id,
+                    installation_instructions=instructions,
+                )
 
     @transition(
         field="state",
@@ -118,19 +165,20 @@ class PhysicalAdTransitions:
         target=workflow.PENDIENTE_INSTALACION,
         permission="territorial_ads.assign_physicaladvertisement",
         custom=dict(
-            verbose="Asignar instalación",
+            verbose="Enviar a instalación",
             icon="user",
             color="primary",
-            title="Asignar instalación",
-            text="Selecciona instalador o registra un instalador externo.",
-            form="apps.territorial_ads.forms.AssignInstallationForm",
+            title="Enviar a instalación",
+            text=(
+                "La solicitud pasa a instalación. El instalador se asigna por "
+                "publicidad desde cada tarjeta. ¿Continuar?"
+            ),
         ),
     )
-    def assign_installation(self, user=None, assigned_installer=None, installer_team="", **kwargs):
-        self.assigned_installer_id = assigned_installer or None
-        self.installer_team = installer_team or ""
-        self.assigned_by = user
-        self.assigned_at = timezone.now()
+    def assign_installation(self, user=None, **kwargs):
+        # Installer/team are assigned per unit now; this transition only moves
+        # the request into the installation stage.
+        pass
 
     # --- Auto transitions driven by unit states (hidden from the UI) ---
 
@@ -230,6 +278,51 @@ class PhysicalAdTransitions:
             self.owner_phone = owner_phone
         if reference is not None:
             self.reference = reference
+
+    @transition(
+        field="state",
+        source=[
+            workflow.APROBADA,
+            workflow.PENDIENTE_INSTALACION,
+            workflow.INSTALADA,
+        ],
+        # ``target=None``: adding a publicidad doesn't change the request
+        # state. The form (AddAdvertisementForm) only validates; the new
+        # units are created here from the POST kwargs.
+        target=None,
+        permission="territorial_ads.approve_physicaladvertisement",
+        custom=dict(
+            verbose="Agregar publicidad",
+            icon="plus",
+            lucide="plus",
+            color="light-primary",
+            title="Agregar publicidad",
+            text="Agrega una publicidad que no estaba en la oferta original.",
+            form="apps.territorial_ads.forms.AddAdvertisementForm",
+        ),
+    )
+    def add_advertisement(
+        self,
+        user=None,
+        advertisement_type=None,
+        quantity=1,
+        size=None,
+        instructions="",
+        **kwargs,
+    ):
+        type_id = int(getattr(advertisement_type, "pk", advertisement_type))
+        try:
+            qty = max(1, int(quantity or 1))
+        except (TypeError, ValueError):
+            qty = 1
+        size_id = int(getattr(size, "pk", size)) if size not in (None, "") else None
+        new_item = self.items.create(advertisement_type_id=type_id, quantity=qty)
+        for number in range(1, qty + 1):
+            new_item.units.create(
+                unit_number=number,
+                size_id=size_id,
+                installation_instructions=instructions or "",
+            )
 
 
 class PhysicalAdUnitTransitions:
@@ -404,3 +497,33 @@ class PhysicalAdUnitTransitions:
     )
     def undiscard(self, user=None, **kwargs):
         self._sync_request(user, self.workflow.PENDIENTE)
+
+    @transition(
+        field="state",
+        source=[workflow.PENDIENTE, workflow.INSTALADA],
+        # ``target=None``: assigning an installer doesn't change the unit
+        # state. The form (AssignUnitInstallerForm) only validates; the
+        # fields are written here from the POST kwargs.
+        target=None,
+        permission="territorial_ads.install_physicaladvertisement",
+        custom=dict(
+            verbose="Asignar instalador",
+            icon="user-check",
+            lucide="user-check",
+            color="light-primary",
+            title="Asignar instalador",
+            text="Indica quién instalará esta publicidad (interno o externo).",
+            form="apps.territorial_ads.forms.AssignUnitInstallerForm",
+        ),
+    )
+    def assign_installer(
+        self, user=None, assigned_installer=None, installer_team="", **kwargs
+    ):
+        self.assigned_installer_id = (
+            int(getattr(assigned_installer, "pk", assigned_installer))
+            if assigned_installer not in (None, "")
+            else None
+        )
+        self.installer_team = installer_team or ""
+        self.assigned_by = user
+        self.assigned_at = timezone.now()

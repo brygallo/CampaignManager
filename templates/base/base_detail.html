@@ -141,6 +141,8 @@
                       <div class="fv-row" data-field="{{ field_name }}">
                         {% if field_name == "color" %}
                           {% include "detail_widgets/color.html" with label=label value=value widget=field_type field=field_name %}
+                        {% elif "_badges" in field_name %}
+                          {% include "detail_widgets/badges.html" with label=label value=value widget=field_type field=field_name %}
                         {% else %}
                           {% detail_widget label value field_type as template %}
                           {% include template with label=label value=value widget=field_type field=field_name %}
@@ -206,6 +208,8 @@
                 <div class="fv-row" data-field="{{ field_name }}">
                   {% if field_name == "color" %}
                     {% include "detail_widgets/color.html" with label=label value=value widget=field_type field=field_name %}
+                  {% elif "_badges" in field_name %}
+                    {% include "detail_widgets/badges.html" with label=label value=value widget=field_type field=field_name %}
                   {% else %}
                     {% detail_widget label value field_type as template %}
                     {% include template with label=label value=value widget=field_type field=field_name %}

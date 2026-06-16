@@ -83,13 +83,12 @@ class CorrectionTransitionsTests(TestCase):
         self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 2)])
 
     def _approve(self):
-        self.ad.approve(
-            user=None,
-            **{
-                f"item_instructions_{item.pk}": "Escalera"
-                for item in self.ad.items.all()
-            },
-        )
+        kwargs = {}
+        for item in self.ad.items.all():
+            for number in range(1, item.quantity + 1):
+                kwargs[f"unit_approved_{item.pk}_{number}"] = "on"
+                kwargs[f"unit_instructions_{item.pk}_{number}"] = "Escalera"
+        self.ad.approve(user=None, **kwargs)
         self.ad.save()
 
     def test_revert_to_offered_clears_approval_and_units(self):
@@ -141,8 +140,18 @@ class CorrectionTransitionsTests(TestCase):
         item = self.ad.items.first()
         self.assertIn(f"item_size_{item.pk}_1", form.fields)
         self.assertIn(f"item_size_{item.pk}_2", form.fields)
-        self.assertTrue(form.fields[f"item_size_{item.pk}_1"].required)
         self.assertIn(size, form.fields[f"item_size_{item.pk}_1"].queryset)
+        # Size is enforced in clean() only for the units being approved:
+        # approving unit #1 without a size must flag that size field.
+        bound = ApprovalForm(
+            obj=self.ad,
+            data={
+                f"unit_approved_{item.pk}_1": "on",
+                f"unit_instructions_{item.pk}_1": "Andamio",
+            },
+        )
+        self.assertFalse(bound.is_valid())
+        self.assertIn(f"item_size_{item.pk}_1", bound.errors)
 
 
 class InstallerAssignmentQuerysetTests(TestCase):

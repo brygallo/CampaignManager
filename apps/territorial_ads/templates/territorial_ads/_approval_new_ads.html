@@ -1,0 +1,30 @@
+{% comment %}
+"Agregar publicidad" section appended to the approval form (opt-in via
+``ApprovalForm.after_fields_template``). Lets the approver add brand-new
+advertisements (type + quantity + size + instructions) that were not in the
+original offer. The form is injected via AJAX, so the behavior lives in a
+delegated, page-level script (see physicaladvertisement_detail.html).
+{% endcomment %}
+{% if form.new_ad_types %}
+<fieldset class="mb-8" data-new-ads>
+  <div class="mb-5">
+    <div class="fw-bold fs-4 text-dark mb-1">Otras publicidades</div>
+    <div class="h-3px w-100 bg-primary"></div>
+    <div class="text-muted fs-7 mt-2">Agrega publicidades que no estaban en la oferta original.</div>
+  </div>
+
+  <div data-new-ad-container data-next-index="{{ form.submitted_new_entries|length }}">
+    {% for entry in form.submitted_new_entries %}
+      {% include "territorial_ads/_approval_new_ad_fields.html" with index=entry.index entry=entry types=form.new_ad_types sizes=form.new_ad_sizes %}
+    {% endfor %}
+  </div>
+
+  <button type="button" class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-1" data-add-new-ad>
+    <i data-lucide="plus" class="fs-5"></i><span>Agregar publicidad</span>
+  </button>
+
+  <template id="new-ad-row-template">
+    {% include "territorial_ads/_approval_new_ad_fields.html" with index="__I__" entry=None types=form.new_ad_types sizes=form.new_ad_sizes %}
+  </template>
+</fieldset>
+{% endif %}
