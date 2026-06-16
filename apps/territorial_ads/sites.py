@@ -16,6 +16,7 @@ from .forms import (
     PhysicalAdvertisementItemFormSet,
 )
 from .views import (
+    MaterializeUnitsMixin,
     PhysicalAdMapAjaxCreateMixin,
     PhysicalAdMapAjaxUpdateMixin,
     PhysicalAdMapInitialLocationMixin,
@@ -175,11 +176,12 @@ class PhysicalAdvertisementSite(BaseSite):
     detail_template_name = "territorial_ads/physicaladvertisement_detail.html"
     list_mixins = (OrderingMixin, WorkflowStateFilterMixin)
     create_mixins = (
+        MaterializeUnitsMixin,
         PhysicalAdMapInitialLocationMixin,
         PhysicalAdMapAjaxCreateMixin,
         SaveOptionsMixin,
     )
-    update_mixins = (PhysicalAdMapAjaxUpdateMixin,)
+    update_mixins = (MaterializeUnitsMixin, PhysicalAdMapAjaxUpdateMixin)
     delete_mixins = (MapAjaxDeleteMixin,)
     detail_mixins = (AuditContextMixin, HideEmptyFieldsetsMixin, DetailMapsMixin)
 

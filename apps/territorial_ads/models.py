@@ -10,6 +10,8 @@ from apps.territorial_ads.transitions import (
     PhysicalAdTransitions,
     PhysicalAdUnitTransitions,
 )
+from apps.workflows.requirements import RequirementsValidator
+from apps.workflows.subflow import ChildDrivenParentMixin
 from core.fields import CompressedImageField
 from core.validators import LATITUDE_VALIDATORS, LONGITUDE_VALIDATORS
 
@@ -68,10 +70,25 @@ class AdvertisingTypeSize(BaseModel):
         return f"{self.advertisement_type.name} — {self.name}"
 
 
-class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
-    """Physical campaign advertising placement, initially focused on lonas."""
+class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, ChildDrivenParentMixin):
+    """Physical campaign advertising placement, initially focused on lonas.
+
+    The request is the PARENT of a per-publicidad (unit) sub-flow: its state is
+    derived from its units via ``ChildDrivenParentMixin`` (see
+    ``derive_parent_state`` / ``sync_state_with_units``), while its forward
+    transitions are gated upward by ``ChildrenComplete``/``Custom`` requirements
+    (every publicidad configured, every publicidad with an installer, …).
+    """
 
     workflow = PhysicalAdTransitions.workflow
+
+    # Derived parent target state -> the hidden auto-transition that reaches it.
+    # The transition's own ``source`` guards *when* each derivation applies.
+    DERIVED_STATE_TRANSITIONS = {
+        PhysicalAdTransitions.workflow.RETIRADA: "retire_request",
+        PhysicalAdTransitions.workflow.INSTALADA: "mark_installed",
+        PhysicalAdTransitions.workflow.PENDIENTE_INSTALACION: "revert_to_pending",
+    }
 
     campaign = models.ForeignKey(
         Campaign,
@@ -296,6 +313,32 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
         return sum(item.quantity for item in self.items.all())
 
     @property
+    def transition_requirements(self):
+        """Checklist for the next forward transition (e.g. approve requires
+        every publicidad configured or discarded). Rendered by
+        ``workflows/includes/transition_requirements.html``."""
+        return RequirementsValidator.for_next_forward_transition(self)
+
+    def materialize_units(self):
+        """Ensure each item has exactly ``quantity`` physical units.
+
+        Units are now materialized when the request is offered/edited (not at
+        approval): one ``PhysicalAdvertisementUnit`` slot per quantity, born
+        PENDIENTE with no size/instructions. Idempotent — creates only the
+        missing slots and never touches configured/installed ones. If the
+        quantity is reduced, only surplus units that are still pending AND
+        unconfigured are trimmed; configured/installed units are kept.
+        """
+        for item in self.items.all():
+            existing = {u.unit_number: u for u in item.units.all()}
+            for number in range(1, item.quantity + 1):
+                if number not in existing:
+                    item.units.create(unit_number=number)
+            for number, unit in existing.items():
+                if number > item.quantity and unit.is_unconfigured_pending:
+                    unit.delete()
+
+    @property
     def installation_photos_summary(self):
         count = self.installation_photos.count()
         return f"{count} foto(s)" if count else ""
@@ -347,52 +390,53 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions):
                 return unit.latitude, unit.longitude
         return None
 
-    def sync_state_with_units(self, user=None, pending_unit=None, pending_state=None):
-        """Aggregate unit states into the request workflow.
+    # --- Sub-flow (ChildDrivenParentMixin): request state derived from units ---
 
-        Called from unit transitions BEFORE the unit row is saved, so the
-        in-flight unit's target state is passed explicitly and overrides
-        whatever the DB still holds for it.
+    def subflow_children(self):
+        """Fresh queryset of the units that drive this request's state.
 
-        The request state is DERIVED from its units (never set by hand):
-        - every active unit retired → request RETIRADA;
+        A fresh query (not the cached ``units`` property) so derivation always
+        sees the units' committed states.
+        """
+        return PhysicalAdvertisementUnit.objects.filter(item__advertisement=self)
+
+    def derive_parent_state(self, child_states):
+        """Request state implied by its unit states (pure; no side effects).
+
+        - every active unit retired → RETIRADA;
         - else no unit PENDIENTE and at least one INSTALADA/DAÑADA → INSTALADA;
-        - else some unit back to PENDIENTE → PENDIENTE_INSTALACION.
+        - else some unit PENDIENTE → PENDIENTE_INSTALACION.
         A DESCARTADA (won't install) unit counts as resolved (neither pending
-        nor active), so it never blocks completion nor forces retirement.
+        nor active), so it never blocks completion nor forces retirement. The
+        transition ``source`` guards keep each rule scoped to the right stage.
         """
         unit_workflow = PhysicalAdvertisementUnit.workflow
-        states = []
-        for unit in PhysicalAdvertisementUnit.objects.filter(item__advertisement=self):
-            if pending_unit is not None and unit.pk == pending_unit.pk:
-                states.append(pending_state)
-            else:
-                states.append(unit.state)
-        if not states:
-            return
-        changed = False
-        any_pending = any(s == unit_workflow.PENDIENTE for s in states)
+        any_pending = any(s == unit_workflow.PENDIENTE for s in child_states)
         any_installed = any(
-            s in (unit_workflow.INSTALADA, unit_workflow.DANADA) for s in states
+            s in (unit_workflow.INSTALADA, unit_workflow.DANADA) for s in child_states
         )
-        # Units that were discarded never counted as physical advertising.
-        active = [s for s in states if s != unit_workflow.DESCARTADA]
+        active = [s for s in child_states if s != unit_workflow.DESCARTADA]
         all_retired = bool(active) and all(
             s == unit_workflow.RETIRADA for s in active
         )
-        if all_retired and self.state == self.workflow.INSTALADA:
-            self.retire_request(user=user)
-            changed = True
-        elif not any_pending and any_installed and (
-            self.state == self.workflow.PENDIENTE_INSTALACION
-        ):
-            self.mark_installed(user=user)
-            changed = True
-        elif any_pending and self.state == self.workflow.INSTALADA:
-            self.revert_to_pending(user=user)
-            changed = True
-        if changed:
-            self.save()
+        if all_retired:
+            return self.workflow.RETIRADA
+        if not any_pending and any_installed:
+            return self.workflow.INSTALADA
+        if any_pending:
+            return self.workflow.PENDIENTE_INSTALACION
+        return None
+
+    def sync_state_with_units(self, user=None, pending_unit=None, pending_state=None):
+        """Aggregate unit states into the request workflow.
+
+        Thin wrapper over the generic ``ChildDrivenParentMixin.sync_from_children``
+        so unit transitions keep calling the same method. Called BEFORE the unit
+        row is saved, so the in-flight unit's target state is passed explicitly.
+        """
+        return self.sync_from_children(
+            user=user, pending_child=pending_unit, pending_state=pending_state
+        )
 
     @property
     def items_instructions_summary(self):
@@ -593,6 +637,33 @@ class PhysicalAdvertisementUnit(BaseModel, PhysicalAdUnitTransitions):
     @property
     def request_campaign(self):
         return self.item.advertisement.campaign
+
+    @property
+    def is_unconfigured_pending(self):
+        """A still-pending slot nobody touched: safe to trim on quantity drop."""
+        return (
+            self.state == self.workflow.PENDIENTE
+            and self.size_id is None
+            and not self.installation_instructions
+            and self.assigned_installer_id is None
+            and not self.installer_team
+            and not self.photo
+            and self.installed_at is None
+        )
+
+    @property
+    def is_configured(self):
+        """True once the publicidad is configured. A size is what configures it,
+        but some advertisement types have no size catalog (``UnitConfigForm``
+        makes size required only when sizes exist) — for those a size can never
+        be chosen, so the unit counts as configured as soon as it is no longer a
+        blank pending slot. Without this fallback such types would be impossible
+        to install or assign an installer to."""
+        if self.size_id is not None:
+            return True
+        if self.item.advertisement_type.sizes.filter(is_active=True).exists():
+            return False
+        return not self.is_unconfigured_pending
 
     @property
     def display_label(self):

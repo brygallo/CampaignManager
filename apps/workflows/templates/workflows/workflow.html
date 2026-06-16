@@ -84,6 +84,8 @@
           </div>
         </div>
 
+        {% include "workflows/includes/transition_requirements.html" %}
+
         {# Footer with transition action buttons #}
         <div class="card-footer d-flex flex-wrap align-items-center justify-content-between py-3 px-4 gap-2">
 
@@ -193,7 +195,7 @@
                    data-text="{{ fwd_split.closest.custom.text }}"
                    data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
                   <span>{{ fwd_split.closest.custom.verbose }}</span>
-                  <i data-lucide="arrow-right" class="fs-3"></i>
+                  <i data-lucide="{% firstof fwd_split.closest.custom.lucide 'arrow-right' %}" class="fs-3"></i>
                 </a>
                 {% if fwd_split.others %}
                   <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
@@ -212,7 +214,7 @@
                            data-form="{{ transition.custom.form }}"
                            data-text="{{ transition.custom.text }}"
                            data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
-                          <i data-lucide="arrow-right" class="fs-3"></i>
+                          <i data-lucide="{% firstof transition.custom.lucide 'arrow-right' %}" class="fs-3"></i>
                           {{ transition.custom.verbose }}
                         </a>
                       </li>

@@ -15,6 +15,7 @@ from .models import (
     AdvertisingTypeSize,
     PhysicalAdvertisement,
     PhysicalAdvertisementItem,
+    PhysicalAdvertisementUnit,
 )
 
 
@@ -242,196 +243,31 @@ class AdvertisingRefusalForm(ModelForm):
         return cleaned_data
 
 
-class ApprovalForm(forms.Form):
-    # ChangeStateView passes the advertisement so one size select and one
-    # instructions textarea per physical unit can be built dynamically.
-    needs_object = True
-    # Opt-in hook (see ``forms/form.html``): renders the "Agregar publicidad"
-    # section after the standard fields. New advertisements are added by JS as
-    # indexed inputs (``new_type_0``…) parsed in ``clean()`` and ``approve()``.
-    after_fields_template = "territorial_ads/_approval_new_ads.html"
+class UnitConfigForm(forms.ModelForm):
+    """Configure ONE physical advertisement (unit): size + instructions.
 
-    NEW_PREFIX = "new_type_"
+    Used as the insoles base form (``InstanceBaseFormView``) so each
+    publicidad is approved/configured individually from its card while the
+    request is OFRECIDA — instead of one mega-form in the approve transition.
+    """
 
-    def __init__(self, *args, obj=None, **kwargs):
+    class Meta:
+        model = PhysicalAdvertisementUnit
+        fields = ("size", "installation_instructions")
+        widgets = {
+            "installation_instructions": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.obj = obj
-        items = (
-            obj.items.select_related("advertisement_type").prefetch_related("units")
-            if obj is not None
-            else []
-        )
-        # Types/sizes offered for brand-new advertisements added at approval
-        # time. Types already in the request are excluded to keep the unique
-        # "one item per type" rule (see ``clean``).
-        existing_type_ids = list(
-            obj.items.values_list("advertisement_type_id", flat=True)
-        ) if obj is not None else []
-        self.new_ad_types = AdvertisingType.objects.exclude(
-            pk__in=existing_type_ids
+        ad_type = self.instance.item.advertisement_type
+        sizes = AdvertisingTypeSize.objects.filter(
+            advertisement_type=ad_type, is_active=True
         ).order_by("order", "name")
-        self.new_ad_sizes = (
-            AdvertisingTypeSize.objects.filter(
-                is_active=True, advertisement_type__in=self.new_ad_types
-            )
-            .select_related("advertisement_type")
-            .order_by("advertisement_type__order", "order", "name")
-        )
-        # Re-render submitted new rows so they survive a validation error.
-        self.submitted_new_entries = self._new_entries()
-        for item in items:
-            type_sizes = AdvertisingTypeSize.objects.filter(
-                advertisement_type=item.advertisement_type, is_active=True
-            ).order_by("order", "name")
-            has_sizes = type_sizes.exists()
-            # Sizes and instructions survive a previous approval
-            # (revert_to_offered keeps no units, but a plain re-render
-            # mid-validation does).
-            existing_size = {u.unit_number: u.size_id for u in item.units.all()}
-            existing_instructions = {
-                u.unit_number: u.installation_instructions for u in item.units.all()
-            }
-            # Build one self-contained block per physical unit so size and
-            # instructions for "Lona #1" render together, then "Lona #2", etc.
-            # The unit identity lives in the fieldset title (see
-            # ``get_fieldsets``), so field labels stay short here. Size and
-            # instructions are ``required=False`` at field level and enforced
-            # in ``clean()`` only for the units actually being approved.
-            for number in range(1, item.quantity + 1):
-                self.fields[f"unit_approved_{item.pk}_{number}"] = forms.BooleanField(
-                    label="Aprobar esta publicidad",
-                    required=False,
-                    initial=True,
-                )
-                if has_sizes:
-                    self.fields[f"item_size_{item.pk}_{number}"] = forms.ModelChoiceField(
-                        label="Tamaño",
-                        queryset=type_sizes,
-                        required=False,
-                        initial=existing_size.get(number),
-                        empty_label="Selecciona un tamaño…",
-                    )
-                self.fields[f"unit_instructions_{item.pk}_{number}"] = forms.CharField(
-                    label="Indicaciones",
-                    help_text="Indica qué se requiere: escalera, andamio, permisos, etc.",
-                    widget=forms.Textarea(attrs={"rows": 2}),
-                    required=False,
-                    initial=existing_instructions.get(number),
-                )
-
-    def _new_entries(self):
-        """Parse JS-added new advertisements from the bound data.
-
-        Rows carry indexed names (``new_type_0``, ``new_quantity_0``…). Reads
-        ``self.data`` directly (a ``QueryDict``) so it works for validation
-        regardless of how many rows were added."""
-        if not self.is_bound:
-            return []
-        indices = sorted(
-            int(key[len(self.NEW_PREFIX):])
-            for key in self.data.keys()
-            if key.startswith(self.NEW_PREFIX) and key[len(self.NEW_PREFIX):].isdigit()
-        )
-        entries = []
-        for i in indices:
-            type_id = self.data.get(f"new_type_{i}")
-            if not type_id:
-                continue
-            entries.append(
-                {
-                    "index": i,
-                    "type_id": type_id,
-                    "quantity": self.data.get(f"new_quantity_{i}") or "1",
-                    "size_id": self.data.get(f"new_size_{i}") or "",
-                    "instructions": self.data.get(f"new_instructions_{i}") or "",
-                }
-            )
-        return entries
-
-    def clean(self):
-        cleaned = super().clean()
-        if self.obj is None:
-            return cleaned
-        any_approved = False
-        for item in self.obj.items.all():
-            for number in range(1, item.quantity + 1):
-                if not cleaned.get(f"unit_approved_{item.pk}_{number}"):
-                    continue
-                any_approved = True
-                size_name = f"item_size_{item.pk}_{number}"
-                if size_name in self.fields and not cleaned.get(size_name):
-                    self.add_error(size_name, "Selecciona un tamaño.")
-                instr_name = f"unit_instructions_{item.pk}_{number}"
-                if not cleaned.get(instr_name):
-                    self.add_error(instr_name, "Indica las instrucciones de instalación.")
-        # Validate brand-new advertisements added at approval time.
-        existing_type_ids = set(
-            self.obj.items.values_list("advertisement_type_id", flat=True)
-        )
-        seen_new_types = set()
-        new_entries = self._new_entries()
-        for entry in new_entries:
-            try:
-                type_id = int(entry["type_id"])
-            except (TypeError, ValueError):
-                self.add_error(None, "Tipo de publicidad nuevo inválido.")
-                continue
-            if type_id in existing_type_ids:
-                self.add_error(
-                    None, "Ese tipo de publicidad ya está en la solicitud."
-                )
-            if type_id in seen_new_types:
-                self.add_error(
-                    None, "No repitas el mismo tipo en las publicidades nuevas."
-                )
-            seen_new_types.add(type_id)
-            try:
-                quantity = int(entry["quantity"])
-            except (TypeError, ValueError):
-                quantity = 0
-            if quantity < 1:
-                self.add_error(
-                    None, "La cantidad de la nueva publicidad debe ser al menos 1."
-                )
-            if entry["size_id"] and not AdvertisingTypeSize.objects.filter(
-                pk=entry["size_id"], advertisement_type_id=type_id, is_active=True
-            ).exists():
-                self.add_error(
-                    None,
-                    "El tamaño elegido no corresponde al tipo de la nueva publicidad.",
-                )
-        if not any_approved and not new_entries:
-            raise forms.ValidationError("Debes aprobar al menos una publicidad.")
-        return cleaned
-
-    def has_fieldsets(self):
-        return self.obj is not None and self.obj.items.exists()
-
-    def get_fieldsets(self):
-        """One titled block per physical unit (``Lona #1``, ``Banner``…),
-        grouping that unit's size and instructions — mirrors the site forms."""
-        if self.obj is None:
-            return []
-        sections = []
-        for item in self.obj.items.select_related("advertisement_type"):
-            for number in range(1, item.quantity + 1):
-                suffix = f" #{number}" if item.quantity > 1 else ""
-                rows = []
-                for name in (
-                    f"unit_approved_{item.pk}_{number}",
-                    f"item_size_{item.pk}_{number}",
-                    f"unit_instructions_{item.pk}_{number}",
-                ):
-                    if name in self.fields:
-                        rows.append({"bs_cols": 12, "fields": [self[name]]})
-                sections.append(
-                    {
-                        "title": f"{item.advertisement_type.name}{suffix}",
-                        "fieldset": rows,
-                    }
-                )
-        return sections
-
+        self.fields["size"].queryset = sizes
+        self.fields["size"].empty_label = "Selecciona un tamaño…"
+        # Size is required only when the type actually has a size catalog.
+        self.fields["size"].required = sizes.exists()
 
 class AddAdvertisementForm(forms.Form):
     """Add one new advertisement (type + quantity + size + instructions) to an
@@ -462,6 +298,15 @@ class AddAdvertisementForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={"rows": 2}),
     )
+    assigned_installer = forms.ModelChoiceField(
+        label="Instalador",
+        queryset=get_user_model().objects.none(),
+        required=False,
+        empty_label="Sin instalador interno",
+    )
+    installer_team = forms.CharField(
+        label="Instalador externo", max_length=180, required=False
+    )
 
     def __init__(self, *args, obj=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -476,6 +321,16 @@ class AddAdvertisementForm(forms.Form):
             if obj is not None
             else AdvertisingTypeSize.objects.none()
         )
+        # The request is already approved when a publicidad is added (the
+        # add_advertisement transition is only available from APROBADA onward),
+        # and every publicidad needs an installer before the request can move to
+        # installation — so ask who installs this new one right away.
+        self.installer_required = obj is not None and obj.approved_at is not None
+        if self.installer_required:
+            self.fields["assigned_installer"].queryset = installer_users_queryset()
+        else:
+            del self.fields["assigned_installer"]
+            del self.fields["installer_team"]
 
     def clean(self):
         cleaned = super().clean()
@@ -483,6 +338,14 @@ class AddAdvertisementForm(forms.Form):
         size = cleaned.get("size")
         if type_obj and size and size.advertisement_type_id != type_obj.pk:
             self.add_error("size", "El tamaño no corresponde al tipo elegido.")
+        if (
+            self.installer_required
+            and not cleaned.get("assigned_installer")
+            and not cleaned.get("installer_team")
+        ):
+            raise forms.ValidationError(
+                "Selecciona un instalador o registra un instalador externo."
+            )
         return cleaned
 
 

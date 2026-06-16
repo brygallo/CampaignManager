@@ -1,64 +1,53 @@
 {% with req=object.transition_requirements %}
   {% if req %}
-    {% if req.pending_count %}
-      <div class="alert alert-warning d-flex align-items-start gap-3 mb-4" role="alert">
-        <i data-lucide="info" class="fs-2hx text-warning"></i>
-        <div class="flex-grow-1">
-          <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-            <div class="me-auto">
-              <strong class="d-block">Pendientes para continuar</strong>
-              <small class="text-muted d-block mt-1">
-                Siguiente acción: <span class="text-warning fw-bold">{{ req.transition_verb }}</span>
-              </small>
-            </div>
-            <span class="badge badge-warning d-flex align-items-center gap-1">
-              <i data-lucide="info" class="fs-5"></i>
-              {{ req.pending_count }} sin completar
-            </span>
-          </div>
+    <div class="bg-light border-top px-4 py-3">
+      <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+        <i data-lucide="arrow-right-circle" class="fs-4 text-{% if req.pending_count %}warning{% else %}success{% endif %}"></i>
+        <span class="fw-bold text-gray-800">
+          Próximo paso: <span class="text-{% if req.pending_count %}warning{% else %}success{% endif %} fw-bolder">{{ req.transition_verb }}</span>
+        </span>
+        {% if req.pending_count %}
+          <span class="badge badge-light-warning fw-bold ms-auto d-flex align-items-center gap-1">
+            <i data-lucide="info" class="fs-7"></i>{{ req.pending_count }} pendiente{{ req.pending_count|pluralize:"s" }}
+          </span>
+        {% else %}
+          <span class="badge badge-light-success fw-bold ms-auto d-flex align-items-center gap-1">
+            <i data-lucide="check" class="fs-7"></i>Listo para avanzar
+          </span>
+        {% endif %}
+      </div>
 
-          <div class="row g-3">
-            {% for item in req.items %}
-              <div class="col-md-6 col-lg-4">
-                <div class="d-flex align-items-center p-3 rounded h-100 bg-white border {% if item.is_met %}border-success{% else %}border-danger{% endif %}">
-                  <span class="symbol symbol-40px me-3">
-                    <span class="symbol-label bg-{% if item.is_met %}success{% else %}danger{% endif %} text-white">
-                      <i data-lucide="{% if item.is_met %}check{% else %}x{% endif %}" class="fs-3"></i>
-                    </span>
+      {% if req.pending_count %}
+        <div class="row g-2">
+          {% for item in req.items %}
+            <div class="col-md-6 col-lg-4">
+              <div class="d-flex align-items-center gap-2 bg-white rounded p-2 h-100 border {% if item.is_met %}border-success{% else %}border-dashed border-gray-300{% endif %}">
+                <span class="symbol symbol-30px flex-shrink-0">
+                  <span class="symbol-label bg-{% if item.is_met %}light-success{% else %}light{% endif %}">
+                    <i data-lucide="{% if item.is_met %}check{% else %}circle{% endif %}" class="fs-7 text-{% if item.is_met %}success{% else %}gray-500{% endif %}"></i>
                   </span>
-                  <div class="flex-grow-1" style="min-width: 0;">
-                    <div class="text-muted fw-bold small text-uppercase mb-1 d-flex align-items-center gap-1">
-                      {% if item.icon %}<i class="{{ item.icon }} fs-7"></i>{% endif %}{{ item.label }}
-                    </div>
-                    <div class="fw-bolder {% if item.is_met %}text-dark{% else %}text-danger{% endif %}"
-                         style="white-space: normal; word-break: break-word; line-height: 1.35;">
-                      {% if item.value %}
-                        {{ item.value }}
-                      {% else %}
-                        <span class="fst-italic">Falta completar</span>
-                      {% endif %}
-                    </div>
+                </span>
+                <div class="flex-grow-1" style="min-width: 0;">
+                  <div class="text-muted fw-bold fs-8 text-uppercase text-truncate">{{ item.label }}</div>
+                  <div class="fs-8 fw-semibold {% if item.is_met %}text-gray-800{% else %}text-gray-500 fst-italic{% endif %}"
+                       style="white-space: normal; word-break: break-word; line-height: 1.3;">
+                    {% if item.value %}{{ item.value }}{% else %}Falta completar{% endif %}
                   </div>
                 </div>
               </div>
-            {% endfor %}
-          </div>
-
-          {% if req.help_text %}
-            <div class="text-muted small mt-3 d-flex align-items-center gap-1">
-              <i data-lucide="info" class="fs-6"></i>{{ req.help_text }}
             </div>
-          {% endif %}
+          {% endfor %}
         </div>
-      </div>
-    {% else %}
-      <div class="alert alert-success d-flex align-items-center flex-wrap gap-2 mb-4" role="alert">
-        <i data-lucide="check-circle-2" class="fs-2 text-success"></i>
-        <strong class="me-auto">{{ req.ready_text }}</strong>
-        <span class="badge badge-light-success d-flex align-items-center gap-1">
-          <i data-lucide="check" class="fs-6"></i>Listo para avanzar
-        </span>
-      </div>
-    {% endif %}
+        {% if req.help_text %}
+          <div class="text-muted fs-8 mt-2 d-flex align-items-center gap-1">
+            <i data-lucide="info" class="fs-7"></i>{{ req.help_text }}
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="text-muted fs-8 d-flex align-items-center gap-1">
+          <i data-lucide="info" class="fs-7"></i>{{ req.ready_text }}
+        </div>
+      {% endif %}
+    </div>
   {% endif %}
 {% endwith %}

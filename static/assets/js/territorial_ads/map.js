@@ -277,6 +277,21 @@
           ctx.load();
           return;
         }
+        // Preserve the modal's scroll position so re-rendering the body keeps
+        // the user where they were (instead of jumping to the top).
+        function scrollContainer(el) {
+          var node = el;
+          while (node && node !== document.body) {
+            var oy = window.getComputedStyle(node).overflowY;
+            if ((oy === "auto" || oy === "scroll") && node.scrollHeight > node.clientHeight) {
+              return node;
+            }
+            node = node.parentElement;
+          }
+          return el;
+        }
+        var scroller = scrollContainer(bodyEl);
+        var savedTop = scroller ? scroller.scrollTop : 0;
         kit.setHtml(bodyEl, kit.loadingHtml("Actualizando..."));
         fetch(detailUrl, {
           headers: { "X-Requested-With": "XMLHttpRequest" },
@@ -288,6 +303,7 @@
             if (!detailHtml) throw new Error("Empty detail content");
             kit.setHtml(bodyEl, detailHtml);
             kit.initDynamicContent(bodyEl);
+            if (scroller) scroller.scrollTop = savedTop;
             ctx.load();
           })
           .catch(function () {

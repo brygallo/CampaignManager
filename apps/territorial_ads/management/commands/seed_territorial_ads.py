@@ -162,19 +162,21 @@ class Command(BaseCommand):
         if target == "OFRECIDA":
             return
         if ad.state == wf.OFRECIDA:
-            kwargs = {}
+            # Units are materialized at offer time; configure each one
+            # (size + instructions) before the request-level approval.
+            ad.materialize_units()
             for item in ad.items.all():
                 first_size = AdvertisingTypeSize.objects.filter(
                     advertisement_type=item.advertisement_type, is_active=True
                 ).order_by("order", "name").first()
-                for number in range(1, item.quantity + 1):
-                    kwargs[f"unit_approved_{item.pk}_{number}"] = "on"
-                    kwargs[f"unit_instructions_{item.pk}_{number}"] = (
+                for unit in item.units.all():
+                    unit.installation_instructions = (
                         "Se requiere escalera y dos personas para colocación segura."
                     )
                     if first_size:
-                        kwargs[f"item_size_{item.pk}_{number}"] = first_size.pk
-            ad.approve(user=user, **kwargs)
+                        unit.size = first_size
+                    unit.save(update_fields=["installation_instructions", "size"])
+            ad.approve(user=user)
             ad.save()
         if target == "APROBADA":
             return

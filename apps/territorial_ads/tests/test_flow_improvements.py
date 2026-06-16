@@ -12,10 +12,10 @@ from django_fsm import TransitionNotAllowed
 
 from apps.field_surveys.tests.factories import AdvertisingTypeFactory
 from apps.territorial_ads.forms import (
-    ApprovalForm,
     AssignInstallationForm,
     ContactUpdateForm,
     DirectInstallForm,
+    UnitConfigForm,
     installer_users_queryset,
 )
 from apps.territorial_ads.models import AdvertisingTypeSize, PhysicalAdvertisement
@@ -83,15 +83,17 @@ class CorrectionTransitionsTests(TestCase):
         self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 2)])
 
     def _approve(self):
-        kwargs = {}
-        for item in self.ad.items.all():
-            for number in range(1, item.quantity + 1):
-                kwargs[f"unit_approved_{item.pk}_{number}"] = "on"
-                kwargs[f"unit_instructions_{item.pk}_{number}"] = "Escalera"
-        self.ad.approve(user=None, **kwargs)
+        # Units are materialized at offer time; configure each so the approve
+        # requirement (every publicidad decided) is satisfied.
+        self.ad.materialize_units()
+        for unit in self.ad.units:
+            if unit.is_unconfigured_pending:
+                unit.installation_instructions = "ok"
+                unit.save(update_fields=["installation_instructions"])
+        self.ad.approve(user=None)
         self.ad.save()
 
-    def test_revert_to_offered_clears_approval_and_units(self):
+    def test_revert_to_offered_keeps_units(self):
         self._approve()
         self.assertEqual(len(self.ad.units), 2)
         self.ad.revert_to_offered(user=None)
@@ -99,7 +101,8 @@ class CorrectionTransitionsTests(TestCase):
         self.assertEqual(self.ad.state, PhysicalAdvertisement.workflow.OFRECIDA)
         self.assertIsNone(self.ad.approved_by)
         self.assertIsNone(self.ad.approved_at)
-        self.assertEqual(len(self.ad.units), 0)
+        # Units persist across the lifecycle now.
+        self.assertEqual(len(self.ad.units), 2)
         self.assertFalse(self.ad.is_state_read_only())
 
     def test_revert_to_offered_only_from_approved(self):
@@ -132,26 +135,27 @@ class CorrectionTransitionsTests(TestCase):
         self.assertEqual(form.fields["owner_name"].initial, self.ad.owner_name)
         self.assertEqual(form.fields["owner_phone"].initial, self.ad.owner_phone)
 
-    def test_approval_form_requires_sizes_when_catalog_exists(self):
+    def test_unit_config_form_requires_size_when_catalog_exists(self):
         size = AdvertisingTypeSize.objects.create(
             advertisement_type=self.valla, name="Grande", order=0
         )
-        form = ApprovalForm(obj=self.ad)
-        item = self.ad.items.first()
-        self.assertIn(f"item_size_{item.pk}_1", form.fields)
-        self.assertIn(f"item_size_{item.pk}_2", form.fields)
-        self.assertIn(size, form.fields[f"item_size_{item.pk}_1"].queryset)
-        # Size is enforced in clean() only for the units being approved:
-        # approving unit #1 without a size must flag that size field.
-        bound = ApprovalForm(
-            obj=self.ad,
-            data={
-                f"unit_approved_{item.pk}_1": "on",
-                f"unit_instructions_{item.pk}_1": "Andamio",
-            },
-        )
+        self.ad.materialize_units()
+        unit = self.ad.units[0]
+        # Size catalog exists → size is required; only the type's sizes show.
+        form = UnitConfigForm(instance=unit)
+        self.assertTrue(form.fields["size"].required)
+        self.assertIn(size, form.fields["size"].queryset)
+        bound = UnitConfigForm(data={"installation_instructions": "Andamio"}, instance=unit)
         self.assertFalse(bound.is_valid())
-        self.assertIn(f"item_size_{item.pk}_1", bound.errors)
+        self.assertIn("size", bound.errors)
+        ok = UnitConfigForm(
+            data={"size": size.pk, "installation_instructions": "Andamio"},
+            instance=unit,
+        )
+        self.assertTrue(ok.is_valid(), ok.errors)
+        saved = ok.save()
+        self.assertEqual(saved.size, size)
+        self.assertEqual(saved.installation_instructions, "Andamio")
 
 
 class InstallerAssignmentQuerysetTests(TestCase):

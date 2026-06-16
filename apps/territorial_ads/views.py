@@ -17,10 +17,14 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from django_fsm import TransitionNotAllowed, has_transition_perm
+
 from apps.campaigns.active import scope_queryset_to_active_campaign
 from apps.campaigns.querysets import visible_campaign_choices
+from apps.workflows.exceptions import WorkflowException
 from superadmin.shortcuts import get_urls_of_site
 from superadmin.sites import site as superadmin_site
+from superadmin.utils import import_class
 
 from core.map_mixins import (
     MapAjaxCreateMixin,
@@ -28,10 +32,13 @@ from core.map_mixins import (
     MapInitialLocationMixin,
 )
 
+from apps.insoles.views import InstanceBaseFormView
+
 from .forms import (
     AdvertisingRefusalForm,
     BulkAssignInstallationForm,
     DirectInstallForm,
+    UnitConfigForm,
 )
 from .models import (
     AdvertisingRefusal,
@@ -58,6 +65,160 @@ class PhysicalAdMapAjaxUpdateMixin(MapAjaxUpdateMixin):
 
 class RefusalMapAjaxUpdateMixin(MapAjaxUpdateMixin):
     map_form_template_name = "territorial_ads/_map_refusal_form.html"
+
+
+class MaterializeUnitsMixin:
+    """Create the physical units right after the request (and its item
+    inlines) are saved, so they exist from OFRECIDA and can be configured
+    one by one. Outermost in the create/update mixin chain: ``super()``
+    saves the object + inlines first, then we materialize."""
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        obj = getattr(self, "object", None)
+        if obj is not None:
+            obj.materialize_units()
+        return response
+
+
+class PhysicalAdUnitConfigView(LoginRequiredMixin, InstanceBaseFormView):
+    """Configure ONE publicidad (size + instructions) via the insoles modal.
+
+    First real consumer of the insoles base-form scaffolding: per-unit
+    approval/configuration while the request is OFRECIDA.
+    """
+
+    model = PhysicalAdvertisementUnit
+    form_class = UnitConfigForm
+    create_url_name = "territorial_ads:unit_config"
+    title = "Configurar publicidad"
+    confirm_button = "Guardar"
+
+    def has_permission(self):
+        return self.request.user.has_perm(
+            "territorial_ads.approve_physicaladvertisement"
+        )
+
+    def form_valid(self, form):
+        form.save()
+        return self.success("Publicidad configurada.")
+
+
+class PhysicalAdUnitActionView(LoginRequiredMixin, InstanceBaseFormView):
+    """Generic insoles runner for ANY per-unit django-fsm transition.
+
+    URL kwargs: ``pk`` (unit) + ``name`` (transition). Renders the transition's
+    ``custom["form"]`` (or a confirm prompt when it has none) inside the shared
+    insoles modal, enforces ``has_transition_perm`` + FSM requirements, and runs
+    the transition on POST. Mirrors workflows.ChangeStateView's kwarg contract
+    but returns the insoles JSON shape so the action behaves like every other
+    per-publicidad form (and refreshes in place on the map).
+    """
+
+    model = PhysicalAdvertisementUnit
+    create_url_name = "territorial_ads:unit_action"
+    raise_exception = True
+
+    def get_object(self):
+        if not hasattr(self, "_unit_cache"):
+            self._unit_cache = get_object_or_404(
+                PhysicalAdvertisementUnit, pk=self.kwargs.get("pk")
+            )
+        return self._unit_cache
+
+    def _bound_method(self):
+        return getattr(self.get_object(), self.kwargs.get("name"), None)
+
+    def _transition(self):
+        method = self._bound_method()
+        fsm = getattr(method, "_django_fsm", None)
+        if fsm is None:
+            return None
+        transitions = fsm.transitions or {}
+        unit = self.get_object()
+        return (
+            transitions.get(unit.state)
+            or transitions.get("*")
+            or next(iter(transitions.values()), None)
+        )
+
+    def _form_class(self, custom):
+        path = custom.get("form")
+        if not path:
+            return None
+        parts = path.split(".")
+        return import_class(".".join(parts[:-1]), parts[-1])
+
+    def _form_kwargs(self, form_class):
+        kwargs = {}
+        if self.request.method == "POST":
+            kwargs.update({"data": self.request.POST, "files": self.request.FILES})
+        if getattr(form_class, "needs_object", False):
+            kwargs["obj"] = self.get_object()
+        return kwargs
+
+    def _call_kwargs(self):
+        # Same as ChangeStateView: forward user + raw POST/FILES to the method.
+        kwargs = {"user": self.request.user}
+        for source in (self.request.FILES, self.request.POST):
+            for key in source.keys():
+                value = source.getlist(str(key))
+                kwargs[key] = value if len(value) > 1 else source.get(str(key))
+        return kwargs
+
+    def get(self, request, *args, **kwargs):
+        method = self._bound_method()
+        transition = self._transition()
+        if method is None or transition is None:
+            return self.error("La acción no existe para esta publicidad.")
+        if not has_transition_perm(method, request.user):
+            return self.error("No tiene permisos para realizar esta acción.")
+        custom = transition.custom or {}
+        form_class = self._form_class(custom)
+        if form_class:
+            form = form_class(**self._form_kwargs(form_class))
+            template = render_to_string("insoles/form.html", {"form": form})
+        else:
+            template = render_to_string(
+                "insoles/confirm.html", {"text": custom.get("text", "")}
+            )
+        return JsonResponse(
+            {
+                "template": template,
+                "create_url": str(self.get_create_url()),
+                "confirm_button": custom.get("verbose") or "Confirmar",
+                "title": custom.get("title") or custom.get("verbose") or "Acción",
+                "max_width": self.max_width,
+            },
+            status=200,
+        )
+
+    def post(self, request, *args, **kwargs):
+        try:
+            method = self._bound_method()
+            transition = self._transition()
+            if method is None or transition is None:
+                return self.error("La acción no existe para esta publicidad.")
+            if not has_transition_perm(method, request.user):
+                return self.error("No tiene permisos para realizar esta acción.")
+            custom = transition.custom or {}
+            form_class = self._form_class(custom)
+            if form_class:
+                form = form_class(**self._form_kwargs(form_class))
+                if not form.is_valid():
+                    return self.form_invalid(form)
+            with transaction.atomic():
+                method(**self._call_kwargs())
+                self.get_object().save()
+            return self.success("Acción realizada con éxito.")
+        except WorkflowException as e:
+            return self.error(str(e))
+        except TransitionNotAllowed:
+            return self.error(
+                "Esta acción no está permitida desde el estado actual."
+            )
+        except Exception as e:
+            return self.error(str(e))
 
 
 STATE_COLORS = {
@@ -541,22 +702,29 @@ class DirectInstallCreateView(LoginRequiredMixin, PermissionRequiredMixin, View)
             item = ad.items.create(
                 advertisement_type=cleaned["advertisement_type"], quantity=1
             )
+            # Units are materialized up front now (not at approval).
+            ad.materialize_units()
             size = cleaned.get("size")
-            # Direct install always approves its single unit.
-            approve_kwargs = {f"unit_approved_{item.pk}_1": "on"}
+            unit = item.units.first()
             if size is not None:
-                approve_kwargs[f"item_size_{item.pk}_1"] = size.pk
+                unit.size = size
+                unit.save(update_fields=["size"])
             # Fast-track the request through the normal transitions so the
             # audit trail (who/when) stays consistent with the manual flow.
-            ad.approve(user=request.user, **approve_kwargs)
+            ad.approve(user=request.user)
             ad.save()
-            ad.assign_installation(user=request.user)
-            ad.save()
-            unit = item.units.first()
             # Direct install: the operator both assigns and installs the unit.
+            # The installer must be persisted BEFORE assign_installation, whose
+            # requirement check reads the unit rows from the DB (every publicidad
+            # must have an installer before the request moves to installation).
             unit.assigned_installer = request.user
             unit.assigned_by = request.user
             unit.assigned_at = timezone.now()
+            unit.save(
+                update_fields=["assigned_installer", "assigned_by", "assigned_at"]
+            )
+            ad.assign_installation(user=request.user)
+            ad.save()
             unit.mark_installed(
                 user=request.user,
                 photo=cleaned["photo"],
@@ -677,8 +845,6 @@ class AdvertisingRefusalPopupView(LoginRequiredMixin, PermissionRequiredMixin, V
             {
                 "html": html,
                 "title": refusal.owner_reference or f"Rechazo #{refusal.pk}",
-                # Full detail page, so the map modal can offer "open record"
-                # for refusals just like it does for advertisements.
                 "url": refusal_detail_url(refusal.pk),
             }
         )

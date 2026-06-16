@@ -21,6 +21,9 @@
   window.__cmInsolesActionsBound = true;
 
   var MODAL_ID = "insoles-instance-forms";
+  // The button that opened the modal — used to refresh in place when the
+  // action runs from inside the map's detail modal (no full page reload).
+  var lastTrigger = null;
 
   function modalEl() {
     return document.getElementById(MODAL_ID);
@@ -84,6 +87,7 @@
     var trigger = event.target.closest(".insoles-action");
     if (!trigger) return;
     event.preventDefault();
+    lastTrigger = trigger;
     var url = trigger.dataset.url;
     if (!url) return;
     fetch(url, {
@@ -120,6 +124,16 @@
           if (typeof window.insolesPostSubmitHook === "function" &&
               window.insolesPostSubmitHook(res.d, form)) {
             return;
+          }
+          // If the action was launched from inside the map's detail modal,
+          // refresh that modal in place (no full reload) — same contract as
+          // workflows.js, so the user stays exactly where they were.
+          var inMapModal = lastTrigger && lastTrigger.closest("[data-modal-body]");
+          if (inMapModal) {
+            var ev = new CustomEvent("workflow:transitioned", {
+              bubbles: true, cancelable: true, detail: { response: res.d },
+            });
+            if (!lastTrigger.dispatchEvent(ev)) return; // map handled it
           }
           setTimeout(function () { window.location.reload(); }, 800);
           return;

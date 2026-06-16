@@ -19,6 +19,16 @@ urlpatterns = [
         name="direct_install_create",
     ),
     path(
+        "publicidad-territorial/publicidad/<int:pk>/configurar/",
+        views.PhysicalAdUnitConfigView.as_view(),
+        name="unit_config",
+    ),
+    path(
+        "publicidad-territorial/publicidad/<int:pk>/accion/<str:name>/",
+        views.PhysicalAdUnitActionView.as_view(),
+        name="unit_action",
+    ),
+    path(
         "publicidad-territorial/mapa/rechazo/crear/",
         views.AdvertisingRefusalCreateView.as_view(),
         name="refusal_create",

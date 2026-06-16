@@ -77,14 +77,9 @@
 {% endblock %}
 
 {% block content %}
-{# Workflow stepper + transition CTAs (only when the model exposes get_visible_states). #}
+{# Workflow stepper + transition CTAs + pending-requirements band (only when the model exposes get_visible_states). #}
 {% if object.get_visible_states %}
   {% include "workflows/workflow.html" %}
-{% endif %}
-
-{# Pending requirements before next transition (only when the model exposes transition_requirements). #}
-{% if object.transition_requirements %}
-  {% include "workflows/includes/transition_requirements.html" %}
 {% endif %}
 
 {% block before_card %}{% endblock %}

@@ -1,18 +1,20 @@
-"""Tests for multi-type items, per-unit approval sizes and per-unit
-installation evidence (photo + GPS + notes)."""
+"""Tests for multi-type items, unit materialization, per-publicidad config
+(size + instructions) and per-unit installation evidence."""
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.datastructures import MultiValueDict
+from django_fsm import TransitionNotAllowed
 
 from apps.field_surveys.tests.factories import AdvertisingTypeFactory
 from apps.territorial_ads.forms import (
-    ApprovalForm,
     AssignUnitInstallerForm,
     PhysicalAdvertisementItemFormSet,
+    UnitConfigForm,
     UnitInstallForm,
 )
 from apps.territorial_ads.models import AdvertisingTypeSize
 from apps.territorial_ads.tests.factories import PhysicalAdvertisementFactory
+from apps.territorial_ads.workflows import PhysicalAdUnitWorkflow
 
 # Smallest valid GIF (1x1 transparent pixel) for ImageField validation.
 GIF_BYTES = (
@@ -26,95 +28,172 @@ def _photo(name="evidence.gif"):
     return SimpleUploadedFile(name, GIF_BYTES, content_type="image/gif")
 
 
-class ApprovalNewAdvertisementTests(TestCase):
-    """Adding brand-new advertisements (type + qty + size + instructions) in
-    the approval form."""
+def _configure_units(ad):
+    """Mark every materialized unit as configured so approve() is allowed
+    (the approve transition now requires each publicidad decided)."""
+    for unit in ad.units:
+        if unit.is_unconfigured_pending:
+            unit.installation_instructions = "ok"
+            unit.save(update_fields=["installation_instructions"])
 
+
+class MaterializeUnitsTests(TestCase):
     def setUp(self):
         self.valla = AdvertisingTypeFactory(code="VALLA", name="Valla")
-        self.banner = AdvertisingTypeFactory(code="BANNER", name="Banner")
-        self.banner_grande = AdvertisingTypeSize.objects.create(
-            advertisement_type=self.banner, name="Grande", order=0
+        self.lona = AdvertisingTypeFactory(code="LONA", name="Lona")
+
+    def test_materialize_creates_one_unit_per_quantity(self):
+        ad = PhysicalAdvertisementFactory(items=[(self.valla, 2), (self.lona, 3)])
+        ad.materialize_units()
+        self.assertEqual(ad.total_units, 5)
+        self.assertEqual(len(ad.units), 5)
+        for unit in ad.units:
+            self.assertEqual(unit.state, PhysicalAdUnitWorkflow().PENDIENTE)
+            self.assertIsNone(unit.size_id)
+
+    def test_materialize_is_idempotent(self):
+        ad = PhysicalAdvertisementFactory(items=[(self.valla, 2)])
+        ad.materialize_units()
+        ad.materialize_units()
+        self.assertEqual(len(ad.units), 2)
+
+    def test_decreasing_quantity_trims_only_unconfigured_pending(self):
+        ad = PhysicalAdvertisementFactory(items=[(self.lona, 3)])
+        ad.materialize_units()
+        item = ad.items.first()
+        # Configure unit #3 → it must survive a quantity drop.
+        size = AdvertisingTypeSize.objects.create(
+            advertisement_type=self.lona, name="Pared", order=0
         )
-        self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 1)])
-        self.valla_item = self.ad.items.first()
+        unit3 = item.units.get(unit_number=3)
+        unit3.size = size
+        unit3.save(update_fields=["size"])
+        item.quantity = 1
+        item.save(update_fields=["quantity"])
+        ad.materialize_units()
+        numbers = set(item.units.values_list("unit_number", flat=True))
+        # #2 (unconfigured) trimmed; #1 kept; #3 kept because configured.
+        self.assertEqual(numbers, {1, 3})
 
-    def test_new_ad_types_exclude_types_already_in_request(self):
-        form = ApprovalForm(obj=self.ad)
-        type_ids = list(form.new_ad_types.values_list("pk", flat=True))
-        self.assertIn(self.banner.pk, type_ids)
-        self.assertNotIn(self.valla.pk, type_ids)
 
-    def test_approve_creates_new_advertisement_with_units(self):
-        kwargs = {
-            f"unit_approved_{self.valla_item.pk}_1": "on",
-            f"unit_instructions_{self.valla_item.pk}_1": "Grúa",
-            "new_type_0": str(self.banner.pk),
-            "new_quantity_0": "2",
-            "new_size_0": str(self.banner_grande.pk),
-            "new_instructions_0": "Pegar arriba",
-        }
-        self.ad.approve(user=None, **kwargs)
+class ApproveRequirementTests(TestCase):
+    """Approve is blocked until every publicidad is configured or discarded."""
+
+    def setUp(self):
+        self.lona = AdvertisingTypeFactory(code="LONA", name="Lona")
+        self.ad = PhysicalAdvertisementFactory(items=[(self.lona, 2)])
+        self.ad.materialize_units()
+
+    def test_transition_requirements_pending_when_unconfigured(self):
+        req = self.ad.transition_requirements
+        self.assertIsNotNone(req)
+        self.assertEqual(req["pending_count"], 1)  # the single "decided" item
+
+    def test_approve_blocked_until_all_decided(self):
+        from apps.workflows.exceptions import WorkflowException
+
+        with self.assertRaises(WorkflowException):
+            self.ad.approve(user=None)
+
+    def test_approve_allowed_once_configured(self):
+        for unit in self.ad.units:
+            unit.installation_instructions = "ok"
+            unit.save(update_fields=["installation_instructions"])
+        self.ad.approve(user=None)  # no raise
         self.ad.save()
-        banner_item = self.ad.items.get(advertisement_type=self.banner)
-        self.assertEqual(banner_item.quantity, 2)
-        self.assertEqual(banner_item.units.count(), 2)
-        unit = banner_item.units.first()
-        self.assertEqual(unit.size, self.banner_grande)
-        self.assertEqual(unit.installation_instructions, "Pegar arriba")
+        self.assertEqual(self.ad.state, self.ad.workflow.APROBADA)
 
-    def test_form_valid_with_only_a_new_advertisement(self):
-        # Nothing existing approved, but a new advertisement is added.
-        data = {
-            "new_type_0": str(self.banner.pk),
-            "new_quantity_0": "1",
-        }
-        form = ApprovalForm(obj=self.ad, data=data)
-        self.assertTrue(form.is_valid(), form.errors)
+    def test_approve_allowed_when_remaining_discarded(self):
+        units = list(self.ad.units)
+        units[0].installation_instructions = "ok"
+        units[0].save(update_fields=["installation_instructions"])
+        units[1].discard(user=None)
+        units[1].save()
+        self.ad.approve(user=None)  # discarded counts as decided
+        self.ad.save()
+        self.assertEqual(self.ad.state, self.ad.workflow.APROBADA)
 
-    def test_form_rejects_duplicate_existing_type(self):
-        data = {
-            f"unit_approved_{self.valla_item.pk}_1": "on",
-            f"unit_instructions_{self.valla_item.pk}_1": "Grúa",
-            "new_type_0": str(self.valla.pk),
-            "new_quantity_0": "1",
-        }
-        form = ApprovalForm(obj=self.ad, data=data)
-        self.assertFalse(form.is_valid())
-        self.assertIn(
-            "Ese tipo de publicidad ya está en la solicitud.",
-            form.non_field_errors(),
+
+class PerPublicidadConfigTests(TestCase):
+    """Configure each publicidad (size + instructions) via UnitConfigForm."""
+
+    def setUp(self):
+        self.lona = AdvertisingTypeFactory(code="LONA", name="Lona")
+        self.size = AdvertisingTypeSize.objects.create(
+            advertisement_type=self.lona, name="Pared", order=0
         )
+        self.ad = PhysicalAdvertisementFactory(items=[(self.lona, 1)])
+        self.ad.materialize_units()
+        self.unit = self.ad.units[0]
 
-    def test_form_rejects_size_not_matching_new_type(self):
+    def test_config_form_sets_size_and_instructions(self):
+        form = UnitConfigForm(
+            data={"size": self.size.pk, "installation_instructions": "Escalera"},
+            instance=self.unit,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        unit = type(self.unit).objects.get(pk=self.unit.pk)
+        self.assertEqual(unit.size, self.size)
+        self.assertEqual(unit.installation_instructions, "Escalera")
+
+    def test_config_form_size_queryset_is_scoped_to_type(self):
         other = AdvertisingTypeFactory(code="OTRO", name="Otro")
-        other_size = AdvertisingTypeSize.objects.create(
+        AdvertisingTypeSize.objects.create(
             advertisement_type=other, name="X", order=0
         )
-        data = {
-            "new_type_0": str(self.banner.pk),
-            "new_quantity_0": "1",
-            "new_size_0": str(other_size.pk),
-        }
-        form = ApprovalForm(obj=self.ad, data=data)
-        self.assertFalse(form.is_valid())
+        form = UnitConfigForm(instance=self.unit)
+        self.assertEqual(list(form.fields["size"].queryset), [self.size])
 
-    def test_form_rejects_zero_quantity(self):
-        data = {
-            "new_type_0": str(self.banner.pk),
-            "new_quantity_0": "0",
-        }
-        form = ApprovalForm(obj=self.ad, data=data)
-        self.assertFalse(form.is_valid())
+    def test_view_get_returns_form_and_post_saves(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+        from django.test import RequestFactory
+        from django.urls import reverse
 
-    def test_approval_modal_template_renders(self):
-        from django.template.loader import render_to_string
+        from apps.territorial_ads.views import PhysicalAdUnitConfigView
 
-        html = render_to_string("workflows/form.html", {"form": ApprovalForm(obj=self.ad)})
-        self.assertIn("Aprobar esta publicidad", html)
-        self.assertIn("Agregar publicidad", html)
-        self.assertIn("new-ad-row-template", html)
-        self.assertIn("Tipo de publicidad", html)
+        user = get_user_model().objects.create_user(
+            username="appr", email="a@b.com", password="x"
+        )
+        user.user_permissions.add(
+            Permission.objects.get(
+                codename="approve_physicaladvertisement",
+                content_type__app_label="territorial_ads",
+            )
+        )
+        url = reverse("territorial_ads:unit_config", kwargs={"pk": self.unit.pk})
+
+        get_req = RequestFactory().get(url)
+        get_req.user = user
+        get_resp = PhysicalAdUnitConfigView.as_view()(get_req, pk=self.unit.pk)
+        self.assertEqual(get_resp.status_code, 200)
+        self.assertIn(b"create_url", get_resp.content)
+
+        post_req = RequestFactory().post(
+            url, {"size": self.size.pk, "installation_instructions": "Andamio"}
+        )
+        post_req.user = user
+        post_resp = PhysicalAdUnitConfigView.as_view()(post_req, pk=self.unit.pk)
+        self.assertEqual(post_resp.status_code, 200)
+        unit = type(self.unit).objects.get(pk=self.unit.pk)
+        self.assertEqual(unit.installation_instructions, "Andamio")
+
+    def test_view_forbidden_without_permission(self):
+        from django.contrib.auth import get_user_model
+        from django.test import RequestFactory
+        from django.urls import reverse
+
+        from apps.territorial_ads.views import PhysicalAdUnitConfigView
+
+        user = get_user_model().objects.create_user(
+            username="nobody", email="n@b.com", password="x"
+        )
+        url = reverse("territorial_ads:unit_config", kwargs={"pk": self.unit.pk})
+        req = RequestFactory().get(url)
+        req.user = user
+        resp = PhysicalAdUnitConfigView.as_view()(req, pk=self.unit.pk)
+        self.assertEqual(resp.status_code, 400)
 
 
 class AddAdvertisementToApprovedTests(TestCase):
@@ -127,20 +206,12 @@ class AddAdvertisementToApprovedTests(TestCase):
             advertisement_type=self.banner, name="Grande", order=0
         )
         self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 1)])
-        item = self.ad.items.first()
-        self.ad.approve(
-            user=None,
-            **{
-                f"unit_approved_{item.pk}_1": "on",
-                f"unit_instructions_{item.pk}_1": "x",
-            },
-        )
+        self.ad.materialize_units()
+        _configure_units(self.ad)
+        self.ad.approve(user=None)
         self.ad.save()
 
     def test_add_advertisement_transition_creates_units(self):
-        from apps.territorial_ads.workflows import PhysicalAdUnitWorkflow
-
-        # Same contract as ChangeStateView: raw POST-style kwargs.
         self.ad.add_advertisement(
             user=None,
             advertisement_type=str(self.banner.pk),
@@ -162,14 +233,41 @@ class AddAdvertisementToApprovedTests(TestCase):
 
         form = AddAdvertisementForm(
             obj=self.ad,
-            data={"advertisement_type": self.banner.pk, "quantity": 1},
+            data={
+                "advertisement_type": self.banner.pk,
+                "quantity": 1,
+                "installer_team": "Brigada",
+            },
         )
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_form_requires_installer_when_request_approved(self):
+        from apps.territorial_ads.forms import AddAdvertisementForm
+
+        # The request is already approved, so adding a publicidad must say who
+        # installs it (an installer is required before it can move forward).
+        form = AddAdvertisementForm(
+            obj=self.ad,
+            data={"advertisement_type": self.banner.pk, "quantity": 1},
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_add_advertisement_assigns_installer_to_new_units(self):
+        self.ad.add_advertisement(
+            user=None,
+            advertisement_type=str(self.banner.pk),
+            quantity="1",
+            size=str(self.banner_grande.pk),
+            installer_team="Brigada Externa",
+        )
+        self.ad.save()
+        unit = self.ad.items.get(advertisement_type=self.banner).units.first()
+        self.assertEqual(unit.installer_team, "Brigada Externa")
+        self.assertIsNotNone(unit.assigned_at)
 
     def test_form_rejects_duplicate_existing_type(self):
         from apps.territorial_ads.forms import AddAdvertisementForm
 
-        # Valla is already in the request → not offered / invalid.
         form = AddAdvertisementForm(
             obj=self.ad,
             data={"advertisement_type": self.valla.pk, "quantity": 1},
@@ -185,7 +283,11 @@ class AddAdvertisementToApprovedTests(TestCase):
         )
         form = AddAdvertisementForm(
             obj=self.ad,
-            data={"advertisement_type": self.banner.pk, "quantity": 1, "size": other_size.pk},
+            data={
+                "advertisement_type": self.banner.pk,
+                "quantity": 1,
+                "size": other_size.pk,
+            },
         )
         self.assertFalse(form.is_valid())
 
@@ -199,12 +301,11 @@ class PerUnitInstallerAssignmentTests(TestCase):
 
         self.valla = AdvertisingTypeFactory(code="VALLA", name="Valla")
         self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 1)])
-        item = self.ad.items.first()
-        self.ad.approve(
-            user=None, **{f"unit_approved_{item.pk}_1": "on"}
-        )
+        self.ad.materialize_units()
+        _configure_units(self.ad)
+        self.ad.approve(user=None)
         self.ad.save()
-        self.unit = item.units.first()
+        self.unit = self.ad.units[0]
         self.installer = get_user_model().objects.create_user(
             username="installer", email="installer@example.com", password="x"
         )
@@ -257,99 +358,16 @@ class PhysicalAdvertisementItemsTests(TestCase):
         self.assertIn("2× Valla", self.ad.items_summary)
         self.assertIn("3× Lona", self.ad.items_summary)
 
-    def test_approval_form_builds_instructions_and_sizes_per_unit(self):
-        form = ApprovalForm(obj=self.ad)
-        instruction_fields = [
-            name for name in form.fields if name.startswith("unit_instructions_")
-        ]
-        # One instructions textarea per physical unit (2 vallas + 3 lonas).
-        self.assertEqual(len(instruction_fields), 5)
-        # Valla has no size catalog → no size selects; Lona has 3 units.
-        size_fields = [name for name in form.fields if name.startswith("item_size_")]
+    def test_configured_sizes_show_in_summary(self):
+        self.ad.materialize_units()
         lona_item = self.ad.items.get(advertisement_type=self.lona)
-        self.assertEqual(len(size_fields), 3)
-        for number in range(1, 4):
-            self.assertIn(f"item_size_{lona_item.pk}_{number}", form.fields)
-            self.assertIn(f"unit_instructions_{lona_item.pk}_{number}", form.fields)
-
-    def test_approve_stores_instructions_sizes_and_creates_units(self):
-        lona_item = self.ad.items.get(advertisement_type=self.lona)
-        valla_item = self.ad.items.get(advertisement_type=self.valla)
-        kwargs = {
-            f"unit_approved_{lona_item.pk}_1": "on",
-            f"unit_approved_{lona_item.pk}_2": "on",
-            f"unit_approved_{lona_item.pk}_3": "on",
-            f"unit_approved_{valla_item.pk}_1": "on",
-            f"unit_approved_{valla_item.pk}_2": "on",
-            f"unit_instructions_{lona_item.pk}_1": "Escalera",
-            f"unit_instructions_{lona_item.pk}_2": "Andamio",
-            f"unit_instructions_{lona_item.pk}_3": "Permiso",
-            f"unit_instructions_{valla_item.pk}_1": "Grúa",
-            f"unit_instructions_{valla_item.pk}_2": "Grúa",
-            f"item_size_{lona_item.pk}_1": self.lona_pared.pk,
-            f"item_size_{lona_item.pk}_2": str(self.lona_cuadro.pk),
-            f"item_size_{lona_item.pk}_3": self.lona_pared.pk,
-        }
-        self.ad.approve(user=None, **kwargs)
-        self.ad.save()
-        self.assertEqual(lona_item.units.count(), 3)
-        self.assertEqual(valla_item.units.count(), 2)
-        instructions = [
-            u.installation_instructions for u in lona_item.units.order_by("unit_number")
-        ]
-        self.assertEqual(instructions, ["Escalera", "Andamio", "Permiso"])
-        sizes = [u.size for u in lona_item.units.order_by("unit_number")]
-        self.assertEqual(
-            [s.pk for s in sizes],
-            [self.lona_pared.pk, self.lona_cuadro.pk, self.lona_pared.pk],
-        )
-        # Mixed sizes show up in the summary.
+        units = list(lona_item.units.order_by("unit_number"))
+        units[0].size = self.lona_pared
+        units[0].save(update_fields=["size"])
+        units[1].size = self.lona_cuadro
+        units[1].save(update_fields=["size"])
         self.assertIn("Lona:", self.ad.items_sizes_summary)
         self.assertIn("Cuadro", self.ad.items_sizes_summary)
-
-    def test_approve_marks_unchecked_units_as_discarded(self):
-        from apps.territorial_ads.workflows import PhysicalAdUnitWorkflow
-
-        lona_item = self.ad.items.get(advertisement_type=self.lona)
-        valla_item = self.ad.items.get(advertisement_type=self.valla)
-        # Approve both vallas but only the first lona; the other two are left
-        # unchecked → kept as DESCARTADA (visible, reactivatable) not removed.
-        kwargs = {
-            f"unit_approved_{valla_item.pk}_1": "on",
-            f"unit_approved_{valla_item.pk}_2": "on",
-            f"unit_approved_{lona_item.pk}_1": "on",
-            f"unit_instructions_{valla_item.pk}_1": "Grúa",
-            f"unit_instructions_{valla_item.pk}_2": "Grúa",
-            f"unit_instructions_{lona_item.pk}_1": "Escalera",
-            f"item_size_{lona_item.pk}_1": self.lona_pared.pk,
-        }
-        self.ad.approve(user=None, **kwargs)
-        self.ad.save()
-        wf = PhysicalAdUnitWorkflow()
-        self.assertEqual(valla_item.units.count(), 2)
-        self.assertEqual(lona_item.units.count(), 3)
-        states = dict(lona_item.units.values_list("unit_number", "state"))
-        self.assertEqual(states[1], wf.PENDIENTE)
-        self.assertEqual(states[2], wf.DESCARTADA)
-        self.assertEqual(states[3], wf.DESCARTADA)
-
-    def test_approval_form_invalid_when_nothing_approved(self):
-        form = ApprovalForm(obj=self.ad, data={})
-        self.assertFalse(form.is_valid())
-        self.assertIn(
-            "Debes aprobar al menos una publicidad.", form.non_field_errors()
-        )
-
-    def test_approval_form_requires_data_only_for_approved_units(self):
-        lona_item = self.ad.items.get(advertisement_type=self.lona)
-        valla_item = self.ad.items.get(advertisement_type=self.valla)
-        # Only valla #1 approved → lona size/instructions must not be required.
-        data = {
-            f"unit_approved_{valla_item.pk}_1": "on",
-            f"unit_instructions_{valla_item.pk}_1": "Grúa",
-        }
-        form = ApprovalForm(obj=self.ad, data=data)
-        self.assertTrue(form.is_valid(), form.errors)
 
     def test_items_formset_requires_at_least_one_row(self):
         data = {
@@ -370,17 +388,17 @@ class UnitInstallFormTests(TestCase):
     def setUp(self):
         self.valla = AdvertisingTypeFactory(code="VALLA", name="Valla")
         self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 2)])
-        valla_item = self.ad.items.first()
-        self.ad.approve(
-            user=None,
-            **{
-                f"unit_approved_{valla_item.pk}_{n}": "on" for n in (1, 2)
-            },
-        )
+        self.ad.materialize_units()
+        _configure_units(self.ad)
+        self.ad.approve(user=None)
         self.ad.save()
+        # Sending to installation requires every publicidad to have an installer.
+        for unit in self.ad.units:
+            unit.installer_team = "Brigada"
+            unit.save(update_fields=["installer_team"])
         self.ad.assign_installation(user=None)
         self.ad.save()
-        self.unit = self.ad.items.first().units.first()
+        self.unit = self.ad.units[0]
 
     def _form(self, photos, data_extra=None):
         data = {
@@ -423,3 +441,163 @@ class UnitInstallFormTests(TestCase):
         self.assertTrue(unit.photo.name)
         self.assertEqual(unit.notes, "Pegada en pared sur")
         self.assertIsNotNone(unit.installed_at)
+
+
+class PhysicalAdUnitActionViewTests(TestCase):
+    """Generic insoles runner for per-unit workflow transitions."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        self.lona = AdvertisingTypeFactory(code="LONA", name="Lona")
+        self.ad = PhysicalAdvertisementFactory(items=[(self.lona, 1)])
+        self.ad.materialize_units()
+        self.unit = self.ad.units[0]
+        self.user = get_user_model().objects.create_user(
+            username="installer", email="i@b.com", password="x"
+        )
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                codename="install_physicaladvertisement",
+                content_type__app_label="territorial_ads",
+            )
+        )
+
+    def _get(self, name, user=None):
+        from django.test import RequestFactory
+        from django.urls import reverse
+
+        from apps.territorial_ads.views import PhysicalAdUnitActionView
+
+        url = reverse("territorial_ads:unit_action", kwargs={"pk": self.unit.pk, "name": name})
+        req = RequestFactory().get(url)
+        req.user = user or self.user
+        return PhysicalAdUnitActionView.as_view()(req, pk=self.unit.pk, name=name)
+
+    def _post(self, name, data=None, user=None):
+        from django.test import RequestFactory
+        from django.urls import reverse
+
+        from apps.territorial_ads.views import PhysicalAdUnitActionView
+
+        url = reverse("territorial_ads:unit_action", kwargs={"pk": self.unit.pk, "name": name})
+        req = RequestFactory().post(url, data or {})
+        req.user = user or self.user
+        return PhysicalAdUnitActionView.as_view()(req, pk=self.unit.pk, name=name)
+
+    def test_get_form_action_returns_insoles_payload(self):
+        # mark_installed is only offered once the publicidad is configured and
+        # the request has been sent to installation, so set that up first.
+        self.unit.installation_instructions = "ok"
+        self.unit.save(update_fields=["installation_instructions"])
+        self.ad.approve(user=self.user)
+        self.ad.save()
+        self.ad.assign_installation(user=self.user)
+        self.ad.save()
+        resp = self._get("mark_installed")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"create_url", resp.content)
+        self.assertIn(b"template", resp.content)
+
+    def test_get_confirm_action_without_form(self):
+        # Discard first so the no-form "undiscard" (Reactivar) is available.
+        self.unit.discard(user=self.user)
+        self.unit.save()
+        resp = self._get("undiscard")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"create_url", resp.content)
+
+    def test_post_runs_transition(self):
+        resp = self._post("discard")
+        self.assertEqual(resp.status_code, 200)
+        unit = type(self.unit).objects.get(pk=self.unit.pk)
+        self.assertEqual(unit.state, unit.workflow.DESCARTADA)
+
+    def test_permission_denied_returns_400(self):
+        from django.contrib.auth import get_user_model
+
+        nobody = get_user_model().objects.create_user(
+            username="nobody", email="n@b.com", password="x"
+        )
+        resp = self._get("mark_installed", user=nobody)
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unknown_action_returns_400(self):
+        resp = self._get("does_not_exist")
+        self.assertEqual(resp.status_code, 400)
+
+
+class InstallationGatingTests(TestCase):
+    """assign_installer and mark_installed are gated on the publicidad being
+    configured (size) and the parent request being in the right stage."""
+
+    def setUp(self):
+        self.lona = AdvertisingTypeFactory(code="LONA", name="Lona")
+        self.size = AdvertisingTypeSize.objects.create(
+            advertisement_type=self.lona, name="Pared", order=0
+        )
+        self.ad = PhysicalAdvertisementFactory(items=[(self.lona, 1)])
+        self.ad.materialize_units()
+        self.unit = self.ad.units[0]
+
+    def _configure(self):
+        self.unit.size = self.size
+        self.unit.save(update_fields=["size"])
+
+    def _approve(self):
+        self.ad.approve(user=None)
+        self.ad.save()
+
+    def _send_to_installation(self):
+        self.unit.installer_team = "Brigada"
+        self.unit.save(update_fields=["installer_team"])
+        self.ad.assign_installation(user=None)
+        self.ad.save()
+
+    def test_send_to_installation_blocked_without_installer(self):
+        from apps.workflows.exceptions import WorkflowException
+
+        self._configure()
+        self._approve()  # configured + approved, but no installer assigned yet
+        with self.assertRaises(WorkflowException):
+            self.ad.assign_installation(user=None)
+
+    def test_assign_installer_blocked_when_unit_not_configured(self):
+        # The type has a size catalog but no size was chosen → not configured.
+        self.unit.installation_instructions = "ok"
+        self.unit.save(update_fields=["installation_instructions"])
+        self._approve()
+        self.assertFalse(self.unit.is_configured)
+        with self.assertRaises(TransitionNotAllowed):
+            self.unit.assign_installer(user=None, installer_team="Brigada")
+
+    def test_assign_installer_blocked_until_request_approved(self):
+        self._configure()
+        self.assertTrue(self.unit.is_configured)
+        with self.assertRaises(TransitionNotAllowed):
+            self.unit.assign_installer(user=None, installer_team="Brigada")
+
+    def test_assign_installer_allowed_when_configured_and_approved(self):
+        self._configure()
+        self._approve()
+        self.unit = type(self.unit).objects.get(pk=self.unit.pk)
+        self.unit.assign_installer(user=None, installer_team="Brigada")
+        self.unit.save()
+        unit = type(self.unit).objects.get(pk=self.unit.pk)
+        self.assertEqual(unit.installer_team, "Brigada")
+
+    def test_mark_installed_blocked_before_sent_to_installation(self):
+        self._configure()
+        self._approve()  # APROBADA, not yet PENDIENTE_INSTALACION
+        with self.assertRaises(TransitionNotAllowed):
+            self.unit.mark_installed(user=None, latitude=-2.3, longitude=-78.1)
+
+    def test_mark_installed_allowed_when_configured_and_in_installation(self):
+        self._configure()
+        self._approve()
+        self._send_to_installation()
+        self.unit.mark_installed(user=None, latitude=-2.3, longitude=-78.1)
+        self.unit.save()
+        unit = type(self.unit).objects.get(pk=self.unit.pk)
+        self.assertEqual(unit.state, unit.workflow.INSTALADA)

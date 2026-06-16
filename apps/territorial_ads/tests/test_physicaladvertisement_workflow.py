@@ -55,14 +55,24 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         data.update(overrides)
         ad = PhysicalAdvertisement.objects.create(**data)
         ad.items.create(advertisement_type=self.ad_type, quantity=quantity)
+        # Units are materialized at offer time now (the CRUD view does this
+        # via MaterializeUnitsMixin; tests build the ad directly).
+        ad.materialize_units()
         return ad
 
     def _approve(self, ad):
-        kwargs = {}
-        for item in ad.items.all():
-            for number in range(1, item.quantity + 1):
-                kwargs[f"unit_approved_{item.pk}_{number}"] = "on"
-        ad.approve(user=self.user, **kwargs)
+        # Approval requires every publicidad decided; configure them first.
+        for unit in ad.units:
+            if unit.is_unconfigured_pending:
+                unit.installation_instructions = "ok"
+                unit.save(update_fields=["installation_instructions"])
+        ad.approve(user=self.user)
+        # Sending to installation requires every pending publicidad to have an
+        # installer, so assign one to keep the fast-track helpers valid.
+        for unit in ad.units:
+            if unit.state == unit.workflow.PENDIENTE:
+                unit.installer_team = "Brigada"
+                unit.save(update_fields=["installer_team"])
 
     def _install_all_units(self, ad):
         for item in ad.items.all():

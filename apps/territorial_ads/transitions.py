@@ -14,6 +14,54 @@ from django.utils import timezone
 from django_fsm import transition
 
 from apps.territorial_ads.workflows import PhysicalAdUnitWorkflow, PhysicalAdWorkflow
+from apps.workflows.requirements import Custom, RequirementsValidator
+
+
+def _publicidades_decided_status(ad):
+    """(is_met, value) for the approve checklist: every publicidad must be
+    configured (size/instructions set) or discarded — none left untouched."""
+    units = list(ad.units)
+    total = len(units)
+    if total == 0:
+        return False, "Sin publicidades"
+    pending = sum(1 for unit in units if unit.is_unconfigured_pending)
+    return pending == 0, f"{total - pending} de {total} configuradas o descartadas"
+
+
+_request_workflow = PhysicalAdWorkflow()
+
+
+def _publicidades_installer_status(ad):
+    """(is_met, value) for the send-to-installation checklist: every publicidad
+    still to be installed must have an installer (internal team or person)
+    assigned before the request can move into installation."""
+    units = [unit for unit in ad.units if unit.state == unit.workflow.PENDIENTE]
+    total = len(units)
+    if total == 0:
+        return False, "Sin publicidades por instalar"
+    assigned = sum(
+        1 for unit in units if unit.assigned_installer_id or unit.installer_team
+    )
+    return assigned == total, f"{assigned} de {total} con instalador"
+
+
+def _unit_is_configured(instance):
+    """Condition for ``assign_installer`` / ``mark_installed``: the action is
+    only available once the publicidad has a size configured (otherwise it's
+    still a blank pending slot)."""
+    return instance.is_configured
+
+
+def _unit_request_approved(instance):
+    """Condition for ``assign_installer``: the parent request (solicitud) must
+    already be approved before installers can be assigned to its publicidades."""
+    return instance.advertisement.approved_at is not None
+
+
+def _unit_request_in_installation(instance):
+    """Condition for ``mark_installed``: the parent request must be in the
+    'pending installation' stage before a unit's installation is registered."""
+    return instance.advertisement.state == _request_workflow.PENDIENTE_INSTALACION
 
 
 class PhysicalAdTransitions:
@@ -25,96 +73,40 @@ class PhysicalAdTransitions:
         target=workflow.APROBADA,
         permission="territorial_ads.approve_physicaladvertisement",
         custom=dict(
-            verbose="Aprobar",
+            verbose="Aprobar solicitud",
             icon="verify",
+            lucide="check",
             color="success",
             title="Aprobar solicitud",
+            target_label="Aprobada",
             text=(
-                "Selecciona el tamaño de cada publicidad solicitada y las "
-                "indicaciones de instalación por tipo. Al aprobar se crean "
-                "las publicidades individuales."
+                "Confirma la aprobación de la solicitud. Las publicidades ya "
+                "existen y se configuran (tamaño e indicaciones) una por una "
+                "desde cada tarjeta. ¿Continuar?"
             ),
-            form="apps.territorial_ads.forms.ApprovalForm",
+            help_text=(
+                "No puedes aprobar hasta que cada publicidad esté configurada "
+                "o marcada como 'No se instalará'."
+            ),
+            # Hard requirement (also shown as a checklist on the detail page):
+            # every publicidad must be decided before the request is approved.
+            requirements=[
+                Custom(
+                    check=_publicidades_decided_status,
+                    label="Publicidades configuradas o descartadas",
+                    icon="layout-grid",
+                ),
+            ],
         ),
     )
-    def approve(
-        self,
-        user=None,
-        width_meters=None,
-        height_meters=None,
-        **kwargs,
-    ):
-        # Legacy callers may still send global dimensions; per-unit sizes
-        # are the source of truth now.
-        if width_meters is not None:
-            self.width_meters = width_meters
-        if height_meters is not None:
-            self.height_meters = height_meters
-        for item in self.items.all():
-            # Approval materializes the physical units. A re-approval (after
-            # ``revert_to_offered``) recreates them: at that point units are
-            # still PENDIENTE, so nothing meaningful is lost.
-            item.units.all().delete()
-            unit_states = PhysicalAdUnitWorkflow()
-            for number in range(1, item.quantity + 1):
-                approved = bool(kwargs.get(f"unit_approved_{item.pk}_{number}"))
-                raw = kwargs.get(f"item_size_{item.pk}_{number}")
-                size_id = None
-                if raw not in (None, ""):
-                    # ChangeStateView forwards raw POST strings.
-                    size_id = int(getattr(raw, "pk", raw))
-                instructions = kwargs.get(f"unit_instructions_{item.pk}_{number}") or ""
-                # A unit left unchecked is kept as DESCARTADA ("No instalada")
-                # so it stays visible and can be reactivated later, instead of
-                # silently vanishing.
-                item.units.create(
-                    unit_number=number,
-                    size_id=size_id,
-                    installation_instructions=instructions,
-                    state=unit_states.PENDIENTE if approved else unit_states.DESCARTADA,
-                )
-        self._create_new_items_from_approval(kwargs)
+    def approve(self, user=None, **kwargs):
+        # Units are materialized when the request is offered/edited and are
+        # configured per publicidad (size/instructions) from each card, so
+        # approval is now just a confirmation that advances the state — but
+        # only once every publicidad has been configured or discarded.
+        RequirementsValidator.run(self, "approve")
         self.approved_by = user
         self.approved_at = timezone.now()
-
-    def _create_new_items_from_approval(self, kwargs):
-        """Materialize brand-new advertisements added in the approval form.
-
-        Rows carry indexed names (``new_type_0``, ``new_quantity_0``…). The
-        form has already validated that each type is new and not duplicated,
-        so creating the item can't hit the unique-per-type constraint.
-        """
-        prefix = "new_type_"
-        indices = sorted(
-            int(key[len(prefix):])
-            for key in kwargs
-            if key.startswith(prefix) and key[len(prefix):].isdigit()
-        )
-        for i in indices:
-            type_raw = kwargs.get(f"new_type_{i}")
-            if not type_raw:
-                continue
-            type_id = int(getattr(type_raw, "pk", type_raw))
-            try:
-                quantity = max(1, int(kwargs.get(f"new_quantity_{i}") or 1))
-            except (TypeError, ValueError):
-                quantity = 1
-            size_raw = kwargs.get(f"new_size_{i}")
-            size_id = (
-                int(getattr(size_raw, "pk", size_raw))
-                if size_raw not in (None, "")
-                else None
-            )
-            instructions = kwargs.get(f"new_instructions_{i}") or ""
-            new_item = self.items.create(
-                advertisement_type_id=type_id, quantity=quantity
-            )
-            for number in range(1, quantity + 1):
-                new_item.units.create(
-                    unit_number=number,
-                    size_id=size_id,
-                    installation_instructions=instructions,
-                )
 
     @transition(
         field="state",
@@ -124,6 +116,7 @@ class PhysicalAdTransitions:
         custom=dict(
             verbose="Rechazar",
             icon="cross-circle",
+            lucide="x",
             color="danger",
             title="Rechazar solicitud",
             text="Indica el motivo por el cual se rechaza esta oferta.",
@@ -144,18 +137,18 @@ class PhysicalAdTransitions:
             verbose="Devolver a ofrecida",
             back_verbose="Devolver a ofrecida",
             icon="arrow-left",
+            lucide="arrow-left",
             color="warning",
             title="Devolver a ofrecida",
             text=(
                 "La aprobación se anulará para corregir datos y volver a "
-                "aprobar. Las publicidades creadas se eliminarán y se "
-                "volverán a generar al aprobar. ¿Continuar?"
+                "aprobar. Las publicidades se conservan. ¿Continuar?"
             ),
         ),
     )
     def revert_to_offered(self, user=None, **kwargs):
-        for item in self.items.all():
-            item.units.all().delete()
+        # Units persist across the lifecycle now; reverting only undoes the
+        # approval stamp so the request can be edited and re-approved.
         self.approved_by = None
         self.approved_at = None
 
@@ -167,18 +160,33 @@ class PhysicalAdTransitions:
         custom=dict(
             verbose="Enviar a instalación",
             icon="user",
+            lucide="send",
             color="primary",
             title="Enviar a instalación",
             text=(
-                "La solicitud pasa a instalación. El instalador se asigna por "
-                "publicidad desde cada tarjeta. ¿Continuar?"
+                "La solicitud pasa a instalación. Cada publicidad debe tener un "
+                "instalador asignado antes de continuar. ¿Continuar?"
             ),
+            help_text=(
+                "No puedes enviar a instalación hasta que cada publicidad tenga "
+                "un instalador (persona o equipo) asignado."
+            ),
+            # Hard requirement (also shown as a checklist on the detail page):
+            # every publicidad to install must have an installer assigned.
+            requirements=[
+                Custom(
+                    check=_publicidades_installer_status,
+                    label="Publicidades con instalador asignado",
+                    icon="user-check",
+                ),
+            ],
         ),
     )
     def assign_installation(self, user=None, **kwargs):
-        # Installer/team are assigned per unit now; this transition only moves
-        # the request into the installation stage.
-        pass
+        # Installer/team are assigned per unit; this transition only moves the
+        # request into the installation stage, and only once every publicidad
+        # to install already has an installer assigned.
+        RequirementsValidator.run(self, "assign_installation")
 
     # --- Auto transitions driven by unit states (hidden from the UI) ---
 
@@ -308,6 +316,8 @@ class PhysicalAdTransitions:
         quantity=1,
         size=None,
         instructions="",
+        assigned_installer=None,
+        installer_team="",
         **kwargs,
     ):
         type_id = int(getattr(advertisement_type, "pk", advertisement_type))
@@ -316,12 +326,24 @@ class PhysicalAdTransitions:
         except (TypeError, ValueError):
             qty = 1
         size_id = int(getattr(size, "pk", size)) if size not in (None, "") else None
+        installer_id = (
+            int(getattr(assigned_installer, "pk", assigned_installer))
+            if assigned_installer not in (None, "")
+            else None
+        )
+        # A publicidad added after approval already says who installs it, so the
+        # new units are born with the installer assigned (and stamped).
+        has_installer = bool(installer_id or installer_team)
         new_item = self.items.create(advertisement_type_id=type_id, quantity=qty)
         for number in range(1, qty + 1):
             new_item.units.create(
                 unit_number=number,
                 size_id=size_id,
                 installation_instructions=instructions or "",
+                assigned_installer_id=installer_id,
+                installer_team=installer_team or "",
+                assigned_by=user if has_installer else None,
+                assigned_at=timezone.now() if has_installer else None,
             )
 
 
@@ -338,9 +360,13 @@ class PhysicalAdUnitTransitions:
         source=workflow.PENDIENTE,
         target=workflow.INSTALADA,
         permission="territorial_ads.install_physicaladvertisement",
+        # Installation can only be registered once the publicidad has a size
+        # configured and its parent request has been sent to installation.
+        conditions=[_unit_is_configured, _unit_request_in_installation],
         custom=dict(
             verbose="Marcar instalada",
             icon="check-circle",
+            lucide="camera",
             color="success",
             title="Registrar instalación",
             text=(
@@ -377,6 +403,7 @@ class PhysicalAdUnitTransitions:
             verbose="Volver a pendiente",
             back_verbose="Volver a pendiente",
             icon="arrow-left",
+            lucide="arrow-left",
             color="warning",
             title="Volver a pendiente",
             text=(
@@ -402,6 +429,7 @@ class PhysicalAdUnitTransitions:
         custom=dict(
             verbose="Reportar daño",
             icon="information-5",
+            lucide="alert-triangle",
             color="warning",
             title="Reportar daño",
             text="Registra el daño detectado en esta publicidad.",
@@ -424,6 +452,7 @@ class PhysicalAdUnitTransitions:
             verbose="Marcar reparada",
             back_verbose="Marcar reparada",
             icon="check-circle",
+            lucide="wrench",
             color="success",
             title="Marcar como reparada",
             text=(
@@ -445,6 +474,7 @@ class PhysicalAdUnitTransitions:
         custom=dict(
             verbose="Retirar",
             icon="cross-circle",
+            lucide="archive",
             color="danger",
             title="Retirar publicidad",
             text="¿Confirmas el retiro de esta publicidad?",
@@ -464,6 +494,7 @@ class PhysicalAdUnitTransitions:
         custom=dict(
             verbose="No se instalará",
             icon="slash",
+            lucide="slash",
             color="secondary",
             title="Marcar como no instalada",
             text=(
@@ -490,6 +521,7 @@ class PhysicalAdUnitTransitions:
             verbose="Reactivar",
             back_verbose="Reactivar",
             icon="rotate-ccw",
+            lucide="rotate-ccw",
             color="warning",
             title="Reactivar publicidad",
             text="La publicidad vuelve a quedar pendiente de instalación. ¿Continuar?",
@@ -506,6 +538,7 @@ class PhysicalAdUnitTransitions:
         # fields are written here from the POST kwargs.
         target=None,
         permission="territorial_ads.install_physicaladvertisement",
+        conditions=[_unit_is_configured, _unit_request_approved],
         custom=dict(
             verbose="Asignar instalador",
             icon="user-check",

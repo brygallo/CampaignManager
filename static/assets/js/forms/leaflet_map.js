@@ -73,6 +73,30 @@
     }
   }
 
+  // Maps created inside a modal/bottom-sheet start in a hidden or zero-size
+  // container, so Leaflet measures 0x0 and the tiles render broken (gray
+  // gaps, off-center) until the size is recomputed. A single timed
+  // invalidateSize() races the modal's open animation and often loses, which
+  // is why the form maps "fail to load". Instead we re-measure whenever the
+  // layout actually settles: when the canvas resizes (modal shown, sheet
+  // expanded peek->full, virtual keyboard opening) and on `shown.bs.modal`.
+  function keepMapSized(map, canvas) {
+    var invalidate = function () { map.invalidateSize(); };
+    if (window.ResizeObserver) {
+      var observer = new window.ResizeObserver(function () {
+        window.requestAnimationFrame(invalidate);
+      });
+      observer.observe(canvas);
+    }
+    // Fallback bursts for the first paint and browsers without ResizeObserver.
+    setTimeout(invalidate, 150);
+    setTimeout(invalidate, 450);
+    var modalEl = canvas.closest(".modal");
+    if (modalEl) {
+      modalEl.addEventListener("shown.bs.modal", invalidate);
+    }
+  }
+
   function distanceAcrossWidthAtZoom(map, latlng, zoom, widthPx) {
     var point = map.project(latlng, zoom);
     var shifted = window.L.point(point.x + widthPx, point.y);
@@ -220,9 +244,7 @@
       });
     }
 
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 150);
+    keepMapSized(map, canvas);
   }
 
   function initDetailMap(container) {
@@ -284,9 +306,7 @@
       } else {
         multiMap.fitBounds(bounds, { padding: [40, 40], maxZoom: zoom });
       }
-      setTimeout(function () {
-        multiMap.invalidateSize();
-      }, 150);
+      keepMapSized(multiMap, canvas);
       return;
     }
 
@@ -307,9 +327,7 @@
 
     window.L.marker([lat, lng]).addTo(map).bindPopup(title);
 
-    setTimeout(function () {
-      map.invalidateSize();
-    }, 150);
+    keepMapSized(map, canvas);
   }
 
   window.initLeafletMaps = function (scope) {
