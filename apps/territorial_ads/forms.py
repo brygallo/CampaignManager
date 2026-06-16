@@ -243,31 +243,49 @@ class AdvertisingRefusalForm(ModelForm):
         return cleaned_data
 
 
-class UnitConfigForm(forms.ModelForm):
+class UnitConfigForm(forms.Form):
     """Configure ONE physical advertisement (unit): size + instructions.
 
-    Used as the insoles base form (``InstanceBaseFormView``) so each
-    publicidad is approved/configured individually from its card while the
-    request is OFRECIDA — instead of one mega-form in the approve transition.
+    Used as the ``custom.form`` of the unit ``configure`` transition (PENDIENTE
+    → CONFIGURADA): it only validates; the fields are written in the transition
+    method from the POST kwargs (same contract as the other unit forms).
     """
 
-    class Meta:
-        model = PhysicalAdvertisementUnit
-        fields = ("size", "installation_instructions")
-        widgets = {
-            "installation_instructions": forms.Textarea(attrs={"rows": 2}),
-        }
+    needs_object = True
 
-    def __init__(self, *args, **kwargs):
+    size = forms.ModelChoiceField(
+        label="Tamaño",
+        queryset=AdvertisingTypeSize.objects.none(),
+        required=False,
+        empty_label="Selecciona un tamaño…",
+    )
+    installation_instructions = forms.CharField(
+        label="Indicaciones",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+    def __init__(self, *args, obj=None, **kwargs):
         super().__init__(*args, **kwargs)
-        ad_type = self.instance.item.advertisement_type
-        sizes = AdvertisingTypeSize.objects.filter(
-            advertisement_type=ad_type, is_active=True
-        ).order_by("order", "name")
+        self.obj = obj
+        ad_type = obj.item.advertisement_type if obj is not None else None
+        sizes = (
+            AdvertisingTypeSize.objects.filter(
+                advertisement_type=ad_type, is_active=True
+            ).order_by("order", "name")
+            if ad_type is not None
+            else AdvertisingTypeSize.objects.none()
+        )
         self.fields["size"].queryset = sizes
-        self.fields["size"].empty_label = "Selecciona un tamaño…"
         # Size is required only when the type actually has a size catalog.
         self.fields["size"].required = sizes.exists()
+        # Pre-fill with the unit's current configuration so re-opening the form
+        # edits the existing values instead of starting blank.
+        if obj is not None:
+            self.fields["size"].initial = obj.size_id
+            self.fields["installation_instructions"].initial = (
+                obj.installation_instructions
+            )
 
 class AddAdvertisementForm(forms.Form):
     """Add one new advertisement (type + quantity + size + instructions) to an
@@ -448,10 +466,11 @@ class AssignUnitInstallerForm(forms.Form):
     """Assign an installer/team to ONE physical unit.
 
     Used as the ``custom.form`` of the ``assign_installer`` unit transition
-    (``target=None``: the unit stays PENDIENTE, we only record who installs
-    it). This form only validates; the fields are written in the transition
-    method from the POST kwargs.
+    (CONFIGURADA → ASIGNADA). This form only validates; the fields are written
+    in the transition method from the POST kwargs.
     """
+
+    needs_object = True
 
     assigned_installer = forms.ModelChoiceField(
         label="Instalador",
@@ -463,9 +482,13 @@ class AssignUnitInstallerForm(forms.Form):
         label="Instalador externo", max_length=180, required=False
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, obj=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["assigned_installer"].queryset = installer_users_queryset()
+        # Pre-fill the current installer so re-opening the form edits it.
+        if obj is not None:
+            self.fields["assigned_installer"].initial = obj.assigned_installer_id
+            self.fields["installer_team"].initial = obj.installer_team
 
     def clean(self):
         cleaned_data = super().clean()
@@ -524,6 +547,13 @@ class UnitInstallForm(forms.Form):
         self.obj = obj
         if obj is not None:
             self.fields["photo"].label = f"Foto — {obj.display_label}"
+            # Pre-fill location + notes so re-opening edits the existing
+            # evidence (the photo itself can't be pre-loaded into a file input).
+            if obj.latitude is not None:
+                self.fields["latitude"].initial = obj.latitude
+            if obj.longitude is not None:
+                self.fields["longitude"].initial = obj.longitude
+            self.fields["notes"].initial = obj.notes
 
     def clean(self):
         cleaned_data = super().clean()

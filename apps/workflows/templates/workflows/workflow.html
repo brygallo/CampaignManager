@@ -233,6 +233,25 @@
       <i data-lucide="info" class="fs-2"></i>
       <strong>{{ object.get_current_state.label|upper }}</strong>
     </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+      {% for transition in object.get_available_state_transitions %}
+        {% if not transition.custom.hidden and request.user|has_perm:transition.permission %}
+          <a href="#"
+             class="transition btn btn-sm fw-bolder d-flex align-items-center gap-2 {% if transition.custom.color %}btn-light-{{ transition.custom.color }}{% else %}btn-light{% endif %}"
+             data-transition="{{ transition.name }}"
+             data-input="{{ transition.custom.input }}"
+             data-max_size="{{ transition.custom.max_size }}"
+             data-placeholder="{{ transition.custom.placeholder }}"
+             data-title="{{ transition.custom.title }}"
+             data-form="{{ transition.custom.form }}"
+             data-text="{{ transition.custom.text }}"
+             data-url="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}">
+            <i data-lucide="{% firstof transition.custom.lucide 'rotate-ccw' %}" class="fs-3"></i>
+            <span>{% firstof transition.custom.back_verbose transition.custom.verbose %}</span>
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
   {% endif %}
 
   <form id="stateForm" action="{% url 'workflow_change_state' site.app_name site.model_name object.pk %}" enctype="multipart/form-data">

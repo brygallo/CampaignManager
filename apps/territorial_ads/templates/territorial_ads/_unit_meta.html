@@ -1,0 +1,14 @@
+<span class="d-inline-flex align-items-center gap-1">
+  <i data-lucide="{% if child.photo %}image{% else %}image-off{% endif %}" class="fs-8"></i>
+  {% if child.photo %}Con evidencia{% else %}Sin foto de evidencia{% endif %}
+</span>
+{% if child.size %}
+  <span class="d-inline-flex align-items-center gap-1">
+    <i data-lucide="ruler" class="fs-8"></i>Tamaño: {{ child.size.name }}
+  </span>
+{% endif %}
+{% if child.assigned_installer or child.installer_team %}
+  <span class="d-inline-flex align-items-center gap-1">
+    <i data-lucide="user" class="fs-8"></i>{% firstof child.assigned_installer child.installer_team %}
+  </span>
+{% endif %}

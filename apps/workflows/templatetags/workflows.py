@@ -4,6 +4,23 @@ from django.urls import reverse
 register = template.Library()
 
 
+@register.filter
+def getattr_dynamic(obj, attr_name):
+    """Resolve an attribute by name on ``obj``.
+
+    Enables generic templates (e.g. the reusable sub-workflow include) to
+    display a label whose attribute name is provided via context, since the
+    Django template language cannot do dynamic attribute lookup natively.
+    Falls back to ``display_label`` and then ``str(obj)`` when missing.
+    """
+    value = getattr(obj, attr_name, None)
+    if value is None:
+        value = getattr(obj, "display_label", None)
+    if value is None:
+        return str(obj)
+    return value
+
+
 @register.simple_tag
 def transition_perm(user, permission):
     """Check permission workflow"""

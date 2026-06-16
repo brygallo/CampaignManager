@@ -17,6 +17,17 @@
         </span>
       {% endif %}
     </h3>
+    {% if object.units and request.user|has_perm:"territorial_ads.install_physicaladvertisement" %}
+      <div class="card-toolbar">
+        <a href="#"
+           class="insoles-action btn btn-sm btn-light-primary d-inline-flex align-items-center gap-1"
+           data-url="{% url 'territorial_ads:assign_all_installers' pk=object.pk %}"
+           data-title="Asignar instalador a todas">
+          <i data-lucide="users" class="fs-7"></i>
+          <span>Asignar instalador a todas</span>
+        </a>
+      </div>
+    {% endif %}
   </div>
   <div class="card-body pt-0">
     {% if not object.units %}
@@ -25,81 +36,7 @@
         <div class="fs-7">Agrega tipos de publicidad (con cantidad) para generar las publicidades de esta solicitud.</div>
       </div>
     {% else %}
-      <div class="d-flex flex-column gap-2">
-        {% for unit in object.units %}
-          <div class="border rounded px-3 py-2">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2">
-              <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                <div class="symbol symbol-35px flex-shrink-0">
-                  <span class="symbol-label bg-light-primary">
-                    <i data-lucide="image" class="fs-5 text-primary"></i>
-                  </span>
-                </div>
-                <div class="min-w-0">
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <a href="{% url 'site:territorial_ads_physicaladvertisementunit_' pk=unit.pk %}"
-                       class="fw-bolder text-dark text-hover-primary fs-6"
-                       title="Ver detalle de {{ unit.display_label }}">
-                      {{ unit.display_label }}
-                    </a>
-                    <span class="badge"
-                          style="color:{% if unit.state == 1 %}#ffc700{% elif unit.state == 2 %}#50cd89{% elif unit.state == 3 %}#fd7e14{% else %}#7e8299{% endif %};background:{% if unit.state == 1 %}#fff8dd{% elif unit.state == 2 %}#e8fff3{% elif unit.state == 3 %}#fff4e8{% else %}#f1f1f4{% endif %};"
-                          aria-label="Estado: {{ unit.get_state_display }}">
-                      {{ unit.get_state_display }}
-                    </span>
-                  </div>
-                  <div class="d-flex flex-wrap gap-3 text-muted fs-8 mt-1">
-                    <span class="d-inline-flex align-items-center gap-1">
-                      <i data-lucide="{% if unit.photo %}image{% else %}image-off{% endif %}" class="fs-8"></i>
-                      {% if unit.photo %}Con evidencia{% else %}Sin foto de evidencia{% endif %}
-                    </span>
-                    {% if unit.size %}
-                      <span class="d-inline-flex align-items-center gap-1">
-                        <i data-lucide="ruler" class="fs-8"></i>Tamaño: {{ unit.size.name }}
-                      </span>
-                    {% endif %}
-                    {% if unit.assigned_installer or unit.installer_team %}
-                      <span class="d-inline-flex align-items-center gap-1">
-                        <i data-lucide="user" class="fs-8"></i>{% firstof unit.assigned_installer unit.installer_team %}
-                      </span>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex flex-wrap gap-2 flex-shrink-0">
-                {% if unit.state == 1 and request.user|has_perm:"territorial_ads.approve_physicaladvertisement" %}
-                  <a href="#"
-                     class="insoles-action btn btn-sm fw-bold d-inline-flex align-items-center gap-1 btn-light-primary"
-                     data-url="{% url 'territorial_ads:unit_config' pk=unit.pk %}"
-                     data-title="Configurar publicidad">
-                    <i data-lucide="settings-2" class="fs-7"></i>
-                    <span>Configurar</span>
-                  </a>
-                {% endif %}
-                {% for transition in unit.get_available_state_transitions %}
-                  {% if not transition.custom.hidden and request.user|has_perm:transition.permission %}
-                    <a href="#"
-                       class="insoles-action btn btn-sm fw-bold d-inline-flex align-items-center gap-1 {% if transition.custom.color %}btn-light-{{ transition.custom.color }}{% else %}btn-light{% endif %}"
-                       data-url="{% url 'territorial_ads:unit_action' pk=unit.pk name=transition.name %}"
-                       data-title="{{ transition.custom.title|default:transition.custom.verbose }}">
-                      <i data-lucide="{{ transition.custom.lucide|default:'chevron-right' }}" class="fs-7"></i>
-                      <span>{{ transition.custom.verbose }}</span>
-                    </a>
-                  {% endif %}
-                {% endfor %}
-                <a href="{% url 'site:territorial_ads_physicaladvertisementunit_' pk=unit.pk %}"
-                   target="_blank"
-                   rel="noopener"
-                   class="btn btn-sm btn-light-primary d-inline-flex align-items-center gap-1">
-                  <i data-lucide="external-link" class="fs-7"></i>
-                  <span>Abrir</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
+      {% include "workflows/includes/subworkflow.html" with children=object.units action_url_name="territorial_ads:unit_action" detail_url_name="site:territorial_ads_physicaladvertisementunit_" meta_template="territorial_ads/_unit_meta.html" show_stepper=True %}
     {% endif %}
   </div>
 </div>

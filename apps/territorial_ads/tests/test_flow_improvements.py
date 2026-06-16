@@ -83,13 +83,14 @@ class CorrectionTransitionsTests(TestCase):
         self.ad = PhysicalAdvertisementFactory(items=[(self.valla, 2)])
 
     def _approve(self):
-        # Units are materialized at offer time; configure each so the approve
-        # requirement (every publicidad decided) is satisfied.
+        # Units are materialized at offer time; drive the configure transition
+        # (PENDIENTE → CONFIGURADA) so the approve requirement (every publicidad
+        # decided) is satisfied.
         self.ad.materialize_units()
         for unit in self.ad.units:
-            if unit.is_unconfigured_pending:
-                unit.installation_instructions = "ok"
-                unit.save(update_fields=["installation_instructions"])
+            if unit.state == unit.workflow.PENDIENTE:
+                unit.configure(user=None, installation_instructions="ok")
+                unit.save()
         self.ad.approve(user=None)
         self.ad.save()
 
@@ -141,21 +142,28 @@ class CorrectionTransitionsTests(TestCase):
         )
         self.ad.materialize_units()
         unit = self.ad.units[0]
-        # Size catalog exists → size is required; only the type's sizes show.
-        form = UnitConfigForm(instance=unit)
+        # UnitConfigForm only validates now (obj= kwarg, no .save()); the
+        # configure transition writes the fields.
+        form = UnitConfigForm(obj=unit)
         self.assertTrue(form.fields["size"].required)
         self.assertIn(size, form.fields["size"].queryset)
-        bound = UnitConfigForm(data={"installation_instructions": "Andamio"}, instance=unit)
+        bound = UnitConfigForm(
+            data={"installation_instructions": "Andamio"}, obj=unit
+        )
         self.assertFalse(bound.is_valid())
         self.assertIn("size", bound.errors)
         ok = UnitConfigForm(
             data={"size": size.pk, "installation_instructions": "Andamio"},
-            instance=unit,
+            obj=unit,
         )
         self.assertTrue(ok.is_valid(), ok.errors)
-        saved = ok.save()
+        # Drive the transition with the validated data.
+        unit.configure(user=None, size=size.pk, installation_instructions="Andamio")
+        unit.save()
+        saved = type(unit).objects.get(pk=unit.pk)
         self.assertEqual(saved.size, size)
         self.assertEqual(saved.installation_instructions, "Andamio")
+        self.assertEqual(saved.state, saved.workflow.CONFIGURADA)
 
 
 class InstallerAssignmentQuerysetTests(TestCase):

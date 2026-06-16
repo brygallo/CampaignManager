@@ -61,18 +61,23 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         return ad
 
     def _approve(self, ad):
-        # Approval requires every publicidad decided; configure them first.
-        for unit in ad.units:
-            if unit.is_unconfigured_pending:
-                unit.installation_instructions = "ok"
-                unit.save(update_fields=["installation_instructions"])
-        ad.approve(user=self.user)
-        # Sending to installation requires every pending publicidad to have an
-        # installer, so assign one to keep the fast-track helpers valid.
+        # Approval requires every publicidad decided; drive the configure
+        # transition (PENDIENTE → CONFIGURADA) first.
         for unit in ad.units:
             if unit.state == unit.workflow.PENDIENTE:
-                unit.installer_team = "Brigada"
-                unit.save(update_fields=["installer_team"])
+                unit.configure(user=self.user, installation_instructions="ok")
+                unit.save()
+        ad.approve(user=self.user)
+
+    def _send_to_installation(self, ad):
+        # Every configured publicidad needs an installer (→ ASIGNADA) before the
+        # request can move to installation.
+        for unit in ad.units:
+            if unit.state == unit.workflow.CONFIGURADA:
+                unit.assign_installer(user=self.user, installer_team="Brigada")
+                unit.save()
+        ad.assign_installation(user=self.user)
+        ad.save()
 
     def _install_all_units(self, ad):
         for item in ad.items.all():
@@ -103,7 +108,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         self.assertEqual(len(ad.units), 3)
         for unit in ad.units:
             self.assertEqual(
-                unit.state, unit.workflow.PENDIENTE
+                unit.state, unit.workflow.CONFIGURADA
             )
 
     def test_assign_installation_moves_request_to_pending(self):
@@ -112,16 +117,14 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad()
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         self.assertEqual(ad.state, PhysicalAdvertisement.workflow.PENDIENTE_INSTALACION)
 
     def test_installing_last_unit_auto_installs_request(self):
         ad = self._build_ad(quantity=2)
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         units = list(ad.items.first().units.all())
         units[0].mark_installed(user=self.user, latitude=-2.3, longitude=-78.1)
         units[0].save()
@@ -139,8 +142,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad()
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         ad = self._install_all_units(ad)
         self.assertEqual(ad.state, PhysicalAdvertisement.workflow.INSTALADA)
         unit = ad.items.first().units.first()
@@ -159,8 +161,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad(quantity=2)
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         ad = self._install_all_units(ad)
         units = list(ad.items.first().units.all())
         units[0].retire(user=self.user)
@@ -179,8 +180,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad(quantity=2)
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         ad = self._install_all_units(ad)
         ad.retire(user=self.user)
         ad.save()
@@ -196,8 +196,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad(quantity=2)
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         units = list(ad.items.first().units.all())
         units[0].mark_installed(user=self.user, latitude=-2.3, longitude=-78.1)
         units[0].save()
@@ -217,8 +216,7 @@ class PhysicalAdvertisementWorkflowTests(TestCase):
         ad = self._build_ad()
         self._approve(ad)
         ad.save()
-        ad.assign_installation(user=self.user)
-        ad.save()
+        self._send_to_installation(ad)
         ad = self._install_all_units(ad)
         unit = ad.items.first().units.first()
         unit.report_damage(user=self.user, damage_notes="Rota por viento")

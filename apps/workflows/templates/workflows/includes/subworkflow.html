@@ -1,0 +1,119 @@
+{% load superadmin_utils workflows %}
+{% if parent and parent.transition_requirements %}
+  {% include "workflows/includes/transition_requirements.html" with object=parent %}
+{% endif %}
+{% if children %}
+  <style>
+    .wf-mini-stepper { display: flex; align-items: flex-end; gap: 0.5rem; }
+    .wf-mini-stepper .wf-mini-step { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; color: var(--bs-gray-500); }
+    .wf-mini-stepper .wf-mini-title { font-size: 0.75rem; font-weight: 600; line-height: 1.1; margin: 0 0 0.3rem 0; display: flex; align-items: baseline; min-width: 0; }
+    .wf-mini-stepper .wf-mini-title .num { font-size: 0.95rem; margin-right: 0.25rem; flex-shrink: 0; }
+    .wf-mini-stepper .wf-mini-title .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .wf-mini-stepper .wf-mini-bar { height: 3px; width: 100%; background-color: var(--bs-gray-200); border-radius: 2px; }
+    .wf-mini-stepper .wf-mini-step.is-current { color: var(--bs-primary); }
+    .wf-mini-stepper .wf-mini-step.is-current .wf-mini-bar { background-color: var(--bs-primary); }
+    .wf-mini-stepper .wf-mini-step.is-done { color: var(--bs-success); }
+    .wf-mini-stepper .wf-mini-step.is-done .wf-mini-bar { background-color: var(--bs-success); }
+    .wf-mini-stepper .wf-mini-step.is-current { flex-grow: 2; }
+  </style>
+  <div class="d-flex flex-column gap-3">
+    {% for child in children %}
+      <div class="border rounded px-3 py-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+          {% if detail_url_name %}
+            <a href="{% url detail_url_name pk=child.pk %}"
+               class="fw-bolder text-dark text-hover-primary fs-6">
+              {% if label_attr %}{{ child|getattr_dynamic:label_attr }}{% else %}{{ child.display_label }}{% endif %}
+            </a>
+          {% else %}
+            <span class="fw-bolder text-dark fs-6">
+              {% if label_attr %}{{ child|getattr_dynamic:label_attr }}{% else %}{{ child.display_label }}{% endif %}
+            </span>
+          {% endif %}
+          <span class="badge"
+                style="color:{% if child.state == 5 %}#3e97ff{% elif child.state == 6 %}#ffc700{% elif child.state == 2 %}#50cd89{% elif child.state == 3 %}#fd7e14{% else %}#7e8299{% endif %};background:{% if child.state == 5 %}#eef6ff{% elif child.state == 6 %}#fff8dd{% elif child.state == 2 %}#e8fff3{% elif child.state == 3 %}#fff4e8{% else %}#f1f1f4{% endif %};"
+                aria-label="Estado: {{ child.get_state_display }}">
+            {{ child.get_state_display }}
+          </span>
+        </div>
+
+        {% if child.subflow_steps %}
+          <div class="wf-mini-stepper mb-2">
+            {% for step in child.subflow_steps %}
+              <div class="wf-mini-step is-{{ step.status }}">
+                <div class="wf-mini-title" title="{{ step.label }}">
+                  <span class="num">{{ step.num }}.</span><span class="lbl">{{ step.label }}</span>
+                </div>
+                <div class="wf-mini-bar"></div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if meta_template %}
+          <div class="d-flex flex-wrap gap-3 text-muted fs-8 mb-2">
+            {% include meta_template %}
+          </div>
+        {% endif %}
+
+        {% with sub=child.subflow_requirements %}
+          {% if sub and sub.items %}
+            <div class="d-flex flex-wrap align-items-center gap-2 fs-8 mb-2">
+              <span class="text-muted">Para {{ sub.next }}:</span>
+              {% for it in sub.items %}
+                <span class="d-inline-flex align-items-center gap-1 {% if it.is_met %}text-success{% else %}text-danger{% endif %}">
+                  <i data-lucide="{% if it.is_met %}check-circle{% else %}circle{% endif %}" class="fs-8"></i>{{ it.label }}
+                </span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% if child.subflow_actions %}
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              {% for transition in child.subflow_actions.other %}
+                {% if request.user|has_perm:transition.permission %}
+                  <a href="#"
+                     class="insoles-action btn btn-sm fw-bold d-inline-flex align-items-center gap-1 {% if transition.custom.color %}btn-light-{{ transition.custom.color }}{% else %}btn-light{% endif %}"
+                     data-url="{% url action_url_name pk=child.pk name=transition.name %}"
+                     data-title="{{ transition.custom.title|default:transition.custom.verbose }}">
+                    <i data-lucide="{{ transition.custom.lucide|default:'arrow-left' }}" class="fs-7"></i>
+                    <span>{{ transition.custom.verbose }}</span>
+                  </a>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              {% for transition in child.subflow_actions.forward %}
+                {% if request.user|has_perm:transition.permission %}
+                  <a href="#"
+                     class="insoles-action btn btn-sm btn-primary fw-bold d-inline-flex align-items-center gap-1"
+                     data-url="{% url action_url_name pk=child.pk name=transition.name %}"
+                     data-title="{{ transition.custom.title|default:transition.custom.verbose }}">
+                    <span>{{ transition.custom.verbose }}</span>
+                    <i data-lucide="{{ transition.custom.lucide|default:'arrow-right' }}" class="fs-7"></i>
+                  </a>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            {% for transition in child.get_available_state_transitions %}
+              {% if not transition.custom.hidden and request.user|has_perm:transition.permission %}
+                <a href="#"
+                   class="insoles-action btn btn-sm fw-bold d-inline-flex align-items-center gap-1 {% if transition.custom.color %}btn-light-{{ transition.custom.color }}{% else %}btn-light{% endif %}"
+                   data-url="{% url action_url_name pk=child.pk name=transition.name %}"
+                   data-title="{{ transition.custom.title|default:transition.custom.verbose }}">
+                  <i data-lucide="{{ transition.custom.lucide|default:'chevron-right' }}" class="fs-7"></i>
+                  <span>{{ transition.custom.verbose }}</span>
+                </a>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

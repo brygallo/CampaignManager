@@ -36,9 +36,9 @@ from apps.insoles.views import InstanceBaseFormView
 
 from .forms import (
     AdvertisingRefusalForm,
+    AssignUnitInstallerForm,
     BulkAssignInstallationForm,
     DirectInstallForm,
-    UnitConfigForm,
 )
 from .models import (
     AdvertisingRefusal,
@@ -79,29 +79,6 @@ class MaterializeUnitsMixin:
         if obj is not None:
             obj.materialize_units()
         return response
-
-
-class PhysicalAdUnitConfigView(LoginRequiredMixin, InstanceBaseFormView):
-    """Configure ONE publicidad (size + instructions) via the insoles modal.
-
-    First real consumer of the insoles base-form scaffolding: per-unit
-    approval/configuration while the request is OFRECIDA.
-    """
-
-    model = PhysicalAdvertisementUnit
-    form_class = UnitConfigForm
-    create_url_name = "territorial_ads:unit_config"
-    title = "Configurar publicidad"
-    confirm_button = "Guardar"
-
-    def has_permission(self):
-        return self.request.user.has_perm(
-            "territorial_ads.approve_physicaladvertisement"
-        )
-
-    def form_valid(self, form):
-        form.save()
-        return self.success("Publicidad configurada.")
 
 
 class PhysicalAdUnitActionView(LoginRequiredMixin, InstanceBaseFormView):
@@ -221,6 +198,54 @@ class PhysicalAdUnitActionView(LoginRequiredMixin, InstanceBaseFormView):
             return self.error(str(e))
 
 
+class PhysicalAdAssignAllInstallersView(LoginRequiredMixin, InstanceBaseFormView):
+    """Assign one installer/team to EVERY configured publicidad of a request at
+    once, reusing the per-unit ``assign_installer`` transition via
+    ``apply_to_children`` (single source of truth). Opened as an insoles action
+    from the request detail so the user doesn't go publicidad by publicidad.
+    """
+
+    model = PhysicalAdvertisement
+    form_class = AssignUnitInstallerForm
+    create_url_name = "territorial_ads:assign_all_installers"
+    title = "Asignar instalador a todas"
+    confirm_button = "Asignar"
+
+    def has_permission(self):
+        return self.request.user.has_perm(
+            "territorial_ads.install_physicaladvertisement"
+        )
+
+    def get_form_kwargs(self):
+        # AssignUnitInstallerForm is a plain Form (no ``instance``); only pass
+        # POST data when present.
+        kwargs = {}
+        if self.request.POST or self.request.FILES:
+            kwargs.update({"data": self.request.POST, "files": self.request.FILES})
+        return kwargs
+
+    def form_valid(self, form):
+        ad = self.get_object()
+        installer = form.cleaned_data.get("assigned_installer")
+        # apply_to_children only runs assign_installer where it's available
+        # (CONFIGURADA/ASIGNADA), so "Por configurar" units are skipped on their own.
+        changed = ad.apply_to_children(
+            "assign_installer",
+            user=self.request.user,
+            assigned_installer=installer.pk if installer else None,
+            installer_team=form.cleaned_data.get("installer_team") or "",
+        )
+        unconfigured = sum(
+            1
+            for unit in ad.units
+            if unit.state == PhysicalAdvertisementUnit.workflow.PENDIENTE
+        )
+        message = f"Instalador asignado a {len(changed)} publicidad(es) configurada(s)."
+        if unconfigured:
+            message += f" {unconfigured} aún sin configurar."
+        return self.success(message)
+
+
 STATE_COLORS = {
     0: "#f1416c",  # RECHAZADA
     1: "#3e97ff",  # OFRECIDA
@@ -313,6 +338,10 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 offered_latitude__isnull=False, offered_longitude__isnull=False
             )
         )
+        # Only physically-present publicidades belong on the map: those that are
+        # Instalada or Dañada. Earlier sub-flow states (por configurar /
+        # configurada / asignada) and resolved ones (descartada / retirada) are
+        # not shown.
         unit_qs = (
             PhysicalAdvertisementUnit.objects.select_related(
                 "item__advertisement__campaign",
@@ -321,6 +350,10 @@ class PhysicalAdMapDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
             )
             .filter(
                 item__advertisement__is_active=True,
+                state__in=(
+                    PhysicalAdvertisementUnit.workflow.INSTALADA,
+                    PhysicalAdvertisementUnit.workflow.DANADA,
+                ),
                 latitude__isnull=False,
                 longitude__isnull=False,
             )
@@ -599,25 +632,18 @@ class PhysicalAdBulkAssignView(LoginRequiredMixin, PermissionRequiredMixin, View
         installer = form.cleaned_data.get("assigned_installer")
         team = form.cleaned_data.get("installer_team") or ""
         ads = list(form.cleaned_data["advertisements"])
-        pending = PhysicalAdvertisementUnit.workflow.PENDIENTE
+        installer_pk = installer.pk if installer else None
         with transaction.atomic():
             for ad in ads:
-                # Assign the installer/team to every pending unit of the
-                # request, then move the request into the installation stage.
-                for item in ad.items.all():
-                    for unit in item.units.filter(state=pending):
-                        unit.assigned_installer = installer
-                        unit.installer_team = team
-                        unit.assigned_by = request.user
-                        unit.assigned_at = timezone.now()
-                        unit.save(
-                            update_fields=[
-                                "assigned_installer",
-                                "installer_team",
-                                "assigned_by",
-                                "assigned_at",
-                            ]
-                        )
+                # Reuse the per-unit assign_installer transition (single source
+                # of truth: CONFIGURADA → ASIGNADA) on every configured-but-not-
+                # yet-assigned publicidad, then move the request to installation.
+                ad.apply_to_children(
+                    "assign_installer",
+                    user=request.user,
+                    assigned_installer=installer_pk,
+                    installer_team=team,
+                )
                 if ad.state == PhysicalAdvertisement.workflow.APROBADA:
                     ad.assign_installation(user=request.user)
                     ad.save()
@@ -706,23 +732,21 @@ class DirectInstallCreateView(LoginRequiredMixin, PermissionRequiredMixin, View)
             ad.materialize_units()
             size = cleaned.get("size")
             unit = item.units.first()
-            if size is not None:
-                unit.size = size
-                unit.save(update_fields=["size"])
-            # Fast-track the request through the normal transitions so the
-            # audit trail (who/when) stays consistent with the manual flow.
+            # Fast-track the unit through its whole sub-flow and the request
+            # through its transitions, reusing the same methods as the manual
+            # flow so every gate/state stays consistent. Order matters: each
+            # parent gate (approve, assign_installation) only passes once the
+            # unit has reached the matching sub-flow state in the DB.
+            unit.configure(
+                user=request.user,
+                size=size,
+                installation_instructions=unit.installation_instructions,
+            )
+            unit.save()
             ad.approve(user=request.user)
             ad.save()
-            # Direct install: the operator both assigns and installs the unit.
-            # The installer must be persisted BEFORE assign_installation, whose
-            # requirement check reads the unit rows from the DB (every publicidad
-            # must have an installer before the request moves to installation).
-            unit.assigned_installer = request.user
-            unit.assigned_by = request.user
-            unit.assigned_at = timezone.now()
-            unit.save(
-                update_fields=["assigned_installer", "assigned_by", "assigned_at"]
-            )
+            unit.assign_installer(user=request.user, assigned_installer=request.user)
+            unit.save()
             ad.assign_installation(user=request.user)
             ad.save()
             unit.mark_installed(

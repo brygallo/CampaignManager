@@ -128,3 +128,39 @@ class ChildDrivenParentMixin:
         getattr(self, method_name)(user=user)
         self.save()
         return True
+
+    def apply_to_children(
+        self,
+        transition_name,
+        user=None,
+        children=None,
+        skip_unavailable=True,
+        **kwargs,
+    ):
+        """Run a CHILD transition across the children, reusing the child's own
+        logic (single source of truth — the parent never re-implements it).
+
+        This is the *upward reuse* counterpart to derivation: from the parent you
+        drive every child through the same transition you would call on one child
+        (e.g. "retire all", "send all"). Each child runs its transition and saves;
+        children whose ``source`` does not currently allow the transition are
+        skipped when ``skip_unavailable`` is True (otherwise the child raises).
+        The parent's own state re-derives via each child's sync, plus a final
+        ``sync_from_children`` for safety.
+
+        Returns the list of children that actually transitioned.
+        """
+        targets = self.subflow_children() if children is None else children
+        changed = []
+        for child in targets:
+            method = getattr(child, transition_name, None)
+            if method is None:
+                continue
+            available = {t.name for t in child.get_available_state_transitions()}
+            if transition_name not in available and skip_unavailable:
+                continue
+            method(user=user, **kwargs)
+            child.save()
+            changed.append(child)
+        self.sync_from_children(user=user)
+        return changed

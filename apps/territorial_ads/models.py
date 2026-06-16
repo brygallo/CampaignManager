@@ -286,13 +286,11 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, ChildDrivenParentM
 
     @property
     def addable_advertisement_types(self):
-        """Active types not yet in the request — offered when adding a new
-        advertisement to an already-approved request."""
-        existing = self.items.values_list("advertisement_type_id", flat=True)
-        return (
-            AdvertisingType.objects.filter(is_active=True)
-            .exclude(pk__in=existing)
-            .order_by("order", "name")
+        """Active types offered when adding a publicidad. Any active type is
+        allowed: a type already in the request just gets more units appended to
+        its existing item (see ``add_advertisement``)."""
+        return AdvertisingType.objects.filter(is_active=True).order_by(
+            "order", "name"
         )
 
     @property
@@ -411,7 +409,14 @@ class PhysicalAdvertisement(BaseModel, PhysicalAdTransitions, ChildDrivenParentM
         transition ``source`` guards keep each rule scoped to the right stage.
         """
         unit_workflow = PhysicalAdvertisementUnit.workflow
-        any_pending = any(s == unit_workflow.PENDIENTE for s in child_states)
+        # Anything not yet installed and still in the active path (por configurar,
+        # configurada, asignada) keeps the request "pending installation".
+        pending_states = (
+            unit_workflow.PENDIENTE,
+            unit_workflow.CONFIGURADA,
+            unit_workflow.ASIGNADA,
+        )
+        any_pending = any(s in pending_states for s in child_states)
         any_installed = any(
             s in (unit_workflow.INSTALADA, unit_workflow.DANADA) for s in child_states
         )
@@ -640,30 +645,89 @@ class PhysicalAdvertisementUnit(BaseModel, PhysicalAdUnitTransitions):
 
     @property
     def is_unconfigured_pending(self):
-        """A still-pending slot nobody touched: safe to trim on quantity drop."""
-        return (
-            self.state == self.workflow.PENDIENTE
-            and self.size_id is None
-            and not self.installation_instructions
-            and self.assigned_installer_id is None
-            and not self.installer_team
-            and not self.photo
-            and self.installed_at is None
-        )
+        """A still-pending slot nobody configured yet (sub-flow state PENDIENTE,
+        i.e. "Por configurar"): safe to trim on quantity drop. Once configured
+        the unit advances to CONFIGURADA, so the state alone is the signal."""
+        return self.state == self.workflow.PENDIENTE
 
     @property
     def is_configured(self):
-        """True once the publicidad is configured. A size is what configures it,
-        but some advertisement types have no size catalog (``UnitConfigForm``
-        makes size required only when sizes exist) — for those a size can never
-        be chosen, so the unit counts as configured as soon as it is no longer a
-        blank pending slot. Without this fallback such types would be impossible
-        to install or assign an installer to."""
-        if self.size_id is not None:
-            return True
-        if self.item.advertisement_type.sizes.filter(is_active=True).exists():
-            return False
-        return not self.is_unconfigured_pending
+        """True once the publicidad has advanced past "Por configurar" in its
+        sub-flow (configured, assigned, installed, damaged or retired)."""
+        return self.state != self.workflow.PENDIENTE
+
+    @property
+    def subflow_requirements(self):
+        """What the next sub-flow step needs, for display per publicidad in the
+        sub-workflow UI ("para pasar a X necesitas …"). Mirrors the transition
+        conditions so the user sees why an action isn't available yet without
+        opening the unit detail. Returns ``None`` when nothing is pending."""
+        wf = self.workflow
+        request = self.advertisement
+        if self.state == wf.CONFIGURADA:
+            return {
+                "next": "Asignar instalador",
+                "items": [
+                    {
+                        "label": "Solicitud aprobada",
+                        "is_met": request.approved_at is not None,
+                    }
+                ],
+            }
+        if self.state == wf.ASIGNADA:
+            return {
+                "next": "Marcar instalada",
+                "items": [
+                    {
+                        "label": "Solicitud enviada a instalación",
+                        "is_met": (
+                            request.state
+                            == request.workflow.PENDIENTE_INSTALACION
+                        ),
+                    }
+                ],
+            }
+        return None
+
+    @property
+    def subflow_steps(self):
+        """Numbered flow steps for the per-publicidad stepper (done / current /
+        upcoming), computed by FLOW position because the unit state VALUES are
+        not monotonic with the flow (CONFIGURADA=5, ASIGNADA=6, INSTALADA=2)."""
+        states = list(self.get_visible_states())
+        current_index = next(
+            (i for i, st in enumerate(states) if st.value == self.state), None
+        )
+        steps = []
+        for i, st in enumerate(states):
+            if current_index is not None and i < current_index:
+                status = "done"
+            elif current_index is not None and i == current_index:
+                status = "current"
+            else:
+                status = "upcoming"
+            steps.append({"num": i + 1, "label": st.label, "status": status})
+        return steps
+
+    @property
+    def subflow_actions(self):
+        """Available (non-hidden) transitions split into ``forward`` (advance to
+        a later flow step) vs ``other`` (back / discard / retire), by FLOW
+        position. Mirrors the request workflow's forward/backward split, but the
+        unit's non-monotonic state values make a value-based split wrong."""
+        states = list(self.get_visible_states())
+        order = {st.value: i for i, st in enumerate(states)}
+        current = order.get(self.state)
+        forward, other = [], []
+        for transition in self.get_available_state_transitions():
+            if (transition.custom or {}).get("hidden"):
+                continue
+            target = transition.target
+            if current is not None and target in order and order[target] > current:
+                forward.append(transition)
+            else:
+                other.append(transition)
+        return {"forward": forward, "other": other}
 
     @property
     def display_label(self):

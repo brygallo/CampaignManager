@@ -13,9 +13,14 @@ class PhysicalAdWorkflow(Workflow):
 
 
 class PhysicalAdUnitWorkflow(Workflow):
+    # Per-publicidad sub-flow. Members are declared in FLOW order (not value
+    # order) so the UI stepper reads naturally: Por configurar → Configurada →
+    # Asignada → Instalada. Values are kept stable for existing data.
     class Choices(WorkflowChoices):
         RETIRADA = 0, "Retirada", dict(visible=False, read_only=True)
-        PENDIENTE = 1, "Pendiente instalación"
+        PENDIENTE = 1, "Por configurar"
+        CONFIGURADA = 5, "Configurada"
+        ASIGNADA = 6, "Asignada"
         INSTALADA = 2, "Instalada", dict(read_only=True)
         DANADA = 3, "Dañada", dict(visible=False, read_only=True)
         DESCARTADA = 4, "No instalada", dict(visible=False, read_only=True)

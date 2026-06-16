@@ -124,7 +124,7 @@ class PhysicalAdvertisementUnitSite(BaseSite):
     detail_fields = {
         "Publicidad": (
             ("code:Código", "display_label:Publicidad"),
-            ("request_code:Solicitud", "size"),
+            ("item__advertisement:Solicitud", "size"),
         ),
         "Asignación": (
             ("assigned_installer", "installer_team"),

@@ -170,28 +170,29 @@ class Command(BaseCommand):
                     advertisement_type=item.advertisement_type, is_active=True
                 ).order_by("order", "name").first()
                 for unit in item.units.all():
-                    unit.installation_instructions = (
-                        "Se requiere escalera y dos personas para colocación segura."
+                    # Drive the configure transition (PENDIENTE → CONFIGURADA) so
+                    # the request-level approve gate is satisfied.
+                    unit.configure(
+                        user=user,
+                        size=first_size.pk if first_size else None,
+                        installation_instructions=(
+                            "Se requiere escalera y dos personas para colocación segura."
+                        ),
                     )
-                    if first_size:
-                        unit.size = first_size
-                    unit.save(update_fields=["installation_instructions", "size"])
+                    unit.save()
             ad.approve(user=user)
             ad.save()
         if target == "APROBADA":
             return
         if ad.state == wf.APROBADA:
-            # Installer/team are assigned per unit now.
+            # Installer/team are assigned per unit via the assign_installer
+            # transition (CONFIGURADA → ASIGNADA) before sending to installation.
             for item in ad.items.all():
                 for unit in item.units.all():
-                    if unit.state != unit.workflow.PENDIENTE:
+                    if unit.state != unit.workflow.CONFIGURADA:
                         continue
-                    unit.installer_team = "Brigada Macas A"
-                    unit.assigned_by = user
-                    unit.assigned_at = timezone.now()
-                    unit.save(
-                        update_fields=["installer_team", "assigned_by", "assigned_at"]
-                    )
+                    unit.assign_installer(user=user, installer_team="Brigada Macas A")
+                    unit.save()
             ad.assign_installation(user=user)
             ad.save()
         if target == "PENDIENTE_INSTALACION":

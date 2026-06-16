@@ -29,27 +29,29 @@ def _publicidades_decided_status(ad):
 
 
 _request_workflow = PhysicalAdWorkflow()
+_unit_workflow = PhysicalAdUnitWorkflow()
 
 
 def _publicidades_installer_status(ad):
     """(is_met, value) for the send-to-installation checklist: every publicidad
-    still to be installed must have an installer (internal team or person)
-    assigned before the request can move into installation."""
-    units = [unit for unit in ad.units if unit.state == unit.workflow.PENDIENTE]
-    total = len(units)
+    still to be installed must have an installer assigned — i.e. it must have
+    reached the ``ASIGNADA`` sub-flow state. Discarded/retired/installed units
+    don't count."""
+    to_install = [
+        unit
+        for unit in ad.units
+        if unit.state
+        in (
+            _unit_workflow.PENDIENTE,
+            _unit_workflow.CONFIGURADA,
+            _unit_workflow.ASIGNADA,
+        )
+    ]
+    total = len(to_install)
     if total == 0:
         return False, "Sin publicidades por instalar"
-    assigned = sum(
-        1 for unit in units if unit.assigned_installer_id or unit.installer_team
-    )
+    assigned = sum(1 for unit in to_install if unit.state == _unit_workflow.ASIGNADA)
     return assigned == total, f"{assigned} de {total} con instalador"
-
-
-def _unit_is_configured(instance):
-    """Condition for ``assign_installer`` / ``mark_installed``: the action is
-    only available once the publicidad has a size configured (otherwise it's
-    still a blank pending slot)."""
-    return instance.is_configured
 
 
 def _unit_request_approved(instance):
@@ -332,12 +334,30 @@ class PhysicalAdTransitions:
             else None
         )
         # A publicidad added after approval already says who installs it, so the
-        # new units are born with the installer assigned (and stamped).
+        # new units are born directly in the matching sub-flow state: ASIGNADA
+        # when an installer is given, else CONFIGURADA when a size/instructions
+        # are given, else PENDIENTE ("por configurar").
         has_installer = bool(installer_id or installer_team)
-        new_item = self.items.create(advertisement_type_id=type_id, quantity=qty)
-        for number in range(1, qty + 1):
-            new_item.units.create(
+        if has_installer:
+            unit_state = _unit_workflow.ASIGNADA
+        elif size_id is not None or instructions:
+            unit_state = _unit_workflow.CONFIGURADA
+        else:
+            unit_state = _unit_workflow.PENDIENTE
+        # Adding a type already in the request just appends more units to its
+        # existing item (one item per type — unique constraint), numbering the
+        # new units after the current ones. This lets the user add "varias
+        # lonas / varios banners" without a duplicate-type error.
+        item, _ = self.items.get_or_create(
+            advertisement_type_id=type_id, defaults={"quantity": 0}
+        )
+        start = item.quantity
+        item.quantity = start + qty
+        item.save(update_fields=["quantity"])
+        for number in range(start + 1, start + qty + 1):
+            item.units.create(
                 unit_number=number,
+                state=unit_state,
                 size_id=size_id,
                 installation_instructions=instructions or "",
                 assigned_installer_id=installer_id,
@@ -357,12 +377,35 @@ class PhysicalAdUnitTransitions:
 
     @transition(
         field="state",
-        source=workflow.PENDIENTE,
+        source=[workflow.PENDIENTE, workflow.CONFIGURADA],
+        target=workflow.CONFIGURADA,
+        permission="territorial_ads.approve_physicaladvertisement",
+        custom=dict(
+            verbose="Configurar",
+            icon="settings-2",
+            lucide="settings-2",
+            color="light-primary",
+            title="Configurar publicidad",
+            text="Elige el tamaño e indicaciones de esta publicidad.",
+            form="apps.territorial_ads.forms.UnitConfigForm",
+        ),
+    )
+    def configure(self, user=None, size=None, installation_instructions="", **kwargs):
+        # First step of the sub-flow: choosing the size configures the publicidad.
+        # Re-runnable from CONFIGURADA to edit it before an installer is assigned.
+        self.size_id = (
+            int(getattr(size, "pk", size)) if size not in (None, "") else None
+        )
+        self.installation_instructions = installation_instructions or ""
+
+    @transition(
+        field="state",
+        source=workflow.ASIGNADA,
         target=workflow.INSTALADA,
         permission="territorial_ads.install_physicaladvertisement",
-        # Installation can only be registered once the publicidad has a size
-        # configured and its parent request has been sent to installation.
-        conditions=[_unit_is_configured, _unit_request_in_installation],
+        # An installer must already be assigned (source=ASIGNADA) and the parent
+        # request must have been sent to installation.
+        conditions=[_unit_request_in_installation],
         custom=dict(
             verbose="Marcar instalada",
             icon="check-circle",
@@ -397,18 +440,19 @@ class PhysicalAdUnitTransitions:
     @transition(
         field="state",
         source=workflow.INSTALADA,
-        target=workflow.PENDIENTE,
+        target=workflow.ASIGNADA,
         permission="territorial_ads.install_physicaladvertisement",
         custom=dict(
-            verbose="Volver a pendiente",
-            back_verbose="Volver a pendiente",
+            verbose="Volver a asignada",
+            back_verbose="Volver a asignada",
             icon="arrow-left",
             lucide="arrow-left",
             color="warning",
-            title="Volver a pendiente",
+            title="Volver a asignada",
             text=(
                 "La foto, la ubicación y las notas de esta publicidad se "
-                "limpiarán para registrar la instalación de nuevo. ¿Continuar?"
+                "limpiarán para registrar la instalación de nuevo. El instalador "
+                "asignado se conserva. ¿Continuar?"
             ),
         ),
     )
@@ -419,7 +463,7 @@ class PhysicalAdUnitTransitions:
         self.notes = ""
         self.installed_at = None
         self.installed_by = None
-        self._sync_request(user, self.workflow.PENDIENTE)
+        self._sync_request(user, self.workflow.ASIGNADA)
 
     @transition(
         field="state",
@@ -488,7 +532,7 @@ class PhysicalAdUnitTransitions:
 
     @transition(
         field="state",
-        source=workflow.PENDIENTE,
+        source=[workflow.PENDIENTE, workflow.CONFIGURADA, workflow.ASIGNADA],
         target=workflow.DESCARTADA,
         permission="territorial_ads.install_physicaladvertisement",
         custom=dict(
@@ -532,13 +576,13 @@ class PhysicalAdUnitTransitions:
 
     @transition(
         field="state",
-        source=[workflow.PENDIENTE, workflow.INSTALADA],
-        # ``target=None``: assigning an installer doesn't change the unit
-        # state. The form (AssignUnitInstallerForm) only validates; the
-        # fields are written here from the POST kwargs.
-        target=None,
+        source=[workflow.CONFIGURADA, workflow.ASIGNADA],
+        target=workflow.ASIGNADA,
         permission="territorial_ads.install_physicaladvertisement",
-        conditions=[_unit_is_configured, _unit_request_approved],
+        # Source=CONFIGURADA already guarantees the publicidad is configured;
+        # the parent request must also be approved. Re-runnable from ASIGNADA
+        # to change the installer.
+        conditions=[_unit_request_approved],
         custom=dict(
             verbose="Asignar instalador",
             icon="user-check",
