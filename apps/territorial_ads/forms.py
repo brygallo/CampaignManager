@@ -287,6 +287,34 @@ class UnitConfigForm(forms.Form):
                 obj.installation_instructions
             )
 
+class TypeSizeSelect(forms.Select):
+    """Select whose options expose ``data-type-id`` so a form can filter sizes
+    client-side by the chosen advertising type (direct-install / add-publicidad)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._type_map = None
+
+    def _type_lookup(self):
+        if self._type_map is None:
+            self._type_map = dict(
+                AdvertisingTypeSize.objects.values_list("pk", "advertisement_type_id")
+            )
+        return self._type_map
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        raw = getattr(value, "value", value)
+        try:
+            pk = int(raw)
+        except (TypeError, ValueError):
+            return option
+        type_id = self._type_lookup().get(pk)
+        if type_id:
+            option["attrs"]["data-type-id"] = str(type_id)
+        return option
+
+
 class AddAdvertisementForm(forms.Form):
     """Add one new advertisement (type + quantity + size + instructions) to an
     existing request — usable even after approval (the new units are born
@@ -303,6 +331,11 @@ class AddAdvertisementForm(forms.Form):
         label="Tipo de publicidad",
         queryset=AdvertisingType.objects.none(),
         empty_label="Selecciona un tipo…",
+        widget=ModelSelect2Widget(
+            queryset=AdvertisingType.objects.filter(is_active=True),
+            search_fields=["name__icontains"],
+            attrs={"data-minimum-input-length": 0},
+        ),
     )
     quantity = forms.IntegerField(label="Cantidad", min_value=1, initial=1)
     size = forms.ModelChoiceField(
@@ -310,6 +343,14 @@ class AddAdvertisementForm(forms.Form):
         queryset=AdvertisingTypeSize.objects.none(),
         required=False,
         empty_label="Sin tamaño / asignar luego",
+        widget=ModelSelect2Widget(
+            queryset=AdvertisingTypeSize.objects.filter(is_active=True),
+            search_fields=["name__icontains"],
+            # Native django_select2 dependency: the AJAX query filters sizes by
+            # the chosen advertisement_type (same mechanism insoles uses).
+            dependent_fields={"advertisement_type": "advertisement_type"},
+            attrs={"data-minimum-input-length": 0},
+        ),
     )
     instructions = forms.CharField(
         label="Indicaciones",
@@ -584,34 +625,6 @@ class ContactUpdateForm(forms.Form):
             self.fields["owner_name"].initial = obj.owner_name
             self.fields["owner_phone"].initial = obj.owner_phone
             self.fields["reference"].initial = obj.reference
-
-
-class TypeSizeSelect(forms.Select):
-    """Select whose options expose ``data-type-id`` so the direct-install
-    form can filter sizes client-side by the chosen advertising type."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._type_map = None
-
-    def _type_lookup(self):
-        if self._type_map is None:
-            self._type_map = dict(
-                AdvertisingTypeSize.objects.values_list("pk", "advertisement_type_id")
-            )
-        return self._type_map
-
-    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
-        option = super().create_option(name, value, label, selected, index, subindex, attrs)
-        raw = getattr(value, "value", value)
-        try:
-            pk = int(raw)
-        except (TypeError, ValueError):
-            return option
-        type_id = self._type_lookup().get(pk)
-        if type_id:
-            option["attrs"]["data-type-id"] = str(type_id)
-        return option
 
 
 class DirectInstallForm(forms.Form):

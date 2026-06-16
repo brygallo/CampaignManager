@@ -387,6 +387,60 @@
 }
 
 /* ===================================================================
+   Stacked sheets — insoles form modal on top of a detail sheet
+   -------------------------------------------------------------------
+   The per-publicidad install/evidence form (#insoles-instance-forms,
+   itself a cm-sheet-modal) opens ON TOP of the map detail sheet
+   (physical-ad-modal, also a cm-sheet-modal). On desktop both sit at
+   Bootstrap's default modal z-index (1055); on mobile the rule above
+   pins every cm-sheet-modal to 1060. Either way the two stacked sheets
+   share the same z-index, so the form would only win by DOM/backdrop
+   order — fragile and prone to sitting UNDER the detail sheet.
+
+   Pin the insoles modal, and the backdrop in front of the underlying
+   detail sheet, above any open sheet. Values sit above both 1055 and
+   1060 so the fix holds on desktop and mobile. The `~` selector targets
+   the SECOND open backdrop (the insoles one), keeping the detail sheet
+   dimmed underneath.
+   =================================================================== */
+#insoles-instance-forms.cm-sheet-modal.show {
+  z-index: 1075;
+}
+body:has(#insoles-instance-forms.cm-sheet-modal.show)
+  .modal-backdrop.show ~ .modal-backdrop.show {
+  z-index: 1070;
+}
+
+/* ===================================================================
+   Insoles form scroll fix
+   -------------------------------------------------------------------
+   In _insoles_modal.html the <form> wraps BOTH .modal-body and
+   .modal-footer, so .modal-body is not a direct flex child of
+   .modal-content. That breaks the flex scroll chain (Bootstrap's
+   modal-dialog-scrollable on desktop AND the bottom-sheet on mobile),
+   so the body wouldn't scroll and the footer got clipped off-screen.
+   Make the form a flex column that fills the content height; the body
+   scrolls and the footer stays pinned/visible.
+   =================================================================== */
+#insoles-instance-forms .modal-content > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+#insoles-instance-forms .modal-content > form > .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+#insoles-instance-forms .modal-content > form > .modal-footer {
+  flex: 0 0 auto;
+}
+
+/* ===================================================================
    Choice list (variant="choice")
    Tarjetas grandes táctiles — pensado para "elegir tipo de registro"
    en los modales de los mapas (visita / competencia / publicidad…).

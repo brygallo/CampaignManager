@@ -13,11 +13,6 @@ def ensure_profile(sender, instance, created, **kwargs):
         Profile.objects.get_or_create(user=instance)
 
 
-# Drop the cached permission-matrix skeleton whenever the underlying
-# Permission rows might have changed. ``post_migrate`` covers the normal
-# path (Django auto-creates Permissions for each ContentType after
-# migrations); the Permission post_save/post_delete handlers cover manual
-# edits via the Django admin, which don't fire post_migrate.
 @receiver(post_migrate)
 def _invalidate_perm_matrix_on_migrate(sender, **kwargs):
     invalidate_permission_matrix_cache()

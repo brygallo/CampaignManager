@@ -18,6 +18,18 @@
   background: var(--bs-gray-100);
 }
 
+
+.modal .leaflet-map-widget__canvas {
+  height: clamp(160px, 32vh, 320px);
+}
+
+
+@media (max-width: 767.98px) {
+  .modal .leaflet-map-widget__canvas {
+    height: clamp(150px, 28vh, 240px);
+  }
+}
+
 .leaflet-map-widget .leaflet-control-attribution {
   font-size: 10px;
 }

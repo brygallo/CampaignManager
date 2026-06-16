@@ -13,57 +13,19 @@ Two workflows live here:
 from django.utils import timezone
 from django_fsm import transition
 
+from apps.territorial_ads.conditions import (
+    publicidades_decided_status,
+    publicidades_installer_status,
+    unit_request_approved,
+    unit_request_in_installation,
+)
+from apps.territorial_ads.constants import (
+    TRANSITION_APPROVE,
+    TRANSITION_ASSIGN_INSTALLATION,
+)
+from apps.territorial_ads.services import PhysicalAdService
 from apps.territorial_ads.workflows import PhysicalAdUnitWorkflow, PhysicalAdWorkflow
 from apps.workflows.requirements import Custom, RequirementsValidator
-
-
-def _publicidades_decided_status(ad):
-    """(is_met, value) for the approve checklist: every publicidad must be
-    configured (size/instructions set) or discarded — none left untouched."""
-    units = list(ad.units)
-    total = len(units)
-    if total == 0:
-        return False, "Sin publicidades"
-    pending = sum(1 for unit in units if unit.is_unconfigured_pending)
-    return pending == 0, f"{total - pending} de {total} configuradas o descartadas"
-
-
-_request_workflow = PhysicalAdWorkflow()
-_unit_workflow = PhysicalAdUnitWorkflow()
-
-
-def _publicidades_installer_status(ad):
-    """(is_met, value) for the send-to-installation checklist: every publicidad
-    still to be installed must have an installer assigned — i.e. it must have
-    reached the ``ASIGNADA`` sub-flow state. Discarded/retired/installed units
-    don't count."""
-    to_install = [
-        unit
-        for unit in ad.units
-        if unit.state
-        in (
-            _unit_workflow.PENDIENTE,
-            _unit_workflow.CONFIGURADA,
-            _unit_workflow.ASIGNADA,
-        )
-    ]
-    total = len(to_install)
-    if total == 0:
-        return False, "Sin publicidades por instalar"
-    assigned = sum(1 for unit in to_install if unit.state == _unit_workflow.ASIGNADA)
-    return assigned == total, f"{assigned} de {total} con instalador"
-
-
-def _unit_request_approved(instance):
-    """Condition for ``assign_installer``: the parent request (solicitud) must
-    already be approved before installers can be assigned to its publicidades."""
-    return instance.advertisement.approved_at is not None
-
-
-def _unit_request_in_installation(instance):
-    """Condition for ``mark_installed``: the parent request must be in the
-    'pending installation' stage before a unit's installation is registered."""
-    return instance.advertisement.state == _request_workflow.PENDIENTE_INSTALACION
 
 
 class PhysicalAdTransitions:
@@ -94,7 +56,7 @@ class PhysicalAdTransitions:
             # every publicidad must be decided before the request is approved.
             requirements=[
                 Custom(
-                    check=_publicidades_decided_status,
+                    check=publicidades_decided_status,
                     label="Publicidades configuradas o descartadas",
                     icon="layout-grid",
                 ),
@@ -106,7 +68,7 @@ class PhysicalAdTransitions:
         # configured per publicidad (size/instructions) from each card, so
         # approval is now just a confirmation that advances the state — but
         # only once every publicidad has been configured or discarded.
-        RequirementsValidator.run(self, "approve")
+        RequirementsValidator.run(self, TRANSITION_APPROVE)
         self.approved_by = user
         self.approved_at = timezone.now()
 
@@ -177,7 +139,7 @@ class PhysicalAdTransitions:
             # every publicidad to install must have an installer assigned.
             requirements=[
                 Custom(
-                    check=_publicidades_installer_status,
+                    check=publicidades_installer_status,
                     label="Publicidades con instalador asignado",
                     icon="user-check",
                 ),
@@ -188,7 +150,7 @@ class PhysicalAdTransitions:
         # Installer/team are assigned per unit; this transition only moves the
         # request into the installation stage, and only once every publicidad
         # to install already has an installer assigned.
-        RequirementsValidator.run(self, "assign_installation")
+        RequirementsValidator.run(self, TRANSITION_ASSIGN_INSTALLATION)
 
     # --- Auto transitions driven by unit states (hidden from the UI) ---
 
@@ -248,13 +210,9 @@ class PhysicalAdTransitions:
         ),
     )
     def retire(self, user=None, **kwargs):
-        unit_workflow = PhysicalAdUnitWorkflow()
         # Retire every unit without per-unit request sync; this transition's
         # own target (RETIRADA) sets the request state once.
-        for item in self.items.all():
-            for unit in item.units.exclude(state=unit_workflow.RETIRADA):
-                unit.retire(user=user, _skip_sync=True)
-                unit.save()
+        PhysicalAdService.retire_all_units(self, user=user)
         self.retired_by = user
         self.retired_at = timezone.now()
 
@@ -322,49 +280,16 @@ class PhysicalAdTransitions:
         installer_team="",
         **kwargs,
     ):
-        type_id = int(getattr(advertisement_type, "pk", advertisement_type))
-        try:
-            qty = max(1, int(quantity or 1))
-        except (TypeError, ValueError):
-            qty = 1
-        size_id = int(getattr(size, "pk", size)) if size not in (None, "") else None
-        installer_id = (
-            int(getattr(assigned_installer, "pk", assigned_installer))
-            if assigned_installer not in (None, "")
-            else None
+        PhysicalAdService.add_advertisement(
+            self,
+            user=user,
+            advertisement_type=advertisement_type,
+            quantity=quantity,
+            size=size,
+            instructions=instructions,
+            assigned_installer=assigned_installer,
+            installer_team=installer_team,
         )
-        # A publicidad added after approval already says who installs it, so the
-        # new units are born directly in the matching sub-flow state: ASIGNADA
-        # when an installer is given, else CONFIGURADA when a size/instructions
-        # are given, else PENDIENTE ("por configurar").
-        has_installer = bool(installer_id or installer_team)
-        if has_installer:
-            unit_state = _unit_workflow.ASIGNADA
-        elif size_id is not None or instructions:
-            unit_state = _unit_workflow.CONFIGURADA
-        else:
-            unit_state = _unit_workflow.PENDIENTE
-        # Adding a type already in the request just appends more units to its
-        # existing item (one item per type — unique constraint), numbering the
-        # new units after the current ones. This lets the user add "varias
-        # lonas / varios banners" without a duplicate-type error.
-        item, _ = self.items.get_or_create(
-            advertisement_type_id=type_id, defaults={"quantity": 0}
-        )
-        start = item.quantity
-        item.quantity = start + qty
-        item.save(update_fields=["quantity"])
-        for number in range(start + 1, start + qty + 1):
-            item.units.create(
-                unit_number=number,
-                state=unit_state,
-                size_id=size_id,
-                installation_instructions=instructions or "",
-                assigned_installer_id=installer_id,
-                installer_team=installer_team or "",
-                assigned_by=user if has_installer else None,
-                assigned_at=timezone.now() if has_installer else None,
-            )
 
 
 class PhysicalAdUnitTransitions:
@@ -405,7 +330,7 @@ class PhysicalAdUnitTransitions:
         permission="territorial_ads.install_physicaladvertisement",
         # An installer must already be assigned (source=ASIGNADA) and the parent
         # request must have been sent to installation.
-        conditions=[_unit_request_in_installation],
+        conditions=[unit_request_in_installation],
         custom=dict(
             verbose="Marcar instalada",
             icon="check-circle",
@@ -582,7 +507,7 @@ class PhysicalAdUnitTransitions:
         # Source=CONFIGURADA already guarantees the publicidad is configured;
         # the parent request must also be approved. Re-runnable from ASIGNADA
         # to change the installer.
-        conditions=[_unit_request_approved],
+        conditions=[unit_request_approved],
         custom=dict(
             verbose="Asignar instalador",
             icon="user-check",
