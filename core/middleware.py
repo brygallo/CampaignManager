@@ -17,13 +17,13 @@ Caveat: tenants sharing a root domain also share cookies and sessions.
 Recommended only for trial/demo tenants. Premium tenants should use mode 1
 or 2.
 """
-from importlib import import_module
 import time
+from importlib import import_module
 
 from django.conf import settings
+from django.contrib.sessions.backends.base import UpdateError
 from django.contrib.sessions.exceptions import SessionInterrupted
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.contrib.sessions.backends.base import UpdateError
 from django.db import connection
 from django.urls import get_script_prefix, set_script_prefix
 from django.utils.cache import patch_vary_headers
@@ -115,12 +115,12 @@ class TenantAwareSessionMiddleware(SessionMiddleware):
                 if response.status_code < 500:
                     try:
                         request.session.save()
-                    except UpdateError:
+                    except UpdateError as exc:
                         raise SessionInterrupted(
                             "The request's session was deleted before the "
                             "request completed. The user may have logged "
                             "out in a concurrent request, for example."
-                        )
+                        ) from exc
                     response.set_cookie(
                         cookie_name,
                         request.session.session_key,

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centro de Mando Electoral — Propuesta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0B1F3A; --ink:#0B1F3A; --blue:#2F6BFF; --gray:#6B7480;
+  --soft:#F5F7FA; --border:#E7EBF0; --green:#16A34A; --amber:#E0A100; --red:#E5484D; --gold:#C9A227;
+}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+html,body{margin:0;padding:0;}
+body{font-family:"Inter","Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);font-size:10.5pt;line-height:1.5;background:#fff;orphans:2;widows:2;}
+h1,h2,h3,h4{margin:0;font-weight:800;}
+p{margin:0;}
+@page{size:A4 portrait;margin:16mm 15mm 14mm 15mm;
+  @bottom-left{content:"Centro de Mando Electoral";font-family:"Inter",Arial,sans-serif;font-size:7.5pt;color:#AEB9C7;}
+  @bottom-right{content:counter(page);font-family:"Inter",Arial,sans-serif;font-size:8pt;color:#AEB9C7;}}
+@page dark{margin:0;@bottom-left{content:none;}@bottom-right{content:none;}}
+.page-break{break-before:page;}
+.slide{break-inside:avoid;}
+.eyebrow{font-size:8.5pt;font-weight:700;letter-spacing:1.6pt;text-transform:uppercase;color:var(--blue);margin-bottom:9pt;display:block;}
+.eyebrow b{color:var(--gold);font-weight:800;margin-right:8pt;}
+.eyebrow.warn{color:var(--red);} .eyebrow.warn b{color:var(--red);}
+.title{font-size:29pt;font-weight:800;color:var(--ink);line-height:1.07;letter-spacing:-.7pt;margin:0 0 7pt;max-width:176mm;}
+.sub{font-size:12.5pt;color:var(--gray);line-height:1.45;max-width:172mm;margin:0;}
+.sub b{color:var(--ink);font-weight:600;}
+/* screenshots — protagonists */
+.shot{margin:18pt 0 0;border-radius:16px;overflow:hidden;box-shadow:0 22px 60px rgba(11,31,58,.18);border:1px solid var(--border);background:#fff;break-inside:avoid;}
+.shot img{display:block;width:100%;height:auto;max-height:172mm;object-fit:contain;object-position:center;background:#fff;}
+/* benefit cards (replaces 3 columns) */
+.pcards{display:flex;gap:13pt;margin:18pt 0 0;break-inside:avoid;}
+.pcard{flex:1;background:#fff;border:1px solid var(--border);border-radius:13px;padding:13pt 15pt 14pt;box-shadow:0 8px 22px rgba(11,31,58,.07);}
+.pcard .dot{width:11px;height:11px;border-radius:50%;display:inline-block;margin-bottom:9pt;background:var(--blue);}
+.pcard.g .dot{background:var(--green);} .pcard.a .dot{background:var(--amber);} .pcard.r .dot{background:var(--red);}
+.pcard h4{font-size:11.5pt;color:var(--ink);margin:0 0 3pt;font-weight:800;}
+.pcard p{font-size:9.2pt;color:var(--gray);line-height:1.35;margin:0;}
+/* dark slides */
+.dark{page:dark;break-after:page;position:relative;width:210mm;min-height:297mm;background:var(--navy);color:#fff;padding:32mm 26mm;display:flex;flex-direction:column;overflow:hidden;}
+.dark.mapbg{background:linear-gradient(rgba(9,24,45,.82),rgba(9,24,45,.94)),url('img/31-campo-mapa.png') center/cover no-repeat;}
+.dark .brand{display:flex;align-items:center;gap:11pt;margin-bottom:auto;}
+.dark .brand .lg{width:28pt;height:28pt;border-radius:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13pt;}
+.dark .brand .nm{font-weight:800;font-size:12.5pt;letter-spacing:.2pt;line-height:1.1;}
+.dark .brand .nm small{display:block;font-weight:500;font-size:7.5pt;letter-spacing:1.4pt;text-transform:uppercase;color:#8FB0E6;margin-top:2pt;}
+.dark .brand .tag{margin-left:auto;font-size:8pt;font-weight:700;letter-spacing:1pt;text-transform:uppercase;color:var(--navy);background:var(--gold);padding:4pt 12pt;border-radius:20px;}
+.dark .eyebrow{color:#8FB0E6;} .dark .eyebrow b{color:var(--gold);}
+.dark .big{font-size:37pt;font-weight:900;line-height:1.05;letter-spacing:-1pt;margin:0 0 14pt;max-width:168mm;}
+.dark .dsub{font-size:13.5pt;color:#C6D3E6;line-height:1.5;max-width:152mm;margin:0;}
+.goldrule{width:60pt;height:3px;background:var(--gold);border-radius:2px;margin:0 0 16pt;}
+/* metrics */
+.metrics{display:flex;gap:26pt;margin:auto 0;}
+.metric{flex:1;}
+.metric .n{font-size:56pt;font-weight:900;line-height:.95;letter-spacing:-2pt;color:#fff;}
+.metric .rule{width:42pt;height:3px;background:var(--gold);margin:10pt 0 8pt;}
+.metric .l{font-size:10pt;color:#AEB9C7;text-transform:uppercase;letter-spacing:1.4pt;font-weight:600;}
+.demo{margin-top:18pt;font-size:8.5pt;color:#7E8DA3;letter-spacing:.3pt;}
+/* equations (problema=costo) */
+.eq{display:flex;flex-direction:column;gap:11pt;margin:18pt 0 0;}
+.eqitem{display:flex;align-items:center;gap:14pt;background:var(--soft);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:12px;padding:14pt 20pt;break-inside:avoid;}
+.eqitem .p{flex:1;font-size:12pt;font-weight:700;color:var(--ink);}
+.eqitem .eqs{font-size:18pt;font-weight:900;color:var(--gray);}
+.eqitem .c{flex:1;font-size:12pt;font-weight:800;color:var(--red);text-align:right;}
+.resline{margin:18pt 0 0;font-size:13pt;font-weight:800;color:var(--green);}
+.resline::before{content:"✓ ";}
+.concept{margin:14pt 0 0;font-size:14pt;font-weight:800;color:var(--ink);line-height:1.3;max-width:172mm;letter-spacing:-.3pt;}
+.concept b{color:var(--blue);}
+/* 4 blocks (centro de mando) */
+.blocks{display:grid;grid-template-columns:1fr 1fr;gap:12pt;margin:16pt 0 0;break-inside:avoid;}
+.block{background:#fff;border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:13px;padding:14pt 16pt;box-shadow:0 8px 22px rgba(11,31,58,.07);}
+.block h4{font-size:12pt;color:var(--ink);margin:0 0 3pt;}
+.block p{font-size:9.4pt;color:var(--gray);margin:0;line-height:1.35;}
+/* flow */
+.flow5{display:flex;align-items:center;justify-content:space-between;gap:6pt;margin:22pt 0 0;break-inside:avoid;}
+.fstep{flex:1;text-align:center;background:#fff;border:1px solid var(--border);border-top:3px solid var(--blue);border-radius:12px;padding:14pt 6pt;font-weight:800;color:var(--ink);font-size:10pt;box-shadow:0 8px 22px rgba(11,31,58,.06);}
+.fstep.end{border-top-color:var(--green);color:var(--green);}
+.farr{color:var(--blue);font-weight:900;font-size:15pt;flex:0 0 auto;}
+/* security + scope */
+.seccheck{display:flex;flex-wrap:wrap;gap:10pt;margin:16pt 0 0;}
+.chk{flex:1 1 44%;background:var(--soft);border:1px solid var(--border);border-radius:12px;padding:12pt 15pt;display:flex;align-items:flex-start;gap:10pt;}
+.chk .k{width:20pt;height:20pt;border-radius:6px;background:#E7F6EE;color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:900;flex:0 0 auto;}
+.chk h4{font-size:10.5pt;margin:0 0 2pt;color:var(--ink);}
+.chk p{font-size:8.8pt;color:var(--gray);margin:0;line-height:1.32;}
+.scope{margin:20pt 0 0;}
+.scope h3{font-size:12pt;color:var(--ink);margin:0 0 8pt;}
+.scopegrid{display:grid;grid-template-columns:1fr 1fr;gap:5pt 26pt;}
+.scopegrid div{font-size:9.6pt;color:var(--ink);padding-left:16pt;position:relative;line-height:1.5;}
+.scopegrid div::before{content:"✓";position:absolute;left:0;color:var(--blue);font-weight:800;}
+/* close (light, big statement) */
+.close-l{margin-top:auto;}
+.close-l .st{font-size:30pt;font-weight:900;color:var(--ink);line-height:1.1;letter-spacing:-.8pt;max-width:176mm;margin:0 0 6pt;}
+.close-l .st .g{color:var(--green);}
+.close-l .cs{font-size:12.5pt;color:var(--gray);max-width:168mm;margin:0 0 16pt;}
+.cta{display:inline-block;background:var(--blue);color:#fff;font-weight:800;font-size:11pt;padding:11pt 24pt;border-radius:26px;box-shadow:0 10px 26px rgba(47,107,255,.28);}
+/* contact */
+.contact{display:flex;flex-direction:column;margin-top:auto;}
+.cardc{display:flex;gap:24pt;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:26pt 28pt;}
+.cardc .info{flex:1;}
+.cardc .info .l{font-size:8.5pt;letter-spacing:1.2pt;text-transform:uppercase;color:#8FB0E6;margin:12pt 0 2pt;}
+.cardc .info .v{font-size:13pt;font-weight:700;color:#fff;}
+.cardc .qr{width:120pt;height:120pt;background:#fff;border-radius:14px;padding:9pt;flex:0 0 auto;}
+.cardc .qr img{width:100%;height:100%;display:block;}
+@media print{.slide,.shot,.pcards,.pcard,.metrics,.blocks,.block,.flow5,.eq,.eqitem,.seccheck,.chk,.scope,.cardc{break-inside:avoid;}.title,.big,.st{break-after:avoid;}.page-break{break-before:page;}}
+</style>
+</head>
+<body>
+
+<!-- PORTADA -->
+<section class="dark mapbg">
+  <div class="brand"><div class="lg">C</div><div class="nm">Centro de Mando Electoral<small>Gestor de Campañas</small></div><div class="tag">Propuesta</div></div>
+  <div class="goldrule" style="margin-top:auto"></div>
+  <h1 class="big">La elección empieza mucho antes del día de votar.</h1>
+  <p class="dsub">El centro de operaciones de su campaña: cada barrio, cada brigada y cada valla, en una sola pantalla.</p>
+</section>
+
+<!-- 01 · EL PROBLEMA -->
+<section class="slide">
+  <span class="eyebrow warn"><b>01</b> El problema</span>
+  <h1 class="title">Cada error en el territorio cuesta votos.</h1>
+  <p class="sub">Lo que no se ve, no se corrige — y en campaña se paga caro.</p>
+  <div class="eq">
+    <div class="eqitem"><div class="p">Una brigada trabajando el barrio equivocado</div><div class="eqs">=</div><div class="c">Dinero perdido</div></div>
+    <div class="eqitem"><div class="p">Publicidad que nadie instaló</div><div class="eqs">=</div><div class="c">Presupuesto desperdiciado</div></div>
+    <div class="eqitem"><div class="p">No conocer a los indecisos</div><div class="eqs">=</div><div class="c">Votos perdidos</div></div>
+  </div>
+  <p class="resline">El Centro de Mando evita estos tres errores.</p>
+  <p class="concept">Las campañas modernas ya no se dirigen por intuición. <b>Se dirigen con información.</b></p>
+</section>
+
+<!-- 02 · LOS DATOS -->
+<section class="dark">
+  <span class="eyebrow"><b>02</b> Los datos</span>
+  <div class="goldrule"></div>
+  <div class="metrics">
+    <div class="metric"><div class="n">4.200</div><div class="rule"></div><div class="l">Visitas en territorio</div></div>
+    <div class="metric"><div class="n">78%</div><div class="rule"></div><div class="l">Apoyo identificado</div></div>
+    <div class="metric"><div class="n">310</div><div class="rule"></div><div class="l">Brigadas coordinadas</div></div>
+  </div>
+  <p class="dsub" style="margin-top:22pt">Todo lo que su equipo hace en la calle, convertido en información que usted lee de un vistazo.</p>
+  <div class="demo">Cifras de demostración con fines ilustrativos.</div>
+</section>
+
+<!-- 03 · EL TERRITORIO -->
+<section class="slide">
+  <span class="eyebrow"><b>03</b> El territorio</span>
+  <h1 class="title">¿Sabe realmente dónde va ganando?</h1>
+  <p class="sub">Cada visita de su equipo, en el mapa y al instante.</p>
+  <div class="shot"><img src="img/31-campo-mapa.png" alt="Mapa de apoyo"></div>
+  <div class="pcards">
+    <div class="pcard g"><span class="dot"></span><h4>Voto duro</h4><p>Asegúrelo y movilícelo el día de la elección.</p></div>
+    <div class="pcard a"><span class="dot"></span><h4>Indecisos</h4><p>Ubíquelos y conviértalos antes que el rival.</p></div>
+    <div class="pcard r"><span class="dot"></span><h4>Competencia</h4><p>Detecte dónde crece y respóndale a tiempo.</p></div>
+  </div>
+</section>
+
+<!-- 04 · EL EQUIPO -->
+<section class="slide page-break">
+  <span class="eyebrow"><b>04</b> El equipo</span>
+  <h1 class="title">Su operación de campaña, bajo control.</h1>
+  <p class="sub">El pulso diario de la calle y quién genera resultados.</p>
+  <div class="shot"><img src="img/30-campo-dashboard.png" alt="Tablero de control"></div>
+  <div class="pcards">
+    <div class="pcard g"><span class="dot"></span><h4>Sepa quién produce</h4><p>El ranking le muestra al que rinde y al que no.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Corrija a tiempo</h4><p>Si la producción baja, actúe el mismo día.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Evidencia, no promesas</h4><p>Cada visita queda registrada con foto y ubicación.</p></div>
+  </div>
+</section>
+
+<!-- 05 · LA INVERSIÓN -->
+<section class="slide page-break">
+  <span class="eyebrow"><b>05</b> La inversión</span>
+  <h1 class="title">Nunca vuelva a pagar una valla que nadie instaló.</h1>
+  <p class="sub">Controle su publicidad pieza por pieza — con foto y ubicación como prueba.</p>
+  <div class="shot"><img src="img/40-territorial-mapa.png" alt="Mapa de publicidad"></div>
+  <div class="pcards">
+    <div class="pcard g"><span class="dot"></span><h4>Prueba real</h4><p>Foto y GPS por cada pieza instalada.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Sin presencia, a la vista</h4><p>Vea qué zonas aún no tienen publicidad.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Estire el presupuesto</h4><p>Priorice los espacios gratis y donados.</p></div>
+  </div>
+</section>
+
+<!-- 06 · EL CANDIDATO -->
+<section class="slide page-break">
+  <span class="eyebrow"><b>06</b> El candidato</span>
+  <h1 class="title">El tiempo del candidato es su activo más caro.</h1>
+  <p class="sub">Cada hora, donde más votos genera.</p>
+  <div class="shot"><img src="img/20-calendario.png" alt="Calendario del candidato"></div>
+  <div class="pcards">
+    <div class="pcard g"><span class="dot"></span><h4>Nunca en dos lugares a la vez</h4><p>El sistema detecta los conflictos de horario.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Priorice lo que suma</h4><p>Apruebe los actos que más aportan votos.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Discreción total</h4><p>Los actos sensibles quedan privados.</p></div>
+  </div>
+</section>
+
+<!-- 07 · EL CONTROL -->
+<section class="slide page-break">
+  <span class="eyebrow"><b>07</b> El control</span>
+  <h1 class="title">El centro de mando de su campaña.</h1>
+  <p class="sub">Todo lo que ocurre en la calle, en una sola pantalla.</p>
+  <div class="blocks">
+    <div class="block"><h4>Territorio actualizado</h4><p>El mapa de apoyo, indecisos y competencia, al instante.</p></div>
+    <div class="block"><h4>Brigadas y productividad</h4><p>Cuánto se produjo, quién produce y qué falta cubrir.</p></div>
+    <div class="block"><h4>Publicidad instalada</h4><p>Cada pieza comprobada con foto y ubicación.</p></div>
+    <div class="block"><h4>Agenda del candidato</h4><p>Su tiempo, sin choques ni tiempos muertos.</p></div>
+  </div>
+  <div class="flow5">
+    <div class="fstep">Territorio</div><span class="farr">→</span>
+    <div class="fstep">Análisis</div><span class="farr">→</span>
+    <div class="fstep">Decisión</div><span class="farr">→</span>
+    <div class="fstep">Acción</div><span class="farr">→</span>
+    <div class="fstep end">Resultado</div>
+  </div>
+</section>
+
+<!-- 08 · QUIÉN ALIMENTA LA INFORMACIÓN -->
+<section class="slide page-break">
+  <span class="eyebrow"><b>08</b> Quién alimenta la información</span>
+  <h1 class="title">De la calle al candidato, sin perder nada.</h1>
+  <p class="sub">Cada quien registra lo suyo; usted lo ve todo consolidado.</p>
+  <div class="pcards">
+    <div class="pcard g"><span class="dot"></span><h4>Brigadas en territorio</h4><p>Registran cada visita: nivel de apoyo, indecisos y competencia, con foto y ubicación como prueba.</p></div>
+    <div class="pcard"><span class="dot"></span><h4>Coordinación y personal</h4><p>Organizan brigadas, cargan la publicidad instalada y arman la agenda del candidato.</p></div>
+    <div class="pcard a"><span class="dot"></span><h4>Candidato y dirección</h4><p>Ven el panorama consolidado en mapas y tableros, y deciden dónde actuar.</p></div>
+  </div>
+  <div class="scope">
+    <h3>Qué información se registra</h3>
+    <div class="scopegrid">
+      <div>Nivel de cada visita: apoya, indeciso o no apoya</div>
+      <div>Foto y ubicación GPS de cada registro</div>
+      <div>Fecha, brigada responsable y campaña</div>
+      <div>Estado de cada publicidad: ofrecida, aprobada, instalada</div>
+      <div>Rechazos de publicidad ("no quiere")</div>
+      <div>Eventos de agenda, con conflictos de horario</div>
+      <div>Publicidad de la competencia detectada</div>
+      <div>Roles y permisos por tipo de usuario</div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 · SEGURIDAD Y ALCANCE -->
+<section class="slide page-break">
+  <span class="eyebrow"><b>09</b> Seguridad y alcance</span>
+  <h1 class="title">Toda su información, protegida.</h1>
+  <p class="sub">Datos sensibles con la tranquilidad de saber quién hace qué.</p>
+  <div class="seccheck">
+    <div class="chk"><div class="k">✓</div><div><h4>Roles y permisos</h4><p>Cada quien ve solo lo que le corresponde.</p></div></div>
+    <div class="chk"><div class="k">✓</div><div><h4>Auditoría</h4><p>Quién hizo qué, cuándo y desde dónde.</p></div></div>
+    <div class="chk"><div class="k">✓</div><div><h4>Historial</h4><p>Línea de tiempo de cada cambio.</p></div></div>
+    <div class="chk"><div class="k">✓</div><div><h4>Datos aislados</h4><p>Su información, separada de cualquier otra.</p></div></div>
+  </div>
+  <div class="scope">
+    <h3>Qué incluye la plataforma</h3>
+    <div class="scopegrid">
+      <div>Mapa de territorio por nivel de apoyo</div>
+      <div>Mapa de calor de cobertura</div>
+      <div>Tablero con KPIs y ranking de brigadas</div>
+      <div>Detección de publicidad de la competencia</div>
+      <div>Publicidad con evidencia foto + GPS y estados</div>
+      <div>Registro de rechazos ("no quiere publicidad")</div>
+      <div>Calendario con detección de conflictos</div>
+      <div>Geografía por provincia, cantón y sector</div>
+      <div>Usuarios, roles y permisos</div>
+      <div>Auditoría e historial de cambios</div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

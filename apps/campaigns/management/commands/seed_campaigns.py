@@ -66,7 +66,7 @@ MOVEMENTS = [
     {"name": "Acción Democrática Nacional",     "acronym": "ADN",   "list_number": "7",  "color": "#1E4DB7"},
     {"name": "Revolución Ciudadana",            "acronym": "RC",    "list_number": "5",  "color": "#1AAE52"},
     {"name": "Partido Social Cristiano",        "acronym": "PSC",   "list_number": "6",  "color": "#E40521"},
-    {"name": "Pachakutik",                      "acronym": "PK",    "list_number": "18", "color": "#F4B400"},
+    {"name": "Partido 1",                       "acronym": "PK",    "list_number": "1",  "color": "#F4B400"},
     {"name": "CREO",                            "acronym": "CREO",  "list_number": "21", "color": "#003594"},
     {"name": "Construye",                       "acronym": "CONST", "list_number": "25", "color": "#16A085"},
     {"name": "Izquierda Democrática",           "acronym": "ID",    "list_number": "12", "color": "#D81B60"},
@@ -135,7 +135,7 @@ CAMPAIGNS = [
     # Generales 2025 (cerradas)
     ("Ecuador con Esperanza",       "Elecciones Generales 2025", "Diego Espinoza Maldonado", "RC",
      "Asambleísta Nacional", date(2024, 11, 1), date(2025, 4, 13), "CLOSED"),
-    ("Pachakutik 2025 — Bloque",    "Elecciones Generales 2025", "Rocío Tankamash Jimpikit", "PK",
+    ("Partido 1 2025 — Bloque",     "Elecciones Generales 2025", "Rocío Tankamash Jimpikit", "PK",
      "Asambleísta por Morona Santiago", date(2024, 12, 1), date(2025, 4, 13), "CLOSED"),
 
     # Seccionales 2027 — en preparación / activas

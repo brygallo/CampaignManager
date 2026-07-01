@@ -8,8 +8,7 @@ in a more user-friendly form (e.g. ``True`` -> green ``Sí`` badge,
 import re
 
 from django import template
-from django.utils.html import escape
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 
 from core.templatetags.icons import lucide as _lucide
 
@@ -91,34 +90,43 @@ def list_cell(value):
     if isinstance(value, bool):
         css = "success" if value else "secondary"
         label = "Sí" if value else "No"
-        return mark_safe(
-            f'<span class="badge badge-light-{css} fw-semibold">{label}</span>'
+        return format_html(
+            '<span class="badge badge-light-{} fw-semibold">{}</span>',
+            css,
+            label,
         )
     if isinstance(value, str) and (value in _TRUTHY or value in _FALSY):
         truthy = value in _TRUTHY
         css = "success" if truthy else "secondary"
         label = "Sí" if truthy else "No"
-        return mark_safe(
-            f'<span class="badge badge-light-{css} fw-semibold">{label}</span>'
+        return format_html(
+            '<span class="badge badge-light-{} fw-semibold">{}</span>',
+            css,
+            label,
         )
     if isinstance(value, str) and _HEX_COLOR_RE.match(value):
-        safe_hex = escape(value)
-        return mark_safe(
-            f'<span class="cm-color-swatch">'
-            f'<span class="cm-color-swatch__dot" style="background:{safe_hex};"></span>'
-            f'{safe_hex}'
-            f'</span>'
+        return format_html(
+            '<span class="cm-color-swatch">'
+            '<span class="cm-color-swatch__dot" style="background:{};"></span>'
+            "{}</span>",
+            value,
+            value,
         )
     state = _state_badge(value)
     if state:
         css, icon = state
-        safe_label = escape(value)
         icon_html = (
-            f'<i data-lucide="{_lucide(icon)}" class="fs-7 me-1" aria-hidden="true"></i>'
+            format_html(
+                '<i data-lucide="{}" class="fs-7 me-1" aria-hidden="true"></i>',
+                _lucide(icon),
+            )
             if icon else ""
         )
-        return mark_safe(
-            f'<span class="badge badge-light-{css} fw-semibold d-inline-flex align-items-center">'
-            f'{icon_html}{safe_label}</span>'
+        return format_html(
+            '<span class="badge badge-light-{} fw-semibold d-inline-flex align-items-center">'
+            "{}{}</span>",
+            css,
+            icon_html,
+            value,
         )
     return value

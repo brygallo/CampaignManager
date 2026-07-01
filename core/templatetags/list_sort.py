@@ -1,5 +1,4 @@
 """Template helpers for the sortable list-column headers."""
-from urllib.parse import urlencode
 
 from django import template
 

@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core import signing
 from django.core.exceptions import PermissionDenied
@@ -43,8 +43,8 @@ class AutoResponseView(BaseAutoResponseView):
             raise Http404('No "field_id" provided.')
         try:
             key = signing.loads(field_id)
-        except BadSignature:
-            raise Http404('Invalid "field_id".')
+        except BadSignature as exc:
+            raise Http404('Invalid "field_id".') from exc
 
         cache_key = f"{select2_settings.SELECT2_CACHE_PREFIX}{key}"
         widget_dict = cache.get(cache_key)
@@ -62,7 +62,7 @@ class AutoResponseView(BaseAutoResponseView):
         return widget_cls(**widget_dict)
 
     def get_queryset(self):
-        for key, value in self.request.GET.items():
+        for key in self.request.GET:
             if key == "field_id":
                 continue
             key_tuple = key.split("-")
@@ -168,7 +168,7 @@ def home(request):
     from django.db.models.functions import TruncMonth
 
     from apps.campaigns.active import scope_queryset_to_active_campaign
-    from apps.campaigns.models import Campaign, Candidate, Election
+    from apps.campaigns.models import Candidate, Election
     from apps.campaigns.querysets import visible_campaign_choices
     from apps.campaigns.workflows import CampaignWorkflow
     from apps.territorial_ads.models import PhysicalAdvertisement
