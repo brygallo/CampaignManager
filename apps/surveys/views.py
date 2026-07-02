@@ -90,7 +90,7 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
                     "questions__options"
                 ),
                 "questions": survey.questions.filter(is_active=True).prefetch_related("options"),
-                "form": kwargs.get("form") or SurveyQuestionBuilderForm(),
+                "form": kwargs.get("form") or SurveyQuestionBuilderForm(survey=survey),
                 "question_modal_url": reverse(
                     "surveys:builder_question_modal", kwargs={"pk": survey.pk}
                 ),

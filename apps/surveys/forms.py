@@ -187,7 +187,11 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
 
     def __init__(self, *args, survey=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if survey is None and self.instance and self.instance.pk:
+            survey = self.instance.survey
         self.survey = survey
+        if self.survey is not None:
+            self.instance.survey = self.survey
         option_choices = []
         if self.instance and self.instance.pk and not self.is_bound:
             option_choices = list(
@@ -231,6 +235,8 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        if self.survey is not None:
+            self.instance.survey = self.survey
         qtype = cleaned_data.get("question_type")
         option_lines = cleaned_data.get("option_lines") or []
         if qtype in {
@@ -238,6 +244,9 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
             SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
         } and len([line for line in option_lines if str(line).strip()]) < 2:
             self.add_error("option_lines", "Agrega al menos 2 opciones.")
+        section = cleaned_data.get("section")
+        if section and self.survey is not None and section.survey_id != self.survey.pk:
+            self.add_error("section", "La sección debe pertenecer a la misma encuesta.")
         visibility_question = cleaned_data.get("visibility_question")
         if not visibility_question:
             cleaned_data["visibility_operator"] = SurveyQuestion.VisibilityOperator.ALWAYS
@@ -245,6 +254,15 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
             cleaned_data["visibility_value"] = ""
         elif cleaned_data.get("visibility_operator") == SurveyQuestion.VisibilityOperator.ALWAYS:
             cleaned_data["visibility_operator"] = SurveyQuestion.VisibilityOperator.EQUALS
+        if (
+            visibility_question
+            and self.survey is not None
+            and visibility_question.survey_id != self.survey.pk
+        ):
+            self.add_error(
+                "visibility_question",
+                "La pregunta condicionante debe pertenecer a la misma encuesta.",
+            )
         visibility_option = cleaned_data.get("visibility_option")
         if visibility_option and visibility_question and visibility_option.question_id != visibility_question.pk:
             self.add_error("visibility_option", "La opción debe pertenecer a la pregunta condicionante.")
