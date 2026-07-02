@@ -1,4 +1,5 @@
 import csv
+import json
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -23,6 +24,7 @@ from .models import (
     SurveyResponse,
     SurveySection,
 )
+from .services import update_survey_question_positions
 
 def user_can_apply_survey(user, survey):
     if not survey.requires_login:
@@ -338,6 +340,8 @@ class SurveyBuilderReorderView(LoginRequiredMixin, PermissionRequiredMixin, View
             queryset = survey.sections.filter(pk__in=ordered_ids)
         elif item_type == "questions":
             queryset = survey.questions.filter(pk__in=ordered_ids)
+        elif item_type == "questions_bulk":
+            return self._update_question_positions(request, survey)
         else:
             return JsonResponse({"error": "Tipo de ordenamiento no válido."}, status=400)
         objects = {str(obj.pk): obj for obj in queryset}
@@ -358,6 +362,36 @@ class SurveyBuilderReorderView(LoginRequiredMixin, PermissionRequiredMixin, View
                 changed.append("section")
             if changed:
                 obj.save(update_fields=changed)
+        return JsonResponse({"message": "Orden actualizado."})
+
+    def _update_question_positions(self, request, survey):
+        placements = []
+        for raw_placement in request.POST.getlist("placements[]"):
+            try:
+                placement = json.loads(raw_placement)
+            except (TypeError, ValueError):
+                return JsonResponse({"error": "Orden de preguntas no válido."}, status=400)
+            question_id = str(placement.get("question_id") or "")
+            section_id = str(placement.get("section_id") or "")
+            order = placement.get("order")
+            if not question_id:
+                continue
+            try:
+                order = int(order)
+            except (TypeError, ValueError):
+                return JsonResponse({"error": "Orden de preguntas no válido."}, status=400)
+            placements.append(
+                {
+                    "question_id": question_id,
+                    "section_id": section_id,
+                    "order": order,
+                }
+            )
+
+        try:
+            update_survey_question_positions(survey, placements)
+        except ValueError:
+            return JsonResponse({"error": "Sección destino no válida."}, status=400)
         return JsonResponse({"message": "Orden actualizado."})
 
 

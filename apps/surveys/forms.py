@@ -41,6 +41,12 @@ class SurveyForm(ModelForm):
             ),
         }
         widgets = {
+            "all_users_can_respond": forms.CheckboxInput(
+                attrs={
+                    "class": "form-check-input",
+                    "data-survey-all-users": "true",
+                }
+            ),
             "assigned_users": ModelSelect2MultipleWidget(
                 model="authentication.User",
                 search_fields=[
@@ -52,6 +58,7 @@ class SurveyForm(ModelForm):
                 attrs={
                     "data-minimum-input-length": 0,
                     "data-placeholder": "Usuarios que pueden responder",
+                    "data-survey-assigned-users": "true",
                 },
             ),
         }
@@ -60,6 +67,12 @@ class SurveyForm(ModelForm):
         slug = self.cleaned_data.get("slug")
         title = self.cleaned_data.get("title")
         return slug or slugify(title or "")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("all_users_can_respond"):
+            cleaned_data["assigned_users"] = self.fields["assigned_users"].queryset.none()
+        return cleaned_data
 
 
 class SurveyQuestionConditionSelect(forms.Select):

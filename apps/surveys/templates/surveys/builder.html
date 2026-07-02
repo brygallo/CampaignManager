@@ -149,7 +149,7 @@
                           <button type="button" class="btn btn-icon btn-sm btn-light" data-drag-handle title="Arrastrar pregunta">
                             <i data-lucide="grip-vertical" class="fs-4"></i>
                           </button>
-                          <span class="badge badge-light">{{ question.order }}</span>
+                          <span class="badge badge-light" data-question-order>{{ question.order }}</span>
                           <span class="badge badge-light-primary">{{ question.get_question_type_display }}</span>
                           {% if question.is_required %}
                             <span class="badge badge-light-danger">Obligatoria</span>
@@ -236,7 +236,7 @@
                           <button type="button" class="btn btn-icon btn-sm btn-light" data-drag-handle title="Arrastrar pregunta">
                             <i data-lucide="grip-vertical" class="fs-4"></i>
                           </button>
-                          <span class="badge badge-light">{{ question.order }}</span>
+                          <span class="badge badge-light" data-question-order>{{ question.order }}</span>
                           <span class="badge badge-light-primary">{{ question.get_question_type_display }}</span>
                           {% if question.is_required %}
                             <span class="badge badge-light-danger">Obligatoria</span>
@@ -365,7 +365,7 @@
 
 {% block extra_js %}
   {{ block.super }}
-  <script src="{% static 'assets/js/surveys/builder_sortable.js' %}?v=20260702-1"></script>
+  <script src="{% static 'assets/js/surveys/builder_sortable.js' %}?v=20260702-3"></script>
   <script src="{% static 'assets/js/surveys/builder_form.js' %}?v=20260702-1"></script>
   <script>
     (function () {

@@ -36,9 +36,36 @@
   };
 
   SurveyBuilderSortable.prototype.postAllQuestionOrders = function () {
-    var self = this;
+    var data = new FormData();
+    data.append("type", "questions_bulk");
     this.root.querySelectorAll('[data-sortable="questions"]').forEach(function (container) {
-      self.postOrder("questions", idsFrom(container, "questionId"), container.dataset.sectionTarget);
+      idsFrom(container, "questionId").forEach(function (questionId, index) {
+        data.append("placements[]", JSON.stringify({
+          question_id: questionId,
+          section_id: container.dataset.sectionTarget || "",
+          order: index + 1
+        }));
+      });
+    });
+    this.refreshQuestionOrderBadges();
+    fetch(this.reorderUrl, {
+      method: "POST",
+      body: data,
+      headers: {
+        "X-CSRFToken": csrfToken(),
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      credentials: "same-origin"
+    });
+  };
+
+  SurveyBuilderSortable.prototype.refreshQuestionOrderBadges = function () {
+    this.root.querySelectorAll('[data-sortable="questions"]').forEach(function (container) {
+      idsFrom(container, "questionId").forEach(function (questionId, index) {
+        var item = container.querySelector('[data-question-id="' + questionId + '"]');
+        var badge = item && item.querySelector("[data-question-order]");
+        if (badge) badge.textContent = String(index + 1);
+      });
     });
   };
 
@@ -71,6 +98,7 @@
   };
 
   SurveyBuilderSortable.prototype.init = function () {
+    this.refreshQuestionOrderBadges();
     if (this.enableJquerySortable()) return;
     var self = this;
     this.root.querySelectorAll("[data-drag-handle]").forEach(function (handle) {

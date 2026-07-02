@@ -57,7 +57,13 @@ class ElectoralVenueSite(BaseSite):
     list_mixins = (OrderingMixin, DropdownFilterMixin)
     title = "Recintos electorales"
     list_fields = ("name", "parish", "latitude", "longitude", "is_active:Activo")
-    detail_fields = ElectoralVenueForm.Meta.fieldsets
+    detail_fields = {
+        "Recinto electoral": (
+            ("parish",),
+            ("latitude", "longitude"),
+            ("name", "is_active"),
+        ),
+    }
     search_params = ("name__icontains", "parish__name__icontains")
     filter_fields = ("parish:Parroquia", "is_active:Activo")
     detail_maps = (("Ubicación GPS", "latitude", "longitude"),)

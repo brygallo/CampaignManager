@@ -181,6 +181,46 @@ def get_survey_publication_issues(survey):
     return issues
 
 
+@transaction.atomic
+def update_survey_question_positions(survey, placements):
+    question_ids = [str(placement["question_id"]) for placement in placements]
+    section_ids = {
+        str(placement["section_id"])
+        for placement in placements
+        if placement.get("section_id")
+    }
+    questions = {
+        str(question.pk): question
+        for question in survey.questions.filter(pk__in=question_ids)
+    }
+    sections = {
+        str(section.pk): section
+        for section in survey.sections.filter(pk__in=section_ids)
+    }
+    if len(sections) != len(section_ids):
+        raise ValueError("Sección destino no válida.")
+
+    updated = 0
+    for placement in placements:
+        question = questions.get(str(placement["question_id"]))
+        if question is None:
+            continue
+        section_id = str(placement.get("section_id") or "")
+        section = sections.get(section_id) if section_id else None
+        changed = []
+        if question.order != placement["order"]:
+            question.order = placement["order"]
+            changed.append("order")
+        target_section_id = section.pk if section else None
+        if question.section_id != target_section_id:
+            question.section = section
+            changed.append("section")
+        if changed:
+            question.save(update_fields=changed)
+            updated += 1
+    return updated
+
+
 def build_survey_results_payload(survey):
     questions = list(survey.questions.filter(is_active=True).prefetch_related("options"))
     responses = survey.responses.prefetch_related("answers__question", "answers__selected_options")

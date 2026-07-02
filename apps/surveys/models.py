@@ -87,19 +87,6 @@ class Survey(BaseModel):
     def get_results_url(self):
         return reverse("surveys:results", kwargs={"pk": self.pk})
 
-    @property
-    def assigned_users_display(self):
-        users = list(
-            self.assigned_users.order_by("first_name", "last_name", "username")[:10]
-        )
-        if not users:
-            return ""
-        labels = [user.get_full_name() or user.get_username() for user in users]
-        remaining = self.assigned_users.count() - len(users)
-        if remaining > 0:
-            labels.append(f"+{remaining} más")
-        return ", ".join(labels)
-
 
 class SurveySection(BaseModel):
     survey = models.ForeignKey(

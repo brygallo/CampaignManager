@@ -21,24 +21,6 @@ class SurveySite(BaseSite):
         "created_by",
         "created_date",
     )
-    detail_fields = {
-        "Encuesta": (
-            ("title", "slug"),
-            ("description",),
-            ("status",),
-            ("starts_at", "ends_at"),
-        ),
-        "Configuración": (
-            ("requires_login", "allow_multiple_responses"),
-            ("is_anonymous",),
-        ),
-        "Asignación": (
-            ("all_users_can_respond",),
-            ("assigned_users_display:Usuarios asignados",),
-        ),
-        "Confirmación": (
-            ("thank_you_message",),
-        ),
-    }
+    detail_fields = SurveyForm.Meta.fieldsets
     search_params = ("title__icontains", "description__icontains", "slug__icontains")
     filter_fields = ("status:Estado", "requires_login:Login", "created_date:Creación")
