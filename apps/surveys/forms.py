@@ -305,6 +305,7 @@ class DynamicSurveyResponseForm(forms.Form):
             .prefetch_related("options")
             .order_by("section__order", "order", "id")
         )
+        self.visible_question_count = len(self.questions)
         for question in self.questions:
             self.fields[self.field_name(question)] = self.build_field(question)
             if question.question_type == SurveyQuestion.QuestionType.LOCATION:
@@ -435,7 +436,9 @@ class DynamicSurveyResponseForm(forms.Form):
         groups = []
         current_key = object()
         current = None
+        question_number = 0
         for question in self.questions:
+            question_number += 1
             section = question.section
             key = section.pk if section else None
             if key != current_key:
@@ -448,6 +451,7 @@ class DynamicSurveyResponseForm(forms.Form):
             current["fields"].append(
                 {
                     "question": question,
+                    "question_number": question_number,
                     "field": self[self.field_name(question)],
                     "field_name": self.field_name(question),
                     "condition_question_name": (

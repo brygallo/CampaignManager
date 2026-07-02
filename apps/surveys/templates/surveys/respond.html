@@ -262,7 +262,7 @@
       <div class="d-flex flex-column gap-3">
         <div class="d-flex justify-content-between align-items-center gap-3 text-muted fs-7">
           <span><span class="badge badge-light-danger me-2">*</span>Pregunta obligatoria</span>
-          <span data-survey-progress-label>0 de {{ form.fields|length }}</span>
+          <span data-survey-progress-label>0 de {{ form.visible_question_count }}</span>
         </div>
         <div class="survey-progress" aria-hidden="true">
           <div class="survey-progress__bar" data-survey-progress-bar></div>
@@ -299,7 +299,7 @@
                data-condition-expected="{{ item.condition_expected }}"
              {% endif %}>
           <div class="d-flex gap-3 align-items-start mb-3">
-            <span class="survey-question-number">{{ forloop.counter }}</span>
+            <span class="survey-question-number">{{ item.question_number }}</span>
             <label class="form-label fw-semibold fs-5 text-gray-900 mb-0" for="{{ item.field.id_for_label }}">
               {{ item.question.text }}
               {% if item.field.field.required %}<span class="survey-required">*</span>{% endif %}

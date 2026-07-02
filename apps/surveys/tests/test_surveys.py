@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth.models import Permission
+from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
@@ -14,9 +15,12 @@ from apps.surveys.models import (
     SurveyOption,
     SurveyQuestion,
     SurveyResponse,
+    SurveySection,
 )
 from apps.surveys.views import (
     SurveyApplyListView,
+    SurveyBuilderView,
+    SurveyBuilderQuestionInsoleView,
     SurveyRespondView,
     SurveyResultsView,
     user_can_apply_survey,
@@ -76,6 +80,28 @@ class DynamicSurveyResponseFormTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn(f"question_{self.follow_up.pk}", form.errors)
+
+    def test_grouped_fields_use_global_question_numbers(self):
+        section = SurveySection.objects.create(survey=self.survey, title="Datos")
+        self.parent.section = section
+        self.parent.save(update_fields=["section"])
+        self.follow_up.section = section
+        self.follow_up.save(update_fields=["section"])
+        SurveyQuestion.objects.create(
+            survey=self.survey,
+            text="Observacion",
+            question_type=SurveyQuestion.QuestionType.SHORT_TEXT,
+            order=3,
+        )
+
+        form = DynamicSurveyResponseForm(survey=self.survey)
+        numbers = [
+            item["question_number"]
+            for group in form.grouped_bound_fields()
+            for item in group["fields"]
+        ]
+
+        self.assertEqual(numbers, [1, 2, 3])
 
 
 class SurveyRespondViewTests(TestCase):
@@ -229,6 +255,48 @@ class SurveyFormPolicyTests(TestCase):
         self.assertEqual(list(self.survey.assigned_users.all()), [])
 
 
+class SurveyBuilderQuestionInsoleViewTests(TestCase):
+    def test_section_query_param_initializes_question_section(self):
+        survey = Survey.objects.create(
+            title="Constructor",
+            slug="constructor",
+            status=Survey.Status.DRAFT,
+        )
+        section = survey.sections.create(title="Territorio")
+        view = SurveyBuilderQuestionInsoleView()
+        view.request = RequestFactory().get(
+            reverse("surveys:builder_question_modal", kwargs={"pk": survey.pk}),
+            data={"section": section.pk},
+        )
+        view.kwargs = {"pk": survey.pk}
+
+        kwargs = view.get_form_kwargs()
+
+        self.assertEqual(kwargs["initial"], {"section": str(section.pk)})
+
+
+class SurveyBuilderPermissionTests(TestCase):
+    def test_change_survey_permission_does_not_allow_publish(self):
+        survey = Survey.objects.create(
+            title="Borrador",
+            slug="borrador",
+            status=Survey.Status.DRAFT,
+        )
+        user = UserFactory()
+        user.user_permissions.add(Permission.objects.get(codename="change_survey"))
+        request = RequestFactory().post(
+            reverse("surveys:builder", kwargs={"pk": survey.pk}),
+            data={"action": "publish_survey"},
+        )
+        request.user = user
+
+        with self.assertRaises(PermissionDenied):
+            SurveyBuilderView.as_view()(request, pk=survey.pk)
+        survey.refresh_from_db()
+
+        self.assertEqual(survey.status, Survey.Status.DRAFT)
+
+
 class SurveyResultsViewTests(TestCase):
     def test_choice_summaries_include_scale_answers(self):
         survey = Survey.objects.create(
@@ -246,4 +314,4 @@ class SurveyResultsViewTests(TestCase):
 
         summaries = SurveyResultsView()._choice_summaries([question])
 
-        self.assertEqual(summaries[0]["rows"], [{"label": "4", "count": 1}])
+        self.assertEqual(summaries[0]["rows"], [{"label": "4", "count": 1, "percent": 100}])

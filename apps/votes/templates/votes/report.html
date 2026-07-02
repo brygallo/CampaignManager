@@ -21,9 +21,17 @@
         <div class="text-muted fs-7">Filtra por dignidad, circunscripción, parroquia, recinto o mesa.</div>
       </div>
       <div class="card-toolbar">
-        <a href="{% url 'votes:export_csv' %}" class="btn btn-sm btn-light-primary">
-          <i data-lucide="download" class="fs-4"></i>Exportar
+        <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'votes:export' 'xlsx' %}" class="btn btn-sm btn-success">
+          <i data-lucide="file-spreadsheet" class="fs-4"></i>Excel
         </a>
+        <a href="{% url 'votes:export_csv' %}" class="btn btn-sm btn-light-primary">
+          <i data-lucide="download" class="fs-4"></i>CSV
+        </a>
+        <a href="{% url 'votes:export' 'pdf' %}" class="btn btn-sm btn-light-primary">
+          <i data-lucide="file-text" class="fs-4"></i>PDF
+        </a>
+        </div>
       </div>
     </div>
     <div class="card-body">

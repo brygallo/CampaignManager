@@ -1,21 +1,24 @@
-import csv
 import json
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Count, Max, Q, Sum
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.core.exceptions import PermissionDenied
+from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import ListView, TemplateView, View
+from django.utils import timezone
 
 from apps.insoles.views import InstanceBaseFormView
+from apps.reporting.views import ReportExportView
 
 from .forms import (
     DynamicSurveyResponseForm,
     SurveyQuestionBuilderForm,
     SurveySectionBuilderForm,
 )
+from .reports import filtered_survey_responses, survey_responses_report
 from .models import (
     Survey,
     SurveyAnswer,
@@ -90,6 +93,10 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
                     "questions__options"
                 ),
                 "questions": survey.questions.filter(is_active=True).prefetch_related("options"),
+                "unsectioned_questions": survey.questions.filter(
+                    is_active=True,
+                    section__isnull=True,
+                ).prefetch_related("options"),
                 "form": kwargs.get("form") or SurveyQuestionBuilderForm(survey=survey),
                 "question_modal_url": reverse(
                     "surveys:builder_question_modal", kwargs={"pk": survey.pk}
@@ -191,6 +198,8 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
         return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))
 
     def _change_status(self, status, message):
+        if not self.request.user.has_perm("surveys.publish_survey"):
+            raise PermissionDenied
         self.survey.status = status
         self.survey.save(update_fields=["status"])
         messages.success(self.request, message)
@@ -212,6 +221,8 @@ class SurveyBuilderQuestionInsoleView(LoginRequiredMixin, InstanceBaseFormView):
         kwargs = {}
         if self.request.POST or self.request.FILES:
             kwargs.update({"data": self.request.POST, "files": self.request.FILES})
+        elif self.request.GET.get("section"):
+            kwargs["initial"] = {"section": self.request.GET.get("section")}
         kwargs["survey"] = self.get_object()
         return kwargs
 
@@ -506,22 +517,52 @@ class SurveyResultsView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         survey = self.get_survey()
-        questions = list(survey.questions.filter(is_active=True).prefetch_related("options"))
-        responses = survey.responses.prefetch_related("answers__question", "answers__selected_options")
+        questions = list(
+            survey.questions.filter(is_active=True)
+            .select_related("section")
+            .prefetch_related("options")
+            .order_by("section__order", "order", "id")
+        )
+        responses = filtered_survey_responses(survey, self.request.GET)
+        total_responses = responses.count()
+        response_ids = list(responses.values_list("pk", flat=True))
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        last_7_days = now - timezone.timedelta(days=7)
         context.update(
             {
                 "survey": survey,
                 "questions": questions,
                 "responses": responses[:100],
-                "total_responses": responses.count(),
+                "total_responses": total_responses,
+                "responses_today": responses.filter(submitted_at__gte=today_start).count(),
+                "responses_last_7_days": responses.filter(submitted_at__gte=last_7_days).count(),
+                "latest_response": responses.first(),
+                "filters": {
+                    "q": self.request.GET.get("q", ""),
+                    "date_from": self.request.GET.get("date_from", ""),
+                    "date_to": self.request.GET.get("date_to", ""),
+                },
                 "page_title": f"Resultados: {survey.title}",
-                "choice_summaries": self._choice_summaries(questions),
+                "choice_summaries": self._choice_summaries(
+                    questions,
+                    total_responses=total_responses,
+                    response_ids=response_ids,
+                ),
+                "question_summaries": self._question_summaries(
+                    questions,
+                    total_responses=total_responses,
+                    response_ids=response_ids,
+                ),
             }
         )
         return context
 
-    def _choice_summaries(self, questions):
+    def _choice_summaries(self, questions, total_responses=None, response_ids=None):
         summaries = []
+        answer_filter = Q()
+        if response_ids is not None:
+            answer_filter = Q(answers__response_id__in=response_ids)
         for question in questions:
             if question.question_type not in {
                 SurveyQuestion.QuestionType.SINGLE_CHOICE,
@@ -533,41 +574,78 @@ class SurveyResultsView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
                 continue
             if question.uses_options:
                 rows = (
-                    question.options.annotate(count=Count("answers"))
+                    question.options.annotate(count=Count("answers", filter=answer_filter))
                     .values("label", "count")
                     .order_by("order", "label")
                 )
+                rows = list(rows)
             else:
-                rows = (
-                    SurveyAnswer.objects.filter(question=question)
-                    .values("value_text")
-                    .annotate(count=Count("id"))
-                    .order_by("value_text")
-                )
+                answers = SurveyAnswer.objects.filter(question=question)
+                if response_ids is not None:
+                    answers = answers.filter(response_id__in=response_ids)
+                rows = answers.values("value_text").annotate(count=Count("id")).order_by("value_text")
                 rows = [{"label": row["value_text"] or "Sin respuesta", "count": row["count"]} for row in rows]
-            summaries.append({"question": question, "rows": rows})
+            denominator = total_responses if total_responses is not None else sum(row["count"] for row in rows)
+            for row in rows:
+                row["percent"] = round((row["count"] / denominator) * 100) if denominator else 0
+            summaries.append({"question": question, "rows": rows, "answered": sum(row["count"] for row in rows)})
+        return summaries
+
+    def _question_summaries(self, questions, total_responses, response_ids=None):
+        summaries = []
+        for question in questions:
+            answers = SurveyAnswer.objects.filter(question=question)
+            if response_ids is not None:
+                answers = answers.filter(response_id__in=response_ids)
+            answered = answers.exclude(
+                value_text="",
+                value_number__isnull=True,
+                value_date__isnull=True,
+                value_time__isnull=True,
+                value_file="",
+                latitude__isnull=True,
+                longitude__isnull=True,
+                selected_options__isnull=True,
+            ).distinct().count()
+            summary = {
+                "question": question,
+                "answered": answered,
+                "missing": max(total_responses - answered, 0),
+                "completion_percent": round((answered / total_responses) * 100) if total_responses else 0,
+            }
+            if question.question_type == SurveyQuestion.QuestionType.NUMBER:
+                stats = answers.aggregate(
+                    avg=Avg("value_number"),
+                    min=Min("value_number"),
+                    max=Max("value_number"),
+                )
+                summary["number_stats"] = stats
+            elif question.question_type in {
+                SurveyQuestion.QuestionType.SHORT_TEXT,
+                SurveyQuestion.QuestionType.LONG_TEXT,
+                SurveyQuestion.QuestionType.EMAIL,
+                SurveyQuestion.QuestionType.PHONE,
+            }:
+                summary["samples"] = list(
+                    answers.exclude(value_text="")
+                    .order_by("-response__submitted_at")
+                    .values_list("value_text", flat=True)[:3]
+                )
+            summaries.append(summary)
         return summaries
 
 
-class SurveyExportCsvView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAccessMixin, View):
+class SurveyExportView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAccessMixin, ReportExportView):
     permission_required = "surveys.export_survey_results"
+    file_format = "csv"
 
-    def get(self, request, *args, **kwargs):
+    def get_report(self):
         survey = self.get_survey()
-        questions = list(survey.questions.filter(is_active=True).order_by("section__order", "order", "id"))
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = f'attachment; filename="encuesta-{survey.pk}.csv"'
-        response.write("\ufeff")
-        writer = csv.writer(response)
-        writer.writerow(["ID", "Fecha", "Usuario"] + [question.text for question in questions])
-        for survey_response in survey.responses.prefetch_related("answers__question", "answers__selected_options"):
-            answers = {answer.question_id: answer.display_value for answer in survey_response.answers.all()}
-            writer.writerow(
-                [
-                    survey_response.pk,
-                    survey_response.submitted_at,
-                    survey_response.respondent or "",
-                    *[answers.get(question.pk, "") for question in questions],
-                ]
-            )
-        return response
+        return survey_responses_report(
+            survey,
+            responses=filtered_survey_responses(survey, self.request.GET),
+        )
+
+
+class SurveyExportCsvView(SurveyExportView):
+    file_format = "csv"

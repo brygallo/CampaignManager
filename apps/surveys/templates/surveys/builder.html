@@ -42,35 +42,25 @@
 {% endblock %}
 
 {% block breadcrumb_actions %}
-  {% if survey.status != "published" %}
-    <form method="post" class="d-inline">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="publish_survey">
-      <button type="submit" class="btn btn-sm btn-success">
-        <i data-lucide="radio" class="fs-4"></i> Publicar
-      </button>
-    </form>
-  {% else %}
-    <form method="post" class="d-inline">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="close_survey">
-      <button type="submit" class="btn btn-sm btn-light-danger">
-        <i data-lucide="lock" class="fs-4"></i> Cerrar
-      </button>
-    </form>
+  {% if perms.surveys.publish_survey %}
+    {% if survey.status != "published" %}
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="publish_survey">
+        <button type="submit" class="btn btn-sm btn-success">
+          <i data-lucide="radio" class="fs-4"></i> Publicar
+        </button>
+      </form>
+    {% else %}
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="close_survey">
+        <button type="submit" class="btn btn-sm btn-light-danger">
+          <i data-lucide="lock" class="fs-4"></i> Cerrar
+        </button>
+      </form>
+    {% endif %}
   {% endif %}
-  <button type="button"
-          class="btn btn-sm btn-primary insoles-action"
-          data-url="{{ question_modal_url }}"
-          data-title="Agregar pregunta">
-    <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
-  </button>
-  <button type="button"
-          class="btn btn-sm btn-light-primary insoles-action"
-          data-url="{{ section_modal_url }}"
-          data-title="Agregar sección">
-    <i data-lucide="panel-top" class="fs-4"></i> Agregar sección
-  </button>
   <a href="{{ survey.get_public_url }}" class="btn btn-sm btn-light-primary">
     <i data-lucide="eye" class="fs-4"></i> Vista previa
   </a>
@@ -114,8 +104,8 @@
       {% endif %}
 
       <div class="d-flex flex-column gap-4" data-sortable="sections">
-      {% for section in sections %}
-        <div class="card" data-section-id="{{ section.pk }}" data-sort-item>
+        {% for section in sections %}
+          <div class="card" data-section-id="{{ section.pk }}" data-sort-item>
           <div class="card-header min-h-60px">
             <div class="card-title d-flex align-items-center gap-3">
               <button type="button" class="btn btn-icon btn-sm btn-light" data-drag-handle title="Arrastrar sección">
@@ -194,7 +184,8 @@
                             <i data-lucide="copy" class="fs-4"></i>
                           </button>
                         </form>
-                        <form method="post">
+                        <form method="post"
+                              onsubmit="return window.confirm('¿Retirar esta pregunta del formulario?');">
                           {% csrf_token %}
                           <input type="hidden" name="action" value="delete_question">
                           <input type="hidden" name="question_id" value="{{ question.pk }}">
@@ -210,12 +201,28 @@
                 <div class="text-muted fs-7">Esta sección no tiene preguntas.</div>
               {% endfor %}
             </div>
+            <div class="d-flex justify-content-center pt-3">
+              <button type="button"
+                      class="btn btn-sm btn-light-primary insoles-action"
+                      data-url="{{ question_modal_url }}?section={{ section.pk }}"
+                      data-title="Agregar pregunta en {{ section.title }}">
+                <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
+              </button>
+            </div>
           </div>
+          </div>
+        {% endfor %}
+        <div class="d-flex justify-content-center pt-2">
+          <button type="button"
+                  class="btn btn-sm btn-light-primary insoles-action"
+                  data-url="{{ section_modal_url }}"
+                  data-title="Agregar sección">
+            <i data-lucide="plus" class="fs-4"></i> Agregar sección
+          </button>
         </div>
-      {% endfor %}
       </div>
 
-      {% if questions %}
+      {% if unsectioned_questions %}
         <div class="card">
           <div class="card-header min-h-60px">
             <div class="card-title d-flex align-items-center gap-3">
@@ -227,8 +234,7 @@
             <div class="d-flex flex-column gap-3 survey-builder-dropzone"
                  data-sortable="questions"
                  data-section-target="">
-              {% for question in questions %}
-                {% if not question.section_id %}
+              {% for question in unsectioned_questions %}
                   <div class="border rounded p-4 bg-body survey-builder-item" data-question-id="{{ question.pk }}" data-sort-item>
                     <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-3">
                       <div class="min-w-0">
@@ -281,7 +287,8 @@
                             <i data-lucide="copy" class="fs-4"></i>
                           </button>
                         </form>
-                        <form method="post">
+                        <form method="post"
+                              onsubmit="return window.confirm('¿Retirar esta pregunta del formulario?');">
                           {% csrf_token %}
                           <input type="hidden" name="action" value="delete_question">
                           <input type="hidden" name="question_id" value="{{ question.pk }}">
@@ -292,8 +299,15 @@
                       </div>
                     </div>
                   </div>
-                {% endif %}
               {% endfor %}
+            </div>
+            <div class="d-flex justify-content-center pt-3">
+              <button type="button"
+                      class="btn btn-sm btn-light-primary insoles-action"
+                      data-url="{{ question_modal_url }}"
+                      data-title="Agregar pregunta sin sección">
+                <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
+              </button>
             </div>
           </div>
         </div>
@@ -304,7 +318,21 @@
           <div class="card-body text-center py-12">
             <i data-lucide="clipboard-list" class="fs-3x text-muted mb-4"></i>
             <div class="fw-bold fs-4 mb-1">Todavía no hay preguntas</div>
-            <div class="text-muted">Agrega secciones y preguntas desde el panel lateral.</div>
+            <div class="text-muted mb-5">Crea una sección o agrega una pregunta sin sección.</div>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+              <button type="button"
+                      class="btn btn-sm btn-light-primary insoles-action"
+                      data-url="{{ section_modal_url }}"
+                      data-title="Agregar sección">
+                <i data-lucide="plus" class="fs-4"></i> Agregar sección
+              </button>
+              <button type="button"
+                      class="btn btn-sm btn-primary insoles-action"
+                      data-url="{{ question_modal_url }}"
+                      data-title="Agregar pregunta">
+                <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
+              </button>
+            </div>
           </div>
         </div>
       {% endif %}
@@ -318,18 +346,6 @@
       </div>
       <div class="card-body">
         <div class="d-flex flex-column gap-4">
-          <button type="button"
-                  class="btn btn-primary w-100 insoles-action"
-                  data-url="{{ question_modal_url }}"
-                  data-title="Agregar pregunta">
-            <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
-          </button>
-          <button type="button"
-                  class="btn btn-light-primary w-100 insoles-action"
-                  data-url="{{ section_modal_url }}"
-                  data-title="Agregar sección">
-            <i data-lucide="panel-top" class="fs-4"></i> Agregar sección
-          </button>
           <a href="{{ survey.get_public_url }}" class="btn btn-light-primary w-100">
             <i data-lucide="eye" class="fs-4"></i> Probar formulario
           </a>

@@ -1,11 +1,11 @@
-import csv
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.views.generic import TemplateView, View
+
+from apps.reporting.views import ReportExportView
 
 from .forms import (
     ElectoralReportFilterForm,
@@ -22,6 +22,7 @@ from .models import (
     ElectoralTableAssignment,
     ElectoralVenue,
 )
+from .reports import electoral_results_report
 
 
 def build_electoral_report_payload(filters=None):
@@ -372,26 +373,12 @@ class ElectoralMapDataView(LoginRequiredMixin, View):
         return JsonResponse({"points": points, "count": len(points)})
 
 
-class ElectoralExportCsvView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = 'attachment; filename="resultados-electorales.csv"'
-        response.write("\ufeff")
-        writer = csv.writer(response)
-        writer.writerow(["Parroquia", "Recinto", "Mesa", "Dignidad", "Circunscripción", "Lista", "Candidato", "Votos"])
-        for line in ElectoralResultLine.objects.select_related(
-            "report__parish", "report__venue", "report__table", "report__dignity", "report__district"
-        ):
-            writer.writerow(
-                [
-                    line.report.parish.name,
-                    line.report.venue.name,
-                    line.report.table.number,
-                    line.report.dignity.name,
-                    line.report.district.name,
-                    line.list_code,
-                    line.candidate_name,
-                    line.votes,
-                ]
-            )
-        return response
+class ElectoralExportView(LoginRequiredMixin, ReportExportView):
+    file_format = "csv"
+
+    def get_report(self):
+        return electoral_results_report()
+
+
+class ElectoralExportCsvView(ElectoralExportView):
+    file_format = "csv"

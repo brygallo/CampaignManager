@@ -36,4 +36,9 @@ urlpatterns = [
     path("encuestas/<slug:slug>/gracias/", views.SurveyThanksView.as_view(), name="thanks"),
     path("encuestas/<int:pk>/resultados/", views.SurveyResultsView.as_view(), name="results"),
     path("encuestas/<int:pk>/exportar.csv", views.SurveyExportCsvView.as_view(), name="export_csv"),
+    path(
+        "encuestas/<int:pk>/exportar.<str:file_format>",
+        views.SurveyExportView.as_view(),
+        name="export",
+    ),
 ]

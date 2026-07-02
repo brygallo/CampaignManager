@@ -83,6 +83,7 @@ TENANT_APPS = [
     "mathfilters",
     "notifications",
     "apps.authentication",
+    "apps.reporting",
     "apps.insoles",
     "apps.workflows",
     "apps.campaigns",
