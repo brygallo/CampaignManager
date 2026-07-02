@@ -37,18 +37,74 @@
     }
   }
 
+  function clearFieldErrors(modal) {
+    modal.querySelectorAll(".is-invalid").forEach(function (field) {
+      field.classList.remove("is-invalid");
+    });
+    modal.querySelectorAll(".invalid-feedback[data-insoles-error]").forEach(function (box) {
+      box.remove();
+    });
+    var alert = modal.querySelector("[data-insoles-error-summary]");
+    if (alert) alert.remove();
+  }
+
+  function errorText(value) {
+    if (!value) return "";
+    if (!Array.isArray(value)) value = [value];
+    return value.map(function (error) {
+      if (typeof error === "string") return error;
+      if (error && typeof error.message === "string") return error.message;
+      return String(error || "");
+    }).filter(Boolean).join(" · ");
+  }
+
+  function showErrorSummary(modal, messages) {
+    messages = (messages || []).filter(Boolean);
+    if (!messages.length) return;
+    var body = modal.querySelector(".modal-body");
+    if (!body) return;
+    var alert = document.createElement("div");
+    alert.className = "alert alert-danger d-flex align-items-start p-4 mb-5";
+    alert.setAttribute("data-insoles-error-summary", "true");
+    alert.setAttribute("role", "alert");
+    alert.innerHTML = '<i data-lucide="shield-x" class="fs-2 text-danger me-3"></i><div></div>';
+    var content = alert.querySelector("div");
+    messages.forEach(function (message) {
+      var line = document.createElement("div");
+      line.textContent = message;
+      content.appendChild(line);
+    });
+    body.prepend(alert);
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  }
+
   function showFieldErrors(modal, errors) {
+    clearFieldErrors(modal);
+    var summary = [];
     Object.keys(errors || {}).forEach(function (name) {
+      var text = errorText(errors[name]);
+      if (!text) return;
+      if (name === "__all__") {
+        summary.push(text);
+        return;
+      }
       var input = modal.querySelector("#id_" + name) ||
         modal.querySelector('[name="' + name + '"]');
-      if (!input) return;
+      if (!input) {
+        summary.push(text);
+        return;
+      }
       input.classList.add("is-invalid");
       var row = input.closest(".fv-row") || input.parentElement;
-      var text = (errors[name] || []).join(" · ");
+      if (!row || row.classList.contains("d-none")) {
+        summary.push(text);
+        return;
+      }
       var box = row && row.querySelector(".invalid-feedback");
       if (!box && row) {
         box = document.createElement("div");
         box.className = "invalid-feedback d-block";
+        box.setAttribute("data-insoles-error", "true");
         box.setAttribute("role", "alert");
         row.appendChild(box);
       }
@@ -57,6 +113,7 @@
         box.textContent = text; // textContent: no HTML injection
       }
     });
+    showErrorSummary(modal, summary);
   }
 
   function buildModal(data) {
@@ -109,6 +166,7 @@
     if (!modal || !modal.contains(event.target)) return;
     event.preventDefault();
     var form = event.target;
+    clearFieldErrors(modal);
     var fd = new FormData(form);
     fetch(form.action, {
       method: "POST",

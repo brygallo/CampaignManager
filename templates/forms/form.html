@@ -1,5 +1,9 @@
 {% load model_meta %}
 
+{% if form.conditional_policies_json %}
+  <script type="application/json" data-form-conditional-policies>{{ form.conditional_policies_json|safe }}</script>
+{% endif %}
+
 {% if form.non_field_errors %}
   <div class="alert alert-danger d-flex align-items-center p-5 mb-7">
     <i data-lucide="shield-x" class="fs-2hx text-danger me-4"></i>
@@ -20,9 +24,9 @@
   <div class="row g-5">
     {% for field in form.visible_fields %}
       {% if field|is_wide_form_widget %}
-        <div class="col-12">{% include "forms/formgroup.html" with field=field %}</div>
+        <div class="col-12" data-form-field-container="{{ field.name }}">{% include "forms/formgroup.html" with field=field %}</div>
       {% else %}
-        <div class="col-md-6">{% include "forms/formgroup.html" with field=field %}</div>
+        <div class="col-md-6" data-form-field-container="{{ field.name }}">{% include "forms/formgroup.html" with field=field %}</div>
       {% endif %}
     {% endfor %}
   </div>

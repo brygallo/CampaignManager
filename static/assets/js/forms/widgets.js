@@ -62,6 +62,10 @@
       window.initSelect2(scope);
     }
 
+    if (window.initConditionalFields) {
+      window.initConditionalFields(scope);
+    }
+
     if (window.KTApp && typeof window.KTApp.init === "function") {
       window.KTApp.init();
     }

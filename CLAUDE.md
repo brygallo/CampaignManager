@@ -54,3 +54,20 @@ Ejemplo de referencia: `PhysicalAdvertisement` (padre) ↔ `PhysicalAdvertisemen
 
 - Todo el texto a nivel de código (comentarios, docstrings, logs) en **inglés**.
   Español solo para strings visibles al usuario en la UI.
+
+## Form Policies
+
+- Para ocultar, deshabilitar o limpiar campos según usuario/permiso/creador,
+  estado del objeto o valor de otro campo, usar `core.form_policies`.
+- Declarar reglas en `BaseSite.form_policies` cuando el formulario pertenece al
+  superadmin. Usar `Form.Meta.form_policies` solo para formularios standalone o
+  acciones que no pasan por un `Site`.
+- `FieldPolicy` cubre permisos/backend: `HasPerm`, `IsCreator`, `StateIs`,
+  `StateIn`, etc. Usar `ReadOnlyPolicy` cuando la regla se entiende mejor como
+  "visible pero no editable". `ConditionalPolicy` cubre UI dinámica por valores
+  del mismo formulario: `show`, `hide`, `disable`, `clear`. Usar
+  `RequiredPolicy` para campos obligatorios solo bajo una condición.
+- No crear JS específico por app para casos genéricos de visibilidad. El JS
+  global vive en `static/assets/js/forms/conditional_fields.js` y funciona en
+  formularios normales e insoles.
+- Ver ejemplos y detalles en `DESIGN.md`.

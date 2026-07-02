@@ -17,6 +17,8 @@ from django.forms import modelform_factory
 from superadmin import site
 from superadmin.views.detail import DetailMixin
 
+from core.form_policies import apply_declared_form_policies
+
 
 class RenderDetailMixin(DetailMixin):
     def __init__(self, instance, site_instance, model):
@@ -24,6 +26,36 @@ class RenderDetailMixin(DetailMixin):
         self.site = site_instance
         self.model = model
         super().__init__()
+
+
+def _error_messages(errors):
+    messages = []
+    for error in errors:
+        if isinstance(error, dict):
+            message = error.get("message", "")
+        else:
+            message = str(error)
+        if message:
+            messages.append(message)
+    return messages
+
+
+def serialize_form_errors(form):
+    return {
+        field: _error_messages(errors)
+        for field, errors in form.errors.get_json_data().items()
+    }
+
+
+def serialize_formset_errors(formset):
+    errors = {}
+    for form in formset:
+        for field, field_errors in form.errors.get_json_data().items():
+            errors[f"{form.prefix}-{field}"] = _error_messages(field_errors)
+    non_form_errors = _error_messages(formset.non_form_errors().get_json_data())
+    if non_form_errors:
+        errors["__all__"] = non_form_errors
+    return errors
 
 
 class _InsolesPermMixin(LoginRequiredMixin):
@@ -55,12 +87,19 @@ class RenderFormView(_InsolesPermMixin, View):
 
     http_method_names = ["get", "post"]
 
+    def get_model_site(self, **kwargs):
+        app_name = kwargs.get("app")
+        model_name = kwargs.get("model")
+        app = apps.get_app_config(app_name)
+        model = app.get_model(model_name)
+        return site._registry[model]
+
     def get_form_class(self, **kwargs):
         app_name = kwargs.get("app")
         model_name = kwargs.get("model")
         app = apps.get_app_config(app_name)
         model = app.get_model(model_name)
-        model_site = site._registry[model]
+        model_site = self.get_model_site(**kwargs)
 
         if hasattr(model_site, "insoles_form"):
             form_class = model_site.insoles_form
@@ -74,8 +113,13 @@ class RenderFormView(_InsolesPermMixin, View):
         app_name = kwargs.get("app")
         model_name = kwargs.get("model")
         form_class = self.get_form_class(**kwargs)
+        model_site = self.get_model_site(**kwargs)
         context = {
-            "form": form_class(),
+            "form": apply_declared_form_policies(
+                form_class(),
+                request=request,
+                site=model_site,
+            ),
         }
         create_url = reverse_lazy("insoles_form", args=[app_name, model_name])
         template = render_to_string("insoles/form.html", context=context)
@@ -85,7 +129,12 @@ class RenderFormView(_InsolesPermMixin, View):
 
     def post(self, request, *args, **kwargs):
         form_class = self.get_form_class(**kwargs)
-        form = form_class(self.request.POST, self.request.FILES)
+        model_site = self.get_model_site(**kwargs)
+        form = apply_declared_form_policies(
+            form_class(self.request.POST, self.request.FILES),
+            request=request,
+            site=model_site,
+        )
 
         if form.is_valid():
             instance = form.save()
@@ -95,8 +144,7 @@ class RenderFormView(_InsolesPermMixin, View):
             }
             return JsonResponse(response_data, status=200)
         else:
-            errors = form.errors.as_json()
-            return JsonResponse({"errors": errors}, status=400)
+            return JsonResponse({"errors": serialize_form_errors(form)}, status=400)
 
 
 class RenderFieldView(RenderFormView):
@@ -108,7 +156,13 @@ class RenderFieldView(RenderFormView):
     def get(self, request, *args, **kwargs):
         field_name = kwargs.get("field")
         form_class = self.get_form_class(**kwargs)
-        form = form_class()
+        form = apply_declared_form_policies(
+            form_class(),
+            request=request,
+            site=self.get_model_site(**kwargs),
+        )
+        if field_name not in form.fields:
+            return JsonResponse({"error": "Campo no disponible"}, status=404)
         context = {"field": form[field_name]}
         template = render_to_string("insoles/field.html", context=context)
         res = {"template": template}
@@ -197,8 +251,14 @@ class RenderEditView(_InsolesPermMixin, View):
         instance = self.get_instance(**kwargs)
         if instance is None:
             return JsonResponse({"error": "Registro no encontrado"}, status=404)
+        model_site = site._registry[instance.__class__]
         context = {
-            "form": form_class(instance=instance),
+            "form": apply_declared_form_policies(
+                form_class(instance=instance),
+                request=request,
+                obj=instance,
+                site=model_site,
+            ),
         }
         create_url = reverse_lazy("insoles_form", args=[app_name, model_name])
         template = render_to_string("insoles/form.html", context=context)
@@ -211,9 +271,15 @@ class RenderEditView(_InsolesPermMixin, View):
         instance = self.get_instance(**kwargs)
         if instance is None:
             return JsonResponse({"error": "Registro no encontrado"}, status=404)
-        form = form_class(self.request.POST, self.request.FILES, instance=instance)
+        model_site = site._registry[instance.__class__]
+        form = apply_declared_form_policies(
+            form_class(self.request.POST, self.request.FILES, instance=instance),
+            request=request,
+            obj=instance,
+            site=model_site,
+        )
         if not form.is_valid():
-            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+            return JsonResponse({"errors": serialize_form_errors(form)}, status=400)
         instance = form.save()
         return JsonResponse({"id": instance.id, "text": str(instance)}, status=200)
 
@@ -252,7 +318,12 @@ class InstanceBaseFormView(View):
     def get_form(self):
         if not self.form_class:
             raise ImproperlyConfigured("form_class is not configured")
-        return self.form_class(**self.get_form_kwargs())
+        form = self.form_class(**self.get_form_kwargs())
+        return apply_declared_form_policies(
+            form,
+            request=self.request,
+            obj=getattr(form, "instance", None),
+        )
 
     def get_context(self, request, *args, **kwargs):
         ctx = {"form": self.get_form()}
@@ -286,7 +357,7 @@ class InstanceBaseFormView(View):
             return self.error(str(err))
 
     def form_invalid(self, form):
-        errors = {key: value for key, value in form.errors.items()}
+        errors = serialize_form_errors(form)
         message = "Formulario invalido. Algunos campos en el formulario son requeridos"
         ctx = {"error": message, "errors": errors}
         return JsonResponse(ctx, status=400)
@@ -352,12 +423,7 @@ class InstanceBaseFormsetView(InstanceBaseFormView):
             return self.error(str(err))
 
     def form_invalid(self, formset):
-        errors = {
-            f"{form.prefix}-{field}": value
-            for form in formset
-            for field, value in form.errors.items()
-            if form.errors
-        }
+        errors = serialize_formset_errors(formset)
         message = "Formulario invalido. Algunos campos en el formulario son requeridos"
         ctx = {"error": message, "errors": errors}
         return JsonResponse(ctx, status=400)

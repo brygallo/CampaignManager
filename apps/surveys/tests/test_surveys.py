@@ -6,6 +6,7 @@ from django.urls import reverse
 from apps.authentication.tests.factories import UserFactory
 from apps.surveys.forms import (
     DynamicSurveyResponseForm,
+    SurveyForm,
 )
 from apps.surveys.models import (
     Survey,
@@ -20,6 +21,8 @@ from apps.surveys.views import (
     SurveyResultsView,
     user_can_apply_survey,
 )
+from core.form_policies import apply_declared_form_policies
+from superadmin import site
 
 
 class DynamicSurveyResponseFormTests(TestCase):
@@ -148,6 +151,82 @@ class SurveyAccessTests(TestCase):
         view.request = request
 
         self.assertEqual(list(view.get_queryset()), [self.survey, public])
+
+
+class SurveyFormPolicyTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.assigned_user = UserFactory()
+        self.editor = UserFactory()
+        self.survey = Survey.objects.create(
+            title="Controlada",
+            slug="controlada",
+            status=Survey.Status.DRAFT,
+            requires_login=True,
+        )
+        self.survey.assigned_users.add(self.assigned_user)
+        self.survey_site = site._registry[Survey]
+
+    def _form_for(self, user, data):
+        request = self.factory.post("/encuestas/1/editar/", data=data)
+        request.user = user
+        form = SurveyForm(data=data, instance=self.survey)
+        return apply_declared_form_policies(
+            form,
+            request=request,
+            obj=self.survey,
+            site=self.survey_site,
+        )
+
+    def test_user_without_field_permissions_cannot_change_status_or_assignment(self):
+        form = self._form_for(
+            self.editor,
+            {
+                "title": "Controlada actualizada",
+                "slug": "controlada",
+                "description": "",
+                "status": Survey.Status.PUBLISHED,
+                "requires_login": "on",
+                "all_users_can_respond": "on",
+                "assigned_users": [],
+                "thank_you_message": "Gracias",
+            },
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.survey.refresh_from_db()
+
+        self.assertEqual(self.survey.status, Survey.Status.DRAFT)
+        self.assertFalse(self.survey.all_users_can_respond)
+        self.assertEqual(list(self.survey.assigned_users.all()), [self.assigned_user])
+
+    def test_user_with_field_permissions_can_change_status_and_assignment(self):
+        self.editor.user_permissions.add(
+            Permission.objects.get(codename="publish_survey"),
+            Permission.objects.get(codename="manage_survey_assignments"),
+        )
+        form = self._form_for(
+            self.editor,
+            {
+                "title": "Controlada actualizada",
+                "slug": "controlada",
+                "description": "",
+                "status": Survey.Status.PUBLISHED,
+                "requires_login": "on",
+                "all_users_can_respond": "on",
+                "assigned_users": [],
+                "thank_you_message": "Gracias",
+            },
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.survey.refresh_from_db()
+
+        self.assertEqual(self.survey.status, Survey.Status.PUBLISHED)
+        self.assertTrue(self.survey.all_users_can_respond)
+        self.assertEqual(list(self.survey.assigned_users.all()), [])
 
 
 class SurveyResultsViewTests(TestCase):

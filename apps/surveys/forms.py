@@ -3,6 +3,7 @@ from django.utils.text import slugify
 from django_select2.forms import ModelSelect2MultipleWidget
 from superadmin.forms import ModelForm
 
+from core.form_policies import ConditionalPolicy
 from core.widgets import LeafletMapWidget
 
 from .models import (
@@ -44,7 +45,6 @@ class SurveyForm(ModelForm):
             "all_users_can_respond": forms.CheckboxInput(
                 attrs={
                     "class": "form-check-input",
-                    "data-survey-all-users": "true",
                 }
             ),
             "assigned_users": ModelSelect2MultipleWidget(
@@ -58,11 +58,9 @@ class SurveyForm(ModelForm):
                 attrs={
                     "data-minimum-input-length": 0,
                     "data-placeholder": "Usuarios que pueden responder",
-                    "data-survey-assigned-users": "true",
                 },
             ),
         }
-
     def clean_slug(self):
         slug = self.cleaned_data.get("slug")
         title = self.cleaned_data.get("title")
@@ -184,6 +182,18 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
                 }
             ),
         }
+        form_policies = (
+            ConditionalPolicy(
+                source="question_type",
+                operator="in",
+                value=(
+                    SurveyQuestion.QuestionType.SINGLE_CHOICE,
+                    SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
+                ),
+                targets=("option_lines",),
+                effects=("show", "disable", "clear"),
+            ),
+        )
 
     def __init__(self, *args, survey=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -192,6 +202,7 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
         self.survey = survey
         if self.survey is not None:
             self.instance.survey = self.survey
+        self.fields["visibility_operator"].required = False
         option_choices = []
         if self.instance and self.instance.pk and not self.is_bound:
             option_choices = list(
@@ -252,7 +263,10 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
             cleaned_data["visibility_operator"] = SurveyQuestion.VisibilityOperator.ALWAYS
             cleaned_data["visibility_option"] = None
             cleaned_data["visibility_value"] = ""
-        elif cleaned_data.get("visibility_operator") == SurveyQuestion.VisibilityOperator.ALWAYS:
+        elif (
+            not cleaned_data.get("visibility_operator")
+            or cleaned_data.get("visibility_operator") == SurveyQuestion.VisibilityOperator.ALWAYS
+        ):
             cleaned_data["visibility_operator"] = SurveyQuestion.VisibilityOperator.EQUALS
         if (
             visibility_question

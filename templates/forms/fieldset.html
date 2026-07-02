@@ -10,7 +10,7 @@
     <div class="row g-5 mb-4">
       {% for field in row.fields %}
         {% if not field.is_hidden %}
-          <div class="col-md-{{ field.field.widget.attrs.column|default:row.bs_cols }}">
+          <div class="col-md-{{ field.field.widget.attrs.column|default:row.bs_cols }}" data-form-field-container="{{ field.name }}">
             {% include "forms/formgroup.html" with field=field %}
           </div>
         {% endif %}

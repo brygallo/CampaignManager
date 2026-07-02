@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from superadmin.options import ModelSite
 
 from core.audit import AuditContextMixin
-from core.form_mixins import ActiveCampaignFormMixin, SaveOptionsMixin
+from core.form_mixins import ActiveCampaignFormMixin, FormPolicyMixin, SaveOptionsMixin
 from core.list_mixins import ActiveCampaignScopeMixin, OrderingMixin
 
 
@@ -197,7 +197,12 @@ class BaseSite(ModelSite):
     # is already conditional on the context key.
     detail_mixins = (ActiveCampaignScopeMixin, AuditContextMixin, DetailMapsMixin)
     delete_mixins = (ActiveCampaignScopeMixin, ProtectedDeleteMixin)
-    update_mixins = (ActiveCampaignFormMixin, BlockEditOnReadOnlyStateMixin, SaveOptionsMixin)
+    update_mixins = (
+        FormPolicyMixin,
+        ActiveCampaignFormMixin,
+        BlockEditOnReadOnlyStateMixin,
+        SaveOptionsMixin,
+    )
     detail_maps = ()
 
     create_success_url = "detail"
@@ -212,7 +217,8 @@ class BaseSite(ModelSite):
     paginate_by = 25
     # ``ActiveCampaignFormMixin`` auto-fills + locks the ``campaign`` FK from
     # ``request.active_campaign`` on create / update forms. Same opt-out flag.
-    form_mixins = (ActiveCampaignFormMixin, SaveOptionsMixin)
+    form_mixins = (FormPolicyMixin, ActiveCampaignFormMixin, SaveOptionsMixin)
+    form_policies = ()
     # When True (default), CRUD views for models with a ``campaign`` FK are
     # scoped to ``request.active_campaign``. Sites for global catalogs
     # (Election, PoliticalMovement, Position, Candidate, the Campaign list
@@ -249,6 +255,8 @@ class BaseSite(ModelSite):
             setattr(cls, attr, current + (mixin,))
 
         _prepend_unique("update_mixins", BlockEditOnReadOnlyStateMixin)
+        for attr in cls._FORM_MIXIN_ATTRS:
+            _prepend_unique(attr, FormPolicyMixin)
         if not getattr(cls, "respect_active_campaign", True):
             return
 
@@ -257,6 +265,10 @@ class BaseSite(ModelSite):
         for attr in cls._FORM_MIXIN_ATTRS:
             _prepend_unique(attr, ActiveCampaignFormMixin)
             _append_unique(attr, SaveOptionsMixin)
+
+    def get_form_policies(self, request, obj=None):
+        """Return declarative field/conditional policies for create/update forms."""
+        return tuple(getattr(self, "form_policies", ()) or ())
 
     def get_urls(self):
         # superadmin registers a ``<pk>/duplicate/`` route unconditionally,

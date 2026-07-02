@@ -194,31 +194,6 @@
     $field.data(INIT_FLAG, true);
   }
 
-  function syncSurveyAssignment(selector) {
-    var $scope = getScope(selector);
-    var $checkbox = $scope.is('[data-survey-all-users="true"]')
-      ? $scope
-      : $scope.find('[data-survey-all-users="true"]').first();
-    var $assignedUsers = $scope.is('[data-survey-assigned-users="true"]')
-      ? $scope
-      : $scope.find('[data-survey-assigned-users="true"]').first();
-    if (!$checkbox.length || !$assignedUsers.length) return;
-
-    function sync() {
-      var allUsers = $checkbox.prop("checked");
-      if (allUsers) {
-        $assignedUsers.val(null).trigger("change");
-      }
-      $assignedUsers.prop("disabled", allUsers);
-      if ($assignedUsers.hasClass("select2-hidden-accessible")) {
-        $assignedUsers.trigger("change.select2");
-      }
-    }
-
-    $checkbox.off("change.survey-assignment").on("change.survey-assignment", sync);
-    sync();
-  }
-
   window.initSelect2 = function (selector) {
     if (!$ || !$.fn || !$.fn.select2) {
       return;
@@ -227,7 +202,6 @@
     getFields(selector).each(function () {
       initField(this);
     });
-    syncSurveyAssignment(selector);
   };
 
   window.select2create = async function (button) {

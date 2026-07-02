@@ -7,6 +7,27 @@ from django import forms
 
 from superadmin.shortcuts import get_urls_of_site
 
+from core.form_policies import apply_declared_form_policies
+
+
+class FormPolicyMixin:
+    """Apply declarative form policies exposed by the active ``BaseSite``."""
+
+    def _form_policy_object(self):
+        return getattr(self, "object", None)
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        site = getattr(self, "site", None)
+        if site is None:
+            return form
+        return apply_declared_form_policies(
+            form,
+            request=self.request,
+            obj=self._form_policy_object(),
+            site=site,
+        )
+
 
 class ActiveCampaignFormMixin:
     """Auto-fill and lock the ``campaign`` field from the active campaign.
