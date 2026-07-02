@@ -193,7 +193,7 @@ class SurveyQuestion(BaseModel):
             raise ValidationError(
                 {"visibility_question": "La pregunta condicionante debe pertenecer a la misma encuesta."}
             )
-        if self.visibility_question_id == self.pk:
+        if self.visibility_question_id and self.visibility_question_id == self.pk:
             raise ValidationError({"visibility_question": "Una pregunta no puede depender de sí misma."})
         if self.visibility_option_id and self.visibility_option.question_id != self.visibility_question_id:
             raise ValidationError(
