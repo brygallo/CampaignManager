@@ -4,9 +4,7 @@
 <div class="row g-6">
   <div class="col-xl-4">
     <div class="card mb-6">
-      <div class="card-header">
-        <h3 class="card-title">Mesas asignadas</h3>
-      </div>
+      <div class="card-header"><h3 class="card-title">Mesas asignadas</h3></div>
       <div class="card-body">
         {% for assignment in assignments %}
           <button type="button"
@@ -26,79 +24,48 @@
         {% endfor %}
       </div>
     </div>
-
     <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">Últimos registros</h3>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-row-dashed align-middle">
-            <thead>
+      <div class="card-header"><h3 class="card-title">Últimas actas</h3></div>
+      <div class="card-body table-responsive">
+        <table class="table table-row-dashed align-middle">
+          <thead><tr><th>Parroquia</th><th>Mesa</th><th>Dignidad</th><th>Estado</th></tr></thead>
+          <tbody>
+            {% for report in latest_reports %}
               <tr>
-                <th>Parroquia</th>
-                <th>Mesa</th>
-                <th>Dignidad</th>
+                <td>{{ report.parish.name }}</td>
+                <td>{{ report.table.number }}</td>
+                <td>{{ report.dignity.name }}</td>
+                <td><span class="badge badge-light-primary">{{ report.get_status_display }}</span></td>
               </tr>
-            </thead>
-            <tbody>
-              {% for report in latest_reports %}
-                <tr>
-                  <td>{{ report.parish.name }}</td>
-                  <td>{{ report.table.number }}</td>
-                  <td>{{ report.dignity.name }}</td>
-                </tr>
-              {% empty %}
-                <tr><td colspan="3" class="text-muted">Aún no hay registros.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+            {% empty %}
+              <tr><td colspan="4" class="text-muted">Aún no hay actas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
   <div class="col-xl-8">
-    <form method="post" class="card" id="electoral-watcher-form" data-lookup-url="{% url 'surveys:electoral_lookup' %}">
+    <form method="post" class="card" id="electoral-watcher-form" data-lookup-url="{% url 'votes:lookup' %}">
       {% csrf_token %}
       <div class="card-header">
         <div>
-          <h3 class="card-title mb-1">Módulo Veedor</h3>
-          <div class="text-muted fs-7">Registre los votos contados por lista y candidato en la mesa electoral.</div>
+          <h3 class="card-title mb-1">Validación de mesa</h3>
+          <div class="text-muted fs-7">Registra y cuadra el acta por mesa, dignidad y circunscripción.</div>
         </div>
       </div>
       <div class="card-body">
         {% if form.non_field_errors %}
-          <div class="alert alert-danger">
-            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-          </div>
+          <div class="alert alert-danger">{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
         {% endif %}
-
         <div class="row g-5 mb-6">
-          <div class="col-md-6">
-            <label class="form-label">{{ form.parish.label }}</label>
-            {{ form.parish }}
-            {% for error in form.parish.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">{{ form.venue.label }}</label>
-            {{ form.venue }}
-            {% for error in form.venue.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">{{ form.table.label }}</label>
-            {{ form.table }}
-            {% for error in form.table.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">{{ form.dignity.label }}</label>
-            {{ form.dignity }}
-            {% for error in form.dignity.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
-          </div>
+          <div class="col-md-6"><label class="form-label">{{ form.parish.label }}</label>{{ form.parish }}{% for error in form.parish.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
+          <div class="col-md-6"><label class="form-label">{{ form.venue.label }}</label>{{ form.venue }}{% for error in form.venue.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
+          <div class="col-md-6"><label class="form-label">{{ form.table.label }}</label>{{ form.table }}{% for error in form.table.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
+          <div class="col-md-6"><label class="form-label">{{ form.dignity.label }}</label>{{ form.dignity }}{% for error in form.dignity.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
         </div>
-
         <div class="separator my-6"></div>
-
         <div class="d-flex align-items-center justify-content-between mb-4">
           <div>
             <h4 class="fw-bold mb-1">Votos por lista y candidato</h4>
@@ -108,44 +75,23 @@
         <div id="candidate-votes" class="d-flex flex-column gap-3">
           {% for option in candidate_options %}
             <div class="row g-3 align-items-center">
-              <div class="col">
-                <div class="fw-bold">{{ option.list_code }}</div>
-                <div class="text-muted">{{ option.candidate_name }}</div>
-              </div>
-              <div class="col-4 col-md-3">
-                <input type="number"
-                       min="0"
-                       value="0"
-                       name="candidate_{{ option.pk }}"
-                       class="form-control form-control-solid">
-              </div>
+              <div class="col"><div class="fw-bold">{{ option.list_code }}</div><div class="text-muted">{{ option.candidate_name }}</div></div>
+              <div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_{{ option.pk }}" class="form-control form-control-solid"></div>
             </div>
           {% empty %}
             <div class="text-muted">Elija una dignidad para cargar candidatos.</div>
           {% endfor %}
         </div>
-
         <div class="separator my-6"></div>
-
-        <h4 class="fw-bold mb-4">Votos blancos y nulos</h4>
+        <h4 class="fw-bold mb-4">Cuadre de acta</h4>
         <div class="row g-5">
-          <div class="col-md-6">
-            <label class="form-label">{{ form.blank_votes.label }}</label>
-            {{ form.blank_votes }}
-            {% for error in form.blank_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">{{ form.null_votes.label }}</label>
-            {{ form.null_votes }}
-            {% for error in form.null_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
-          </div>
+          <div class="col-md-4"><label class="form-label">{{ form.voters_count.label }}</label>{{ form.voters_count }}{% for error in form.voters_count.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
+          <div class="col-md-4"><label class="form-label">{{ form.blank_votes.label }}</label>{{ form.blank_votes }}{% for error in form.blank_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
+          <div class="col-md-4"><label class="form-label">{{ form.null_votes.label }}</label>{{ form.null_votes }}{% for error in form.null_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
         </div>
       </div>
       <div class="card-footer d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary">
-          <i data-lucide="save" class="fs-4"></i>
-          Guardar acta
-        </button>
+        <button type="submit" class="btn btn-primary"><i data-lucide="save" class="fs-4"></i>Guardar acta</button>
       </div>
     </form>
   </div>
@@ -165,21 +111,23 @@
       var dignity = document.getElementById("id_dignity");
       var candidates = document.getElementById("candidate-votes");
       var districtLabel = document.getElementById("district-label");
-
       function setOptions(select, rows, placeholder) {
         select.innerHTML = "";
         select.appendChild(new Option(placeholder || "---------", ""));
-        rows.forEach(function (row) {
-          select.appendChild(new Option(row.text, row.id));
-        });
+        rows.forEach(function (row) { select.appendChild(new Option(row.text, row.id)); });
       }
-
       function fetchLookup(params) {
         return fetch(lookupUrl + "?" + new URLSearchParams(params).toString(), {
           headers: {"X-Requested-With": "XMLHttpRequest"}
         }).then(function (response) { return response.json(); });
       }
-
+      function loadTables(selected) {
+        if (!venue.value) { setOptions(table, [], "Seleccione mesa"); return; }
+        fetchLookup({lookup: "tables", venue: venue.value}).then(function (data) {
+          setOptions(table, data.results, "Seleccione mesa");
+          if (selected) table.value = selected;
+        });
+      }
       function loadVenues(selected) {
         if (!parish.value) return;
         fetchLookup({lookup: "venues", parish: parish.value}).then(function (data) {
@@ -191,18 +139,6 @@
           setOptions(dignity, data.results, "Seleccione dignidad");
         });
       }
-
-      function loadTables(selected) {
-        if (!venue.value) {
-          setOptions(table, [], "Seleccione mesa");
-          return;
-        }
-        fetchLookup({lookup: "tables", venue: venue.value}).then(function (data) {
-          setOptions(table, data.results, "Seleccione mesa");
-          if (selected) table.value = selected;
-        });
-      }
-
       function loadCandidates() {
         if (!parish.value || !dignity.value) return;
         fetchLookup({lookup: "candidates", parish: parish.value, dignity: dignity.value}).then(function (data) {
@@ -214,18 +150,13 @@
           }
           data.results.forEach(function (row) {
             candidates.insertAdjacentHTML("beforeend",
-              '<div class="row g-3 align-items-center">' +
-                '<div class="col"><div class="fw-bold"></div><div class="text-muted"></div></div>' +
-                '<div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_' + row.id + '" class="form-control form-control-solid"></div>' +
-              '</div>'
+              '<div class="row g-3 align-items-center"><div class="col"><div class="fw-bold"></div><div class="text-muted"></div></div><div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_' + row.id + '" class="form-control form-control-solid"></div></div>'
             );
-            var item = candidates.lastElementChild;
-            item.querySelector(".fw-bold").textContent = row.list;
-            item.querySelector(".text-muted").textContent = row.candidate;
+            candidates.lastElementChild.querySelector(".fw-bold").textContent = row.list;
+            candidates.lastElementChild.querySelector(".text-muted").textContent = row.candidate;
           });
         });
       }
-
       parish.addEventListener("change", function () {
         setOptions(venue, [], "Seleccione recinto");
         setOptions(table, [], "Seleccione mesa");
@@ -235,7 +166,6 @@
       });
       venue.addEventListener("change", function () { loadTables(); });
       dignity.addEventListener("change", loadCandidates);
-
       document.querySelectorAll(".js-assignment").forEach(function (button) {
         button.addEventListener("click", function () {
           parish.value = button.dataset.parish;

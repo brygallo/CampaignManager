@@ -5,26 +5,6 @@ from . import views
 app_name = "surveys"
 
 urlpatterns = [
-    path(
-        "resultados-electorales/veedor/",
-        views.ElectoralWatcherPanelView.as_view(),
-        name="electoral_watcher",
-    ),
-    path(
-        "resultados-electorales/reporte/",
-        views.ElectoralReportView.as_view(),
-        name="electoral_report",
-    ),
-    path(
-        "resultados-electorales/reporte/datos/",
-        views.ElectoralReportDataView.as_view(),
-        name="electoral_report_data",
-    ),
-    path(
-        "resultados-electorales/buscar/",
-        views.ElectoralLookupView.as_view(),
-        name="electoral_lookup",
-    ),
     path("encuestas/aplicar/", views.SurveyApplyListView.as_view(), name="apply_list"),
     path("encuestas/<int:pk>/constructor/", views.SurveyBuilderView.as_view(), name="builder"),
     path(

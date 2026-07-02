@@ -91,6 +91,7 @@ TENANT_APPS = [
     "apps.field_surveys",
     "apps.political_agenda",
     "apps.surveys",
+    "apps.votes",
 ]
 
 # Django requires a single INSTALLED_APPS list; dedupe shared entries.

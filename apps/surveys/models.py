@@ -6,8 +6,6 @@ from django.db import models
 from django.urls import reverse
 from tracing.models import BaseModel
 
-from apps.locations.models import Canton, Parish, Province
-
 
 class Survey(BaseModel):
     class Status(models.TextChoices):
@@ -27,6 +25,11 @@ class Survey(BaseModel):
     is_anonymous = models.BooleanField("Anónima", default=False)
     requires_login = models.BooleanField("Requiere inicio de sesión", default=True)
     allow_multiple_responses = models.BooleanField("Permite varias respuestas", default=False)
+    all_users_can_respond = models.BooleanField(
+        "Todos los usuarios pueden responder",
+        default=False,
+        help_text="Si está activo, cualquier usuario autenticado puede responder esta encuesta.",
+    )
     thank_you_message = models.CharField(
         "Mensaje de confirmación",
         max_length=240,
@@ -41,6 +44,12 @@ class Survey(BaseModel):
         null=True,
         blank=True,
     )
+    assigned_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="assigned_surveys",
+        verbose_name="Usuarios asignados",
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "Encuesta"
@@ -48,6 +57,7 @@ class Survey(BaseModel):
         ordering = ["-created_date"]
         permissions = (
             ("publish_survey", "Puede publicar/cerrar encuestas"),
+            ("apply_all_surveys", "Puede responder todas las encuestas"),
             ("view_survey_results", "Puede ver resultados de encuestas"),
             ("export_survey_results", "Puede exportar resultados de encuestas"),
         )
@@ -76,6 +86,19 @@ class Survey(BaseModel):
 
     def get_results_url(self):
         return reverse("surveys:results", kwargs={"pk": self.pk})
+
+    @property
+    def assigned_users_display(self):
+        users = list(
+            self.assigned_users.order_by("first_name", "last_name", "username")[:10]
+        )
+        if not users:
+            return ""
+        labels = [user.get_full_name() or user.get_username() for user in users]
+        remaining = self.assigned_users.count() - len(users)
+        if remaining > 0:
+            labels.append(f"+{remaining} más")
+        return ", ".join(labels)
 
 
 class SurveySection(BaseModel):
@@ -299,299 +322,3 @@ class SurveyAnswer(BaseModel):
                 return ""
             return f"{self.latitude}, {self.longitude}"
         return self.value_text
-
-
-class ElectoralDignity(BaseModel):
-    class Scope(models.TextChoices):
-        PROVINCE = "province", "Provincia"
-        CANTON = "canton", "Cantón"
-        DISTRICT = "district", "Circunscripción"
-        PARISH = "parish", "Parroquia"
-
-    class ParishKindRule(models.TextChoices):
-        ALL = "all", "Todas"
-        URBAN = "urban", "Solo urbanas"
-        RURAL = "rural", "Solo rurales"
-
-    name = models.CharField("Dignidad", max_length=140, unique=True)
-    scope = models.CharField("Ámbito", max_length=20, choices=Scope.choices)
-    parish_kind_rule = models.CharField(
-        "Tipo de parroquia",
-        max_length=20,
-        choices=ParishKindRule.choices,
-        default=ParishKindRule.ALL,
-    )
-    seats = models.PositiveSmallIntegerField("Escaños", default=1)
-    order = models.PositiveSmallIntegerField("Orden", default=0)
-
-    class Meta:
-        verbose_name = "Dignidad electoral"
-        verbose_name_plural = "Dignidades electorales"
-        ordering = ["order", "name"]
-
-    def __str__(self):
-        return self.name
-
-
-class ElectoralVenue(BaseModel):
-    parish = models.ForeignKey(
-        Parish, on_delete=models.PROTECT, related_name="electoral_venues", verbose_name="Parroquia"
-    )
-    name = models.CharField("Recinto electoral", max_length=180)
-
-    class Meta:
-        verbose_name = "Recinto electoral"
-        verbose_name_plural = "Recintos electorales"
-        ordering = ["parish__name", "name"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["parish", "name"], name="surveys_unique_electoral_venue_per_parish"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.name} - {self.parish.name}"
-
-
-class ElectoralTable(BaseModel):
-    class Gender(models.TextChoices):
-        FEMALE = "F", "Femenino"
-        MALE = "M", "Masculino"
-        MIXED = "X", "Mixta"
-
-    venue = models.ForeignKey(
-        ElectoralVenue, on_delete=models.PROTECT, related_name="tables", verbose_name="Recinto"
-    )
-    number = models.CharField("Mesa", max_length=24)
-    gender = models.CharField("Género", max_length=1, choices=Gender.choices, default=Gender.MIXED)
-
-    class Meta:
-        verbose_name = "Mesa electoral"
-        verbose_name_plural = "Mesas electorales"
-        ordering = ["venue__parish__name", "venue__name", "number"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["venue", "number", "gender"], name="surveys_unique_electoral_table"
-            )
-        ]
-
-    def __str__(self):
-        return f"Mesa {self.number} {self.get_gender_display()} - {self.venue.name}"
-
-    @property
-    def parish(self):
-        return self.venue.parish
-
-    @property
-    def canton(self):
-        return self.venue.parish.canton
-
-    @property
-    def province(self):
-        return self.venue.parish.canton.province
-
-
-class ElectoralTableAssignment(BaseModel):
-    table = models.ForeignKey(
-        ElectoralTable,
-        on_delete=models.CASCADE,
-        related_name="assignments",
-        verbose_name="Mesa",
-    )
-    watcher = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="electoral_table_assignments",
-        verbose_name="Veedor",
-    )
-    notes = models.CharField("Observaciones", max_length=240, blank=True)
-
-    class Meta:
-        verbose_name = "Asignación de mesa"
-        verbose_name_plural = "Asignaciones de mesas"
-        ordering = ["table__venue__parish__name", "table__venue__name", "table__number"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["table", "watcher"], name="surveys_unique_table_watcher_assignment"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.watcher} - {self.table}"
-
-
-class ElectoralDistrict(BaseModel):
-    class DistrictKind(models.TextChoices):
-        PROVINCE = "province", "Provincia"
-        CANTON = "canton", "Cantón"
-        URBAN = "urban", "Urbana"
-        RURAL = "rural", "Rural"
-        PARISH = "parish", "Parroquial"
-
-    dignity = models.ForeignKey(
-        ElectoralDignity,
-        on_delete=models.CASCADE,
-        related_name="districts",
-        verbose_name="Dignidad",
-    )
-    name = models.CharField("Circunscripción", max_length=180)
-    kind = models.CharField("Tipo", max_length=20, choices=DistrictKind.choices)
-    province = models.ForeignKey(
-        Province,
-        on_delete=models.PROTECT,
-        related_name="electoral_districts",
-        verbose_name="Provincia",
-        null=True,
-        blank=True,
-    )
-    canton = models.ForeignKey(
-        Canton,
-        on_delete=models.PROTECT,
-        related_name="electoral_districts",
-        verbose_name="Cantón",
-        null=True,
-        blank=True,
-    )
-    parishes = models.ManyToManyField(
-        Parish,
-        related_name="electoral_districts",
-        verbose_name="Parroquias",
-        blank=True,
-    )
-    seats = models.PositiveSmallIntegerField("Escaños", default=1)
-    order = models.PositiveSmallIntegerField("Orden", default=0)
-
-    class Meta:
-        verbose_name = "Circunscripción electoral"
-        verbose_name_plural = "Circunscripciones electorales"
-        ordering = ["dignity__order", "order", "name"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["dignity", "name"], name="surveys_unique_electoral_district_name"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.dignity} / {self.name}"
-
-    def contains_parish(self, parish):
-        if self.dignity.scope == ElectoralDignity.Scope.PROVINCE:
-            return self.province_id == parish.canton.province_id
-        if self.dignity.scope == ElectoralDignity.Scope.CANTON:
-            return self.canton_id == parish.canton_id
-        return self.parishes.filter(pk=parish.pk).exists()
-
-
-class ElectoralCandidateOption(BaseModel):
-    district = models.ForeignKey(
-        ElectoralDistrict,
-        on_delete=models.CASCADE,
-        related_name="candidate_options",
-        verbose_name="Circunscripción",
-    )
-    list_code = models.CharField("Lista", max_length=32)
-    candidate_name = models.CharField("Candidato", max_length=180)
-    order = models.PositiveSmallIntegerField("Orden", default=0)
-
-    class Meta:
-        verbose_name = "Candidatura electoral"
-        verbose_name_plural = "Candidaturas electorales"
-        ordering = ["district__dignity__order", "district__order", "order", "list_code"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["district", "list_code", "candidate_name"],
-                name="surveys_unique_electoral_candidate_option",
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.district} / {self.list_code} - {self.candidate_name}"
-
-
-class ElectoralResultReport(BaseModel):
-    parish = models.ForeignKey(
-        Parish, on_delete=models.PROTECT, related_name="electoral_result_reports", verbose_name="Parroquia"
-    )
-    venue = models.ForeignKey(
-        ElectoralVenue,
-        on_delete=models.PROTECT,
-        related_name="result_reports",
-        verbose_name="Recinto electoral",
-    )
-    table = models.ForeignKey(
-        ElectoralTable,
-        on_delete=models.PROTECT,
-        related_name="result_reports",
-        verbose_name="Mesa",
-    )
-    dignity = models.ForeignKey(
-        ElectoralDignity,
-        on_delete=models.PROTECT,
-        related_name="result_reports",
-        verbose_name="Dignidad",
-    )
-    district = models.ForeignKey(
-        ElectoralDistrict,
-        on_delete=models.PROTECT,
-        related_name="result_reports",
-        verbose_name="Circunscripción",
-    )
-    watcher = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        related_name="electoral_result_reports",
-        verbose_name="Veedor",
-        null=True,
-        blank=True,
-    )
-
-    class Meta:
-        verbose_name = "Registro de resultado electoral"
-        verbose_name_plural = "Registros de resultados electorales"
-        ordering = ["-created_date"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["table", "dignity", "district"],
-                name="surveys_unique_electoral_result_report",
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.dignity} - {self.table}"
-
-
-class ElectoralResultLine(BaseModel):
-    class LineType(models.TextChoices):
-        CANDIDATE = "candidate", "Candidato"
-        BLANK = "blank", "Blancos"
-        NULL = "null", "Nulos"
-
-    report = models.ForeignKey(
-        ElectoralResultReport,
-        on_delete=models.CASCADE,
-        related_name="lines",
-        verbose_name="Registro",
-    )
-    line_type = models.CharField(
-        "Tipo", max_length=20, choices=LineType.choices, default=LineType.CANDIDATE
-    )
-    list_code = models.CharField("Lista", max_length=32)
-    candidate_name = models.CharField("Candidato", max_length=180, blank=True)
-    candidate_option = models.ForeignKey(
-        ElectoralCandidateOption,
-        on_delete=models.PROTECT,
-        related_name="result_lines",
-        verbose_name="Candidatura",
-        null=True,
-        blank=True,
-    )
-    votes = models.PositiveIntegerField("Votos", default=0)
-    order = models.PositiveSmallIntegerField("Orden", default=0)
-
-    class Meta:
-        verbose_name = "Línea de resultado electoral"
-        verbose_name_plural = "Líneas de resultados electorales"
-        ordering = ["report", "order", "list_code"]
-
-    def __str__(self):
-        return f"{self.list_code} {self.candidate_name}: {self.votes}"

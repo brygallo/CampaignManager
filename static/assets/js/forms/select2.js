@@ -161,6 +161,20 @@
 
     prepareField($field, placeholder);
 
+    if (String($field.data("tags")) === "true") {
+      options.tags = true;
+      options.tokenSeparators = [","];
+      options.createTag = function (params) {
+        var term = $.trim(params.term || "");
+        if (!term) return null;
+        return {
+          id: term,
+          text: term,
+          newTag: true
+        };
+      };
+    }
+
     if ($field.hasClass("django-select2-heavy")) {
       options.ajax = ajaxOptions($field);
     }

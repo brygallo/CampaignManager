@@ -1,0 +1,105 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<style>
+  .votes-map-layout { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 1rem; min-height: calc(100vh - 220px); }
+  .votes-map-panel, .votes-map-canvas { min-height: 620px; }
+  .votes-map-canvas { border: 1px solid var(--bs-gray-200); border-radius: .625rem; overflow: hidden; }
+  .votes-map-dot { display: inline-block; width: .75rem; height: .75rem; border-radius: 999px; margin-right: .5rem; }
+  @media (max-width: 991.98px) { .votes-map-layout { grid-template-columns: 1fr; } .votes-map-panel, .votes-map-canvas { min-height: 420px; } }
+</style>
+
+<div class="votes-map-layout" id="votes-map-root">
+  <aside class="card votes-map-panel">
+    <div class="card-header"><h3 class="card-title">Filtros del mapa</h3></div>
+    <div class="card-body">
+      <form id="votes-map-filters" class="d-flex flex-column gap-4">
+        <div><label class="form-label">{{ form.dignity.label }}</label>{{ form.dignity }}</div>
+        <div><label class="form-label">{{ form.district.label }}</label>{{ form.district }}</div>
+        <div><label class="form-label">{{ form.parish.label }}</label>{{ form.parish }}</div>
+        <div><label class="form-label">{{ form.venue.label }}</label>{{ form.venue }}</div>
+        <div><label class="form-label">{{ form.table.label }}</label>{{ form.table }}</div>
+      </form>
+      <div class="separator my-6"></div>
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <span class="fw-bold">Recintos visibles</span>
+        <span class="badge badge-light-primary" data-map-count>0</span>
+      </div>
+      <div class="d-grid gap-3 text-gray-700 fs-7">
+        <div><span class="votes-map-dot" style="background:#50cd89"></span>Completo</div>
+        <div><span class="votes-map-dot" style="background:#ffc700"></span>Parcial</div>
+        <div><span class="votes-map-dot" style="background:#f1416c"></span>Sin actas</div>
+      </div>
+    </div>
+  </aside>
+  <section class="card">
+    <div class="card-header"><div><h3 class="card-title mb-1">Mapa veedores</h3><div class="text-muted fs-7">Recintos georreferenciados con avance de actas por mesa.</div></div></div>
+    <div class="card-body p-0">
+      <div id="votes-map"
+           class="votes-map-canvas"
+           data-url="{% url 'votes:map_data' %}"
+           data-default-lat="{{ tenant_map_center.lat|stringformat:"f" }}"
+           data-default-lng="{{ tenant_map_center.lng|stringformat:"f" }}"
+           data-default-zoom="{{ tenant_map_center.zoom|stringformat:"d" }}"></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script>
+    (function () {
+      var canvas = document.getElementById("votes-map");
+      var filters = document.getElementById("votes-map-filters");
+      var counter = document.querySelector("[data-map-count]");
+      if (!canvas || !filters || !window.L) return;
+      var map = L.map(canvas).setView([
+        parseFloat(canvas.dataset.defaultLat || "-2.9"),
+        parseFloat(canvas.dataset.defaultLng || "-78.1")
+      ], parseInt(canvas.dataset.defaultZoom || "9", 10));
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "&copy; OpenStreetMap"}).addTo(map);
+      var layer = L.layerGroup().addTo(map);
+      function escapeHtml(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+          return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"}[char];
+        });
+      }
+      function markerIcon(point) {
+        return L.divIcon({
+          className: "",
+          html: '<span style="display:block;width:18px;height:18px;border-radius:50%;background:' + point.color + ';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></span>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+      }
+      function popupHtml(point) {
+        return '<div class="fw-bold mb-1">' + escapeHtml(point.name) + '</div>' +
+          '<div class="text-muted mb-2">' + escapeHtml(point.parish) + ' / ' + escapeHtml(point.canton) + '</div>' +
+          '<div><strong>Estado:</strong> ' + escapeHtml(point.status_label) + '</div>' +
+          '<div><strong>Mesas:</strong> ' + escapeHtml(point.tables) + '</div>' +
+          '<div><strong>Actas:</strong> ' + escapeHtml(point.reports) + '</div>' +
+          '<div><strong>Pendientes:</strong> ' + escapeHtml(point.pending) + '</div>' +
+          '<div><strong>Votos:</strong> ' + escapeHtml(point.votes) + '</div>';
+      }
+      function render(data) {
+        layer.clearLayers();
+        var bounds = [];
+        (data.points || []).forEach(function (point) {
+          var latlng = [point.lat, point.lng];
+          bounds.push(latlng);
+          L.marker(latlng, {icon: markerIcon(point)}).bindPopup(popupHtml(point)).addTo(layer);
+        });
+        counter.textContent = String(data.count || 0);
+        if (bounds.length) map.fitBounds(bounds, {padding: [32, 32], maxZoom: 15});
+      }
+      function refresh() {
+        var params = new URLSearchParams(new FormData(filters));
+        fetch(canvas.dataset.url + "?" + params.toString(), {headers: {"X-Requested-With": "XMLHttpRequest"}}).then(function (response) { return response.json(); }).then(render);
+      }
+      filters.addEventListener("change", refresh);
+      refresh();
+      setTimeout(function () { map.invalidateSize(); }, 250);
+    })();
+  </script>
+{% endblock %}

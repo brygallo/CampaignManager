@@ -1,17 +1,11 @@
 from django import forms
 from django.utils.text import slugify
+from django_select2.forms import ModelSelect2MultipleWidget
 from superadmin.forms import ModelForm
 
-from apps.locations.models import Parish
 from core.widgets import LeafletMapWidget
 
 from .models import (
-    ElectoralCandidateOption,
-    ElectoralDignity,
-    ElectoralDistrict,
-    ElectoralTable,
-    ElectoralTableAssignment,
-    ElectoralVenue,
     Survey,
     SurveyOption,
     SurveyQuestion,
@@ -38,8 +32,27 @@ class SurveyForm(ModelForm):
                 ("requires_login", "allow_multiple_responses"),
                 ("is_anonymous",),
             ),
+            "Asignación": (
+                ("all_users_can_respond",),
+                ("assigned_users",),
+            ),
             "Confirmación": (
                 ("thank_you_message",),
+            ),
+        }
+        widgets = {
+            "assigned_users": ModelSelect2MultipleWidget(
+                model="authentication.User",
+                search_fields=[
+                    "username__icontains",
+                    "email__icontains",
+                    "first_name__icontains",
+                    "last_name__icontains",
+                ],
+                attrs={
+                    "data-minimum-input-length": 0,
+                    "data-placeholder": "Usuarios que pueden responder",
+                },
             ),
         }
 
@@ -49,280 +62,32 @@ class SurveyForm(ModelForm):
         return slug or slugify(title or "")
 
 
-class SurveySectionForm(ModelForm):
-    class Meta:
-        model = SurveySection
-        fieldsets = {
-            "Sección": (
-                ("survey",),
-                ("title", "order"),
-                ("description",),
-                ("is_active",),
-            ),
-        }
+class SurveyQuestionConditionSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        if value:
+            raw_value = getattr(value, "value", value)
+            try:
+                question = self.choices.queryset.get(pk=raw_value)
+            except (AttributeError, SurveyQuestion.DoesNotExist, ValueError, TypeError):
+                question = None
+            if question is not None:
+                option["attrs"]["data-question-type"] = question.question_type
+        return option
 
 
-class SurveyQuestionForm(ModelForm):
-    class Meta:
-        model = SurveyQuestion
-        fieldsets = {
-            "Pregunta": (
-                ("survey", "section"),
-                ("text",),
-                ("help_text",),
-                ("question_type", "order"),
-                ("is_required", "is_active"),
-            ),
-        }
-
-
-class SurveyOptionForm(ModelForm):
-    class Meta:
-        model = SurveyOption
-        fieldsets = {
-            "Opción": (
-                ("question",),
-                ("label", "value"),
-                ("order", "is_active"),
-            ),
-        }
-
-
-class ElectoralDignityForm(ModelForm):
-    class Meta:
-        model = ElectoralDignity
-        fieldsets = {
-            "Dignidad": (
-                ("name", "order"),
-                ("scope", "parish_kind_rule"),
-                ("seats", "is_active"),
-            ),
-        }
-
-
-class ElectoralDistrictForm(ModelForm):
-    class Meta:
-        model = ElectoralDistrict
-        fieldsets = {
-            "Circunscripción": (
-                ("dignity", "name"),
-                ("kind", "order"),
-                ("province", "canton"),
-                ("parishes",),
-                ("seats", "is_active"),
-            ),
-        }
-
-
-class ElectoralVenueForm(ModelForm):
-    class Meta:
-        model = ElectoralVenue
-        fieldsets = {
-            "Recinto electoral": (
-                ("parish",),
-                ("name", "is_active"),
-            ),
-        }
-
-
-class ElectoralTableForm(ModelForm):
-    class Meta:
-        model = ElectoralTable
-        fieldsets = {
-            "Mesa electoral": (
-                ("venue",),
-                ("number", "gender"),
-                ("is_active",),
-            ),
-        }
-
-
-class ElectoralTableAssignmentForm(ModelForm):
-    class Meta:
-        model = ElectoralTableAssignment
-        fieldsets = {
-            "Asignación": (
-                ("table", "watcher"),
-                ("notes",),
-                ("is_active",),
-            ),
-        }
-
-
-class ElectoralCandidateOptionForm(ModelForm):
-    class Meta:
-        model = ElectoralCandidateOption
-        fieldsets = {
-            "Candidatura": (
-                ("district",),
-                ("list_code", "candidate_name"),
-                ("order", "is_active"),
-            ),
-        }
-
-
-class ElectoralWatcherForm(forms.Form):
-    parish = forms.ModelChoiceField(
-        label="Parroquia",
-        queryset=None,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    venue = forms.ModelChoiceField(
-        label="Recinto electoral",
-        queryset=ElectoralVenue.objects.none(),
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    table = forms.ModelChoiceField(
-        label="Mesa",
-        queryset=ElectoralTable.objects.none(),
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    dignity = forms.ModelChoiceField(
-        label="Dignidad a elegir",
-        queryset=ElectoralDignity.objects.none(),
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    blank_votes = forms.IntegerField(
-        label="Votos blancos",
-        min_value=0,
-        initial=0,
-        widget=forms.NumberInput(attrs={"class": "form-control form-control-solid", "min": 0}),
-    )
-    null_votes = forms.IntegerField(
-        label="Votos nulos",
-        min_value=0,
-        initial=0,
-        widget=forms.NumberInput(attrs={"class": "form-control form-control-solid", "min": 0}),
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["parish"].queryset = Parish.objects.filter(is_active=True).order_by(
-            "canton__name", "name"
-        )
-        if self.data.get("parish"):
-            self.fields["venue"].queryset = ElectoralVenue.objects.filter(
-                parish_id=self.data.get("parish"), is_active=True
-            ).order_by("name")
-            self.fields["dignity"].queryset = self._dignities_for_parish_id(self.data.get("parish"))
-        if self.data.get("venue"):
-            self.fields["table"].queryset = ElectoralTable.objects.filter(
-                venue_id=self.data.get("venue"), is_active=True
-            ).order_by("number", "gender")
-        self.candidate_options = ElectoralCandidateOption.objects.none()
-        self.district = None
-        if self.data.get("parish") and self.data.get("dignity"):
-            self.district = resolve_electoral_district(
-                parish_id=self.data.get("parish"), dignity_id=self.data.get("dignity")
-            )
-            if self.district:
-                self.candidate_options = self.district.candidate_options.filter(
-                    is_active=True
-                ).order_by("order", "list_code", "candidate_name")
-                for option in self.candidate_options:
-                    self.fields[self.vote_field_name(option)] = forms.IntegerField(
-                        label=f"{option.list_code} - {option.candidate_name}",
-                        min_value=0,
-                        initial=0,
-                        widget=forms.NumberInput(
-                            attrs={"class": "form-control form-control-solid", "min": 0}
-                        ),
-                    )
-
-    @staticmethod
-    def vote_field_name(option):
-        return f"candidate_{option.pk}"
-
-    def _dignities_for_parish_id(self, parish_id):
-        from apps.locations.models import Parish
-
-        try:
-            parish = Parish.objects.select_related("canton__province").get(pk=parish_id)
-        except (Parish.DoesNotExist, ValueError, TypeError):
-            return ElectoralDignity.objects.none()
-        districts = ElectoralDistrict.objects.filter(is_active=True).filter(
-            forms.models.Q(province=parish.canton.province)
-            | forms.models.Q(canton=parish.canton)
-            | forms.models.Q(parishes=parish)
-        )
-        return (
-            ElectoralDignity.objects.filter(districts__in=districts)
-            .distinct()
-            .order_by("order", "name")
-        )
-
-    def clean(self):
-        cleaned_data = super().clean()
-        parish = cleaned_data.get("parish")
-        venue = cleaned_data.get("venue")
-        table = cleaned_data.get("table")
-        dignity = cleaned_data.get("dignity")
-        if venue and parish and venue.parish_id != parish.pk:
-            self.add_error("venue", "El recinto no pertenece a la parroquia seleccionada.")
-        if table and venue and table.venue_id != venue.pk:
-            self.add_error("table", "La mesa no pertenece al recinto seleccionado.")
-        if parish and dignity:
-            self.district = resolve_electoral_district(parish_id=parish.pk, dignity_id=dignity.pk)
-            if not self.district:
-                self.add_error("dignity", "No existe una circunscripción configurada para esta parroquia.")
-        if self.district and not self.candidate_options.exists():
-            self.add_error("dignity", "La circunscripción no tiene candidaturas activas.")
-        return cleaned_data
-
-
-class ElectoralReportFilterForm(forms.Form):
-    dignity = forms.ModelChoiceField(
-        label="Dignidad",
-        queryset=ElectoralDignity.objects.filter(is_active=True).order_by("order", "name"),
-        required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    district = forms.ModelChoiceField(
-        label="Circunscripción",
-        queryset=ElectoralDistrict.objects.filter(is_active=True).order_by("dignity__order", "name"),
-        required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    parish = forms.ModelChoiceField(
-        label="Parroquia",
-        queryset=None,
-        required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    venue = forms.ModelChoiceField(
-        label="Recinto electoral",
-        queryset=ElectoralVenue.objects.filter(is_active=True).order_by("name"),
-        required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-    table = forms.ModelChoiceField(
-        label="Mesa",
-        queryset=ElectoralTable.objects.filter(is_active=True).order_by("number", "gender"),
-        required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["parish"].queryset = Parish.objects.filter(is_active=True).order_by(
-            "canton__name", "name"
-        )
-
-
-def resolve_electoral_district(*, parish_id, dignity_id):
-    from apps.locations.models import Parish
-
-    try:
-        parish = Parish.objects.select_related("canton__province").get(pk=parish_id)
-        dignity = ElectoralDignity.objects.get(pk=dignity_id)
-    except (Parish.DoesNotExist, ElectoralDignity.DoesNotExist, ValueError, TypeError):
-        return None
-    districts = ElectoralDistrict.objects.filter(dignity=dignity, is_active=True)
-    if dignity.scope == ElectoralDignity.Scope.PROVINCE:
-        return districts.filter(province=parish.canton.province).first()
-    if dignity.scope == ElectoralDignity.Scope.CANTON:
-        return districts.filter(canton=parish.canton).first()
-    return districts.filter(parishes=parish).first()
+class SurveyOptionConditionSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        if value:
+            raw_value = getattr(value, "value", value)
+            try:
+                survey_option = self.choices.queryset.get(pk=raw_value)
+            except (AttributeError, SurveyOption.DoesNotExist, ValueError, TypeError):
+                survey_option = None
+            if survey_option is not None:
+                option["attrs"]["data-question-id"] = str(survey_option.question_id)
+        return option
 
 
 class SurveyQuestionBuilderForm(forms.ModelForm):
@@ -336,26 +101,38 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
         label="Mostrar según respuesta a",
         queryset=SurveyQuestion.objects.none(),
         required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
+        widget=SurveyQuestionConditionSelect(
+            attrs={
+                "class": "form-select form-select-solid",
+                "data-survey-builder-field": "visibility-question",
+            }
+        ),
     )
     visibility_option = forms.ModelChoiceField(
         label="Opción esperada",
         queryset=SurveyOption.objects.none(),
         required=False,
-        widget=forms.Select(attrs={"class": "form-select form-select-solid"}),
-        help_text="Úsalo cuando la pregunta condicionante es de selección.",
-    )
-    option_lines = forms.CharField(
-        label="Opciones",
-        required=False,
-        widget=forms.Textarea(
+        widget=SurveyOptionConditionSelect(
             attrs={
-                "rows": 4,
-                "placeholder": "Una opción por línea",
-                "class": "form-control form-control-solid",
+                "class": "form-select form-select-solid",
+                "data-survey-builder-field": "visibility-option",
             }
         ),
-        help_text="Solo aplica para selección única o múltiple.",
+        help_text="Úsalo cuando la pregunta condicionante es de selección.",
+    )
+    option_lines = forms.MultipleChoiceField(
+        label="Opciones",
+        required=False,
+        choices=(),
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "django-select2 form-select form-select-solid",
+                "data-tags": "true",
+                "data-placeholder": "Agrega opciones",
+                "data-survey-builder-field": "options",
+            }
+        ),
+        help_text="Solo aplica para selección única o múltiple. Escribe una opción y presiona Enter.",
     )
 
     class Meta:
@@ -374,41 +151,79 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
         widgets = {
             "text": forms.TextInput(attrs={"class": "form-control form-control-solid"}),
             "help_text": forms.TextInput(attrs={"class": "form-control form-control-solid"}),
-            "question_type": forms.Select(attrs={"class": "form-select form-select-solid"}),
+            "question_type": forms.Select(
+                attrs={
+                    "class": "form-select form-select-solid",
+                    "data-survey-builder-field": "question-type",
+                }
+            ),
             "is_required": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "visibility_operator": forms.Select(attrs={"class": "form-select form-select-solid"}),
-            "visibility_value": forms.TextInput(attrs={"class": "form-control form-control-solid"}),
+            "visibility_operator": forms.Select(
+                attrs={
+                    "class": "form-select form-select-solid",
+                    "data-survey-builder-field": "visibility-operator",
+                }
+            ),
+            "visibility_value": forms.TextInput(
+                attrs={
+                    "class": "form-control form-control-solid",
+                    "data-survey-builder-field": "visibility-value",
+                }
+            ),
         }
 
     def __init__(self, *args, survey=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.survey = survey
+        option_choices = []
         if self.instance and self.instance.pk and not self.is_bound:
-            self.fields["option_lines"].initial = "\n".join(
-                self.instance.options.filter(is_active=True).order_by("order").values_list(
-                    "label", flat=True
-                )
+            option_choices = list(
+                self.instance.options.filter(is_active=True)
+                .order_by("order")
+                .values_list("label", "label")
             )
+            self.fields["option_lines"].initial = [value for value, _label in option_choices]
         if survey is not None:
+            survey_option_choices = list(
+                SurveyOption.objects.filter(question__survey=survey, is_active=True)
+                .order_by("label")
+                .values_list("label", "label")
+                .distinct()
+            )
+            option_choices = list(dict(option_choices + survey_option_choices).items())
             self.fields["section"].queryset = survey.sections.filter(is_active=True).order_by(
                 "order", "title"
             )
-            self.fields["visibility_question"].queryset = survey.questions.filter(
-                is_active=True
-            ).order_by("section__order", "order", "id")
+            visibility_questions = survey.questions.filter(is_active=True)
+            if self.instance and self.instance.pk:
+                visibility_questions = visibility_questions.exclude(pk=self.instance.pk)
+            self.fields["visibility_question"].queryset = visibility_questions.order_by(
+                "section__order", "order", "id"
+            )
             self.fields["visibility_option"].queryset = SurveyOption.objects.filter(
                 question__survey=survey,
                 is_active=True,
             ).order_by("question__order", "order", "label")
+        if self.is_bound:
+            if hasattr(self.data, "getlist"):
+                submitted_options = self.data.getlist(self.add_prefix("option_lines"))
+            else:
+                submitted_options = self.data.get(self.add_prefix("option_lines"), [])
+                if isinstance(submitted_options, str):
+                    submitted_options = [submitted_options]
+            option_choices = list(
+                dict(option_choices + [(value, value) for value in submitted_options if str(value).strip()]).items()
+            )
+        self.fields["option_lines"].choices = option_choices
 
     def clean(self):
         cleaned_data = super().clean()
         qtype = cleaned_data.get("question_type")
-        option_lines = cleaned_data.get("option_lines", "")
+        option_lines = cleaned_data.get("option_lines") or []
         if qtype in {
             SurveyQuestion.QuestionType.SINGLE_CHOICE,
             SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
-        } and len([line for line in option_lines.splitlines() if line.strip()]) < 2:
+        } and len([line for line in option_lines if str(line).strip()]) < 2:
             self.add_error("option_lines", "Agrega al menos 2 opciones.")
         visibility_question = cleaned_data.get("visibility_question")
         if not visibility_question:

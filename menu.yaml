@@ -54,42 +54,39 @@ Encuestas:
   Encuestas:
     app: surveys
     model: survey
-  Preguntas:
-    app: surveys
-    model: surveyquestion
-  Opciones:
-    app: surveys
-    model: surveyoption
-  Secciones:
-    app: surveys
-    model: surveysection
 
 Resultados electorales:
   icon: chart-simple
   Veedor:
-    url_name: surveys:electoral_watcher
+    url_name: votes:watcher
     icon: clipboard-edit
   Reporte veedores:
-    url_name: surveys:electoral_report
+    url_name: votes:report
     icon: chart-simple
+  Mapa veedores:
+    url_name: votes:map
+    icon: map
   Dignidades:
-    app: surveys
+    app: votes
     model: electoraldignity
   Circunscripciones:
-    app: surveys
+    app: votes
     model: electoraldistrict
   Candidaturas:
-    app: surveys
+    app: votes
     model: electoralcandidateoption
   Recintos:
-    app: surveys
+    app: votes
     model: electoralvenue
   Mesas:
-    app: surveys
+    app: votes
     model: electoraltable
   Asignaciones de mesas:
-    app: surveys
+    app: votes
     model: electoraltableassignment
+  Actas:
+    app: votes
+    model: electoralresultreport
 
 Publicidad territorial:
   icon: picture

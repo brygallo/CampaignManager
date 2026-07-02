@@ -12,21 +12,10 @@ from apps.insoles.views import InstanceBaseFormView
 
 from .forms import (
     DynamicSurveyResponseForm,
-    ElectoralReportFilterForm,
-    ElectoralWatcherForm,
     SurveyQuestionBuilderForm,
     SurveySectionBuilderForm,
-    resolve_electoral_district,
 )
 from .models import (
-    ElectoralCandidateOption,
-    ElectoralDignity,
-    ElectoralDistrict,
-    ElectoralResultLine,
-    ElectoralResultReport,
-    ElectoralTable,
-    ElectoralTableAssignment,
-    ElectoralVenue,
     Survey,
     SurveyAnswer,
     SurveyOption,
@@ -35,87 +24,16 @@ from .models import (
     SurveySection,
 )
 
-
-def build_electoral_report_payload(filters=None):
-    filters = filters or {}
-    reports = ElectoralResultReport.objects.select_related(
-        "parish",
-        "venue",
-        "table",
-        "dignity",
-        "district",
-        "watcher",
-    )
-    if filters.get("dignity"):
-        reports = reports.filter(dignity=filters["dignity"])
-    if filters.get("district"):
-        reports = reports.filter(district=filters["district"])
-    if filters.get("parish"):
-        reports = reports.filter(parish=filters["parish"])
-    if filters.get("venue"):
-        reports = reports.filter(venue=filters["venue"])
-    if filters.get("table"):
-        reports = reports.filter(table=filters["table"])
-
-    lines = ElectoralResultLine.objects.filter(report__in=reports)
-    summary_rows = list(
-        lines.values("line_type", "list_code", "candidate_name")
-        .annotate(votes=Sum("votes"))
-        .order_by("-votes", "list_code", "candidate_name")
-    )
-    total_votes = sum(row["votes"] or 0 for row in summary_rows)
-    for row in summary_rows:
-        votes = row["votes"] or 0
-        row["percent"] = round((votes * 100 / total_votes), 1) if total_votes else 0
-        row["label"] = row["list_code"]
-        if row["candidate_name"]:
-            row["label"] = f"{row['list_code']} - {row['candidate_name']}"
-
-    latest = []
-    for report in reports.order_by("-created_date")[:20]:
-        for line in report.lines.all().order_by("order", "list_code"):
-            latest.append(
-                {
-                    "parish": report.parish.name,
-                    "venue": report.venue.name,
-                    "table": report.table.number,
-                    "gender": report.table.get_gender_display(),
-                    "dignity": report.dignity.name,
-                    "list": line.list_code,
-                    "candidate": line.candidate_name,
-                    "votes": line.votes,
-                }
-            )
-    return {
-        "total_votes": total_votes,
-        "dignities_count": reports.values("dignity").distinct().count(),
-        "lists_count": lines.values("list_code").distinct().count(),
-        "summary_rows": summary_rows,
-        "chart": {
-            "categories": [row["label"] for row in summary_rows],
-            "series": [row["votes"] or 0 for row in summary_rows],
-        },
-        "latest": latest[:30],
-    }
-
-
-def broadcast_electoral_report_update():
-    try:
-        from asgiref.sync import async_to_sync
-        from channels.layers import get_channel_layer
-    except ImportError:
-        return
-
-    channel_layer = get_channel_layer()
-    if channel_layer is None:
-        return
-    async_to_sync(channel_layer.group_send)(
-        "electoral_results",
-        {
-            "type": "electoral_results_updated",
-            "payload": build_electoral_report_payload(),
-        },
-    )
+def user_can_apply_survey(user, survey):
+    if not survey.requires_login:
+        return True
+    if not user.is_authenticated:
+        return False
+    if user.has_perm("surveys.apply_all_surveys"):
+        return True
+    if survey.all_users_can_respond:
+        return True
+    return survey.assigned_users.filter(pk=user.pk).exists()
 
 
 class SurveyApplyListView(LoginRequiredMixin, ListView):
@@ -126,12 +44,18 @@ class SurveyApplyListView(LoginRequiredMixin, ListView):
         from django.utils import timezone
 
         now = timezone.now()
-        return (
+        queryset = (
             Survey.objects.filter(status=Survey.Status.PUBLISHED, is_active=True)
             .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
             .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=now))
-            .order_by("title")
+        )
+        if not self.request.user.has_perm("surveys.apply_all_surveys"):
+            queryset = queryset.filter(
+                Q(requires_login=False)
+                | Q(all_users_can_respond=True)
+                | Q(assigned_users=self.request.user)
             )
+        return queryset.distinct().order_by("title")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -142,182 +66,6 @@ class SurveyApplyListView(LoginRequiredMixin, ListView):
             ("Aplicar", None),
         ]
         return context
-
-
-class ElectoralWatcherPanelView(LoginRequiredMixin, TemplateView):
-    template_name = "surveys/electoral_watcher.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        form = kwargs.get("form") or ElectoralWatcherForm(self.request.POST or None)
-        assignments = (
-            ElectoralTableAssignment.objects.filter(watcher=self.request.user, is_active=True)
-            .select_related("table__venue__parish__canton__province")
-            .order_by("table__venue__parish__name", "table__venue__name", "table__number")
-        )
-        context.update(
-            {
-                "form": form,
-                "assignments": assignments,
-                "candidate_options": getattr(form, "candidate_options", []),
-                "latest_reports": self._latest_reports(),
-                "page_title": "Módulo Veedor",
-                "breadcrumbs": [
-                    ("Inicio", "/"),
-                    ("Resultados electorales", None),
-                    ("Veedor", None),
-                ],
-            }
-        )
-        return context
-
-    def post(self, request, *args, **kwargs):
-        form = ElectoralWatcherForm(request.POST)
-        if not form.is_valid():
-            return self.render_to_response(self.get_context_data(form=form))
-        report = self._save_report(form)
-        messages.success(request, f"Resultados registrados para {report.table}.")
-        broadcast_electoral_report_update()
-        return HttpResponseRedirect(reverse("surveys:electoral_watcher"))
-
-    def _save_report(self, form):
-        cleaned = form.cleaned_data
-        report, _ = ElectoralResultReport.objects.update_or_create(
-            table=cleaned["table"],
-            dignity=cleaned["dignity"],
-            district=form.district,
-            defaults={
-                "parish": cleaned["parish"],
-                "venue": cleaned["venue"],
-                "watcher": self.request.user,
-                "is_active": True,
-            },
-        )
-        report.lines.all().delete()
-        order = 1
-        for option in form.candidate_options:
-            ElectoralResultLine.objects.create(
-                report=report,
-                line_type=ElectoralResultLine.LineType.CANDIDATE,
-                candidate_option=option,
-                list_code=option.list_code,
-                candidate_name=option.candidate_name,
-                votes=cleaned.get(form.vote_field_name(option)) or 0,
-                order=order,
-            )
-            order += 1
-        ElectoralResultLine.objects.create(
-            report=report,
-            line_type=ElectoralResultLine.LineType.BLANK,
-            list_code="BLANCOS",
-            votes=cleaned["blank_votes"],
-            order=order,
-        )
-        ElectoralResultLine.objects.create(
-            report=report,
-            line_type=ElectoralResultLine.LineType.NULL,
-            list_code="NULOS",
-            votes=cleaned["null_votes"],
-            order=order + 1,
-        )
-        return report
-
-    def _latest_reports(self):
-        return (
-            ElectoralResultReport.objects.select_related(
-                "parish", "venue", "table", "dignity", "watcher"
-            )
-            .prefetch_related("lines")
-            .order_by("-created_date")[:10]
-        )
-
-
-class ElectoralReportView(LoginRequiredMixin, TemplateView):
-    template_name = "surveys/electoral_report.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        form = ElectoralReportFilterForm(self.request.GET or None)
-        filters = {}
-        if form.is_valid():
-            filters = {key: value for key, value in form.cleaned_data.items() if value}
-        context.update(
-            {
-                "form": form,
-                "payload": build_electoral_report_payload(filters),
-                "page_title": "Reporte veedores",
-                "breadcrumbs": [
-                    ("Inicio", "/"),
-                    ("Resultados electorales", None),
-                    ("Reporte veedores", None),
-                ],
-            }
-        )
-        return context
-
-
-class ElectoralReportDataView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        form = ElectoralReportFilterForm(request.GET or None)
-        filters = {}
-        if form.is_valid():
-            filters = {key: value for key, value in form.cleaned_data.items() if value}
-        return JsonResponse(build_electoral_report_payload(filters))
-
-
-class ElectoralLookupView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        lookup = request.GET.get("lookup")
-        if lookup == "venues":
-            rows = ElectoralVenue.objects.filter(
-                parish_id=request.GET.get("parish"), is_active=True
-            ).order_by("name")
-            return JsonResponse({"results": [{"id": row.pk, "text": row.name} for row in rows]})
-        if lookup == "tables":
-            rows = ElectoralTable.objects.filter(
-                venue_id=request.GET.get("venue"), is_active=True
-            ).order_by("number", "gender")
-            return JsonResponse(
-                {"results": [{"id": row.pk, "text": f"{row.number} - {row.get_gender_display()}"} for row in rows]}
-            )
-        if lookup == "dignities":
-            rows = self._dignities_for_parish(request.GET.get("parish"))
-            return JsonResponse({"results": [{"id": row.pk, "text": row.name} for row in rows]})
-        if lookup == "candidates":
-            district = resolve_electoral_district(
-                parish_id=request.GET.get("parish"), dignity_id=request.GET.get("dignity")
-            )
-            rows = []
-            if district:
-                rows = district.candidate_options.filter(is_active=True).order_by(
-                    "order", "list_code", "candidate_name"
-                )
-            return JsonResponse(
-                {
-                    "district": {"id": district.pk, "text": district.name} if district else None,
-                    "results": [
-                        {"id": row.pk, "list": row.list_code, "candidate": row.candidate_name}
-                        for row in rows
-                    ],
-                }
-            )
-        return JsonResponse({"results": []})
-
-    def _dignities_for_parish(self, parish_id):
-        from apps.locations.models import Parish
-
-        try:
-            parish = Parish.objects.select_related("canton__province").get(pk=parish_id)
-        except (Parish.DoesNotExist, ValueError, TypeError):
-            return ElectoralDignity.objects.none()
-        districts = ElectoralDistrict.objects.filter(is_active=True).filter(
-            Q(province=parish.canton.province)
-            | Q(canton=parish.canton)
-            | Q(parishes=parish)
-        )
-        return ElectoralDignity.objects.filter(districts__in=districts, is_active=True).distinct().order_by(
-            "order", "name"
-        )
 
 
 class SurveyAccessMixin:
@@ -424,7 +172,7 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
     def _sync_options(self, question, option_lines):
         if not question.uses_options:
             return
-        labels = [line.strip() for line in option_lines.splitlines() if line.strip()]
+        labels = self._option_labels(option_lines)
         for index, label in enumerate(labels, start=1):
             SurveyOption.objects.create(
                 question=question,
@@ -432,6 +180,13 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
                 value=label,
                 order=index,
             )
+
+    def _option_labels(self, option_lines):
+        if isinstance(option_lines, str):
+            values = option_lines.splitlines()
+        else:
+            values = option_lines or []
+        return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))
 
     def _change_status(self, status, message):
         self.survey.status = status
@@ -470,9 +225,16 @@ class SurveyBuilderQuestionInsoleView(LoginRequiredMixin, InstanceBaseFormView):
     def _sync_options(self, question, option_lines):
         if not question.uses_options:
             return
-        labels = [line.strip() for line in option_lines.splitlines() if line.strip()]
+        labels = self._option_labels(option_lines)
         for index, label in enumerate(labels, start=1):
             SurveyOption.objects.create(question=question, label=label, value=label, order=index)
+
+    def _option_labels(self, option_lines):
+        if isinstance(option_lines, str):
+            values = option_lines.splitlines()
+        else:
+            values = option_lines or []
+        return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))
 
 
 class SurveyBuilderQuestionEditInsoleView(SurveyBuilderQuestionInsoleView):
@@ -608,6 +370,9 @@ class SurveyRespondView(SurveyAccessMixin, TemplateView):
             from django.contrib.auth.views import redirect_to_login
 
             return redirect_to_login(request.get_full_path())
+        if not user_can_apply_survey(request.user, self.survey):
+            messages.error(request, "No tienes asignada esta encuesta.")
+            return HttpResponseRedirect(reverse("surveys:apply_list"))
         return super().dispatch(request, *args, **kwargs)
 
     def get_form(self):

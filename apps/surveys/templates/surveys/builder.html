@@ -1,4 +1,5 @@
 {% extends "base/base.html" %}
+{% load static %}
 
 {% block extra_css %}
   {{ block.super }}
@@ -16,6 +17,9 @@
     .survey-builder-item {
       transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
     }
+    [data-survey-builder] [data-drag-handle] {
+      cursor: grab;
+    }
     .survey-builder-item:hover {
       border-color: var(--bs-primary) !important;
       box-shadow: var(--bs-card-box-shadow);
@@ -23,6 +27,13 @@
     .survey-builder-item.is-dragging {
       opacity: .55;
       transform: scale(.995);
+      box-shadow: var(--bs-card-box-shadow);
+    }
+    .survey-builder-placeholder {
+      min-height: 64px;
+      border: 1px dashed var(--bs-primary);
+      border-radius: .625rem;
+      background: var(--bs-primary-light);
     }
     .survey-builder-side {
       top: 1rem;
@@ -354,115 +365,13 @@
 
 {% block extra_js %}
   {{ block.super }}
+  <script src="{% static 'assets/js/surveys/builder_sortable.js' %}?v=20260702-1"></script>
+  <script src="{% static 'assets/js/surveys/builder_form.js' %}?v=20260702-1"></script>
   <script>
     (function () {
       var root = document.querySelector("[data-survey-builder]");
       if (!root) return;
-
-      function csrfToken() {
-        var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
-        if (input) return input.value;
-        var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
-        return match ? decodeURIComponent(match[1]) : "";
-      }
-
-      function postOrder(type, ids) {
-        var data = new FormData();
-        data.append("type", type);
-        ids.forEach(function (id) { data.append("ids[]", id); });
-        if (type === "questions" && arguments.length > 2) {
-          data.append("section_id", arguments[2] || "");
-        }
-        fetch(root.dataset.reorderUrl, {
-          method: "POST",
-          body: data,
-          headers: {
-            "X-CSRFToken": csrfToken(),
-            "X-Requested-With": "XMLHttpRequest"
-          },
-          credentials: "same-origin"
-        });
-      }
-
-      function postAllQuestionOrders() {
-        root.querySelectorAll('[data-sortable="questions"]').forEach(function (container) {
-          var ids = [].slice.call(container.children)
-            .filter(function (child) { return child.matches("[data-sort-item]"); })
-            .map(function (node) { return node.dataset.questionId; })
-            .filter(Boolean);
-          postOrder("questions", ids, container.dataset.sectionTarget);
-        });
-      }
-
-      var activeDrag = null;
-      function enableSortable(container, type, idAttr) {
-        var dragging = null;
-        function sortableItems() {
-          return [].slice.call(container.children).filter(function (child) {
-            return child.matches("[data-sort-item]");
-          });
-        }
-        sortableItems().forEach(function (item) {
-          item.draggable = true;
-          item.addEventListener("dragstart", function (event) {
-            if (event.target.closest("[data-drag-handle]") === null && event.target !== item) {
-              event.preventDefault();
-              return;
-            }
-            dragging = item;
-            activeDrag = item;
-            item.classList.add("is-dragging");
-            event.dataTransfer.effectAllowed = "move";
-          });
-          item.addEventListener("dragend", function () {
-            item.classList.remove("is-dragging");
-            root.querySelectorAll(".is-drag-over").forEach(function (node) {
-              node.classList.remove("is-drag-over");
-            });
-            dragging = null;
-            activeDrag = null;
-            if (type === "questions") {
-              postAllQuestionOrders();
-            } else {
-              var ids = sortableItems()
-                .map(function (node) { return node.dataset[idAttr]; })
-                .filter(Boolean);
-              postOrder(type, ids, container.dataset.sectionTarget);
-            }
-          });
-          item.addEventListener("dragover", function (event) {
-            event.preventDefault();
-            if (!dragging || dragging === item) return;
-            var rect = item.getBoundingClientRect();
-            var after = event.clientY > rect.top + rect.height / 2;
-            container.insertBefore(dragging, after ? item.nextSibling : item);
-          });
-        });
-        container.addEventListener("dragenter", function (event) {
-          if (!activeDrag || type !== "questions") return;
-          event.preventDefault();
-          container.classList.add("is-drag-over");
-        });
-        container.addEventListener("dragleave", function (event) {
-          if (!container.contains(event.relatedTarget)) {
-            container.classList.remove("is-drag-over");
-          }
-        });
-        container.addEventListener("dragover", function (event) {
-          if (!activeDrag || type !== "questions") return;
-          event.preventDefault();
-          if (!container.contains(activeDrag)) {
-            container.appendChild(activeDrag);
-          }
-        });
-      }
-
-      root.querySelectorAll('[data-sortable="sections"]').forEach(function (container) {
-        enableSortable(container, "sections", "sectionId");
-      });
-      root.querySelectorAll('[data-sortable="questions"]').forEach(function (container) {
-        enableSortable(container, "questions", "questionId");
-      });
+      if (window.SurveyBuilderSortable) new window.SurveyBuilderSortable(root).init();
 
       document.querySelectorAll("[data-copy-url]").forEach(function (button) {
         button.addEventListener("click", function () {

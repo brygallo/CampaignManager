@@ -6,7 +6,7 @@
   {{ block.super }}
   <style>
     .survey-shell {
-      max-width: 860px;
+      max-width: 920px;
       margin: 0 auto;
       padding: 0 0 3rem;
     }
@@ -21,6 +21,42 @@
       margin-bottom: 1.25rem;
     }
 
+    .survey-progress {
+      height: .5rem;
+      border-radius: 999px;
+      background: var(--bs-gray-200);
+      overflow: hidden;
+    }
+
+    .survey-progress__bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--bs-primary);
+      transition: width .2s ease;
+    }
+
+    .survey-section {
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      margin: 1.75rem 0 .85rem;
+      color: var(--bs-gray-700);
+    }
+
+    .survey-section__mark {
+      width: 2.25rem;
+      height: 2.25rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: .625rem;
+      background: var(--bs-primary-light);
+      color: var(--bs-primary);
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
     .survey-card {
       background: var(--bs-body-bg);
       border: 1px solid var(--bs-gray-200);
@@ -32,6 +68,7 @@
 
     .survey-card:hover {
       border-color: var(--bs-gray-300);
+      box-shadow: 0 .35rem 1.25rem rgba(15, 23, 42, .06);
     }
 
     .survey-required {
@@ -42,6 +79,29 @@
     .survey-card:focus-within {
       border-left: 4px solid var(--bs-primary);
       padding-left: calc(1.5rem - 4px);
+    }
+
+    .survey-card.is-complete {
+      border-color: rgba(var(--bs-success-rgb), .35);
+    }
+
+    .survey-card.is-complete .survey-question-number {
+      color: var(--bs-success);
+      background: var(--bs-success-light);
+    }
+
+    .survey-question-number {
+      width: 2rem;
+      height: 2rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: .5rem;
+      color: var(--bs-primary);
+      background: var(--bs-primary-light);
+      font-size: .85rem;
+      font-weight: 700;
+      flex: 0 0 auto;
     }
 
     .survey-control {
@@ -165,6 +225,12 @@
       .survey-scale-list {
         grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
       }
+      .survey-actions {
+        align-items: stretch !important;
+      }
+      .survey-actions .btn {
+        min-height: 46px;
+      }
     }
   </style>
 {% endblock %}
@@ -193,9 +259,14 @@
         <div class="text-gray-700 fs-6">{{ survey.description|linebreaksbr }}</div>
       {% endif %}
       <div class="separator my-5"></div>
-      <div class="d-flex align-items-center gap-2 text-muted fs-7">
-        <span class="badge badge-light-danger">*</span>
-        <span>Indica una pregunta obligatoria</span>
+      <div class="d-flex flex-column gap-3">
+        <div class="d-flex justify-content-between align-items-center gap-3 text-muted fs-7">
+          <span><span class="badge badge-light-danger me-2">*</span>Pregunta obligatoria</span>
+          <span data-survey-progress-label>0 de {{ form.fields|length }}</span>
+        </div>
+        <div class="survey-progress" aria-hidden="true">
+          <div class="survey-progress__bar" data-survey-progress-bar></div>
+        </div>
       </div>
     </div>
 
@@ -208,6 +279,17 @@
     {% endif %}
 
     {% for group in question_groups %}
+      {% if group.section %}
+        <div class="survey-section">
+          <span class="survey-section__mark">{{ forloop.counter }}</span>
+          <div>
+            <div class="fw-bold text-gray-900">{{ group.section.title }}</div>
+            {% if group.section.description %}
+              <div class="text-muted fs-7">{{ group.section.description }}</div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
       {% for item in group.fields %}
         <div class="survey-card {% if item.field.errors %}border-danger{% endif %}"
              data-survey-question="{{ item.field_name }}"
@@ -216,17 +298,22 @@
                data-condition-operator="{{ item.condition_operator }}"
                data-condition-expected="{{ item.condition_expected }}"
              {% endif %}>
-          <label class="form-label fw-semibold fs-5 text-gray-900 mb-3" for="{{ item.field.id_for_label }}">
-            {{ item.question.text }}
-            {% if item.field.field.required %}<span class="survey-required">*</span>{% endif %}
-          </label>
+          <div class="d-flex gap-3 align-items-start mb-3">
+            <span class="survey-question-number">{{ forloop.counter }}</span>
+            <label class="form-label fw-semibold fs-5 text-gray-900 mb-0" for="{{ item.field.id_for_label }}">
+              {{ item.question.text }}
+              {% if item.field.field.required %}<span class="survey-required">*</span>{% endif %}
+            </label>
+          </div>
           {% if item.question.help_text %}
-            <div class="text-muted fs-7 mb-3">{{ item.question.help_text }}</div>
+            <div class="text-muted fs-7 mb-3 ps-sm-11">{{ item.question.help_text }}</div>
           {% endif %}
-          {{ item.field }}
-          {% for error in item.field.errors %}
-            <div class="text-danger fs-7 mt-2">{{ error }}</div>
-          {% endfor %}
+          <div class="ps-sm-11">
+            {{ item.field }}
+            {% for error in item.field.errors %}
+              <div class="text-danger fs-7 mt-2">{{ error }}</div>
+            {% endfor %}
+          </div>
         </div>
       {% endfor %}
     {% endfor %}
@@ -250,6 +337,8 @@
     (function () {
       var form = document.querySelector(".survey-shell form");
       if (!form) return;
+      var progressBar = form.querySelector("[data-survey-progress-bar]");
+      var progressLabel = form.querySelector("[data-survey-progress-label]");
 
       function valuesFor(name) {
         return Array.prototype.slice.call(form.querySelectorAll('[name="' + name + '"]'))
@@ -287,14 +376,40 @@
         });
       }
 
+      function cardHasValue(card) {
+        return Array.prototype.slice.call(card.querySelectorAll("input, select, textarea"))
+          .some(function (input) {
+            if (input.disabled || input.type === "hidden") return false;
+            if (input.type === "radio" || input.type === "checkbox") return input.checked;
+            if (input.type === "file") return input.files && input.files.length > 0;
+            return String(input.value || "").trim() !== "";
+          });
+      }
+
+      function refreshProgress() {
+        var visibleCards = Array.prototype.slice.call(form.querySelectorAll("[data-survey-question]"))
+          .filter(function (card) { return !card.classList.contains("d-none"); });
+        var complete = visibleCards.filter(cardHasValue).length;
+        var total = visibleCards.length || 1;
+        var percent = Math.round((complete * 100) / total);
+        visibleCards.forEach(function (card) {
+          card.classList.toggle("is-complete", cardHasValue(card));
+        });
+        if (progressBar) progressBar.style.width = percent + "%";
+        if (progressLabel) progressLabel.textContent = complete + " de " + total;
+      }
+
       form.addEventListener("change", function (event) {
         refreshConditions();
         if (event.target.matches(".survey-choice-input")) {
           refreshChoiceState();
         }
+        refreshProgress();
       });
+      form.addEventListener("input", refreshProgress);
       refreshConditions();
       refreshChoiceState();
+      refreshProgress();
     })();
   </script>
 {% endblock %}
