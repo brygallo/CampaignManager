@@ -58,6 +58,7 @@ class Survey(BaseModel):
         permissions = (
             ("publish_survey", "Puede publicar/cerrar encuestas"),
             ("apply_all_surveys", "Puede responder todas las encuestas"),
+            ("manage_survey_assignments", "Puede gestionar asignación de encuestas"),
             ("view_survey_results", "Puede ver resultados de encuestas"),
             ("export_survey_results", "Puede exportar resultados de encuestas"),
         )
