@@ -46,6 +46,51 @@ Levantamientos de campo:
     url_name: field_surveys:dashboard
     icon: chart-simple
 
+Encuestas:
+  icon: clipboard-list
+  Aplicar encuestas:
+    url_name: surveys:apply_list
+    icon: clipboard-edit
+  Encuestas:
+    app: surveys
+    model: survey
+  Preguntas:
+    app: surveys
+    model: surveyquestion
+  Opciones:
+    app: surveys
+    model: surveyoption
+  Secciones:
+    app: surveys
+    model: surveysection
+
+Resultados electorales:
+  icon: chart-simple
+  Veedor:
+    url_name: surveys:electoral_watcher
+    icon: clipboard-edit
+  Reporte veedores:
+    url_name: surveys:electoral_report
+    icon: chart-simple
+  Dignidades:
+    app: surveys
+    model: electoraldignity
+  Circunscripciones:
+    app: surveys
+    model: electoraldistrict
+  Candidaturas:
+    app: surveys
+    model: electoralcandidateoption
+  Recintos:
+    app: surveys
+    model: electoralvenue
+  Mesas:
+    app: surveys
+    model: electoraltable
+  Asignaciones de mesas:
+    app: surveys
+    model: electoraltableassignment
+
 Publicidad territorial:
   icon: picture
   Mapa:

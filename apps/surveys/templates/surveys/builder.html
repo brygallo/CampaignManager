@@ -1,0 +1,476 @@
+{% extends "base/base.html" %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <style>
+    .survey-builder-dropzone {
+      min-height: 3.5rem;
+      border: 1px dashed transparent;
+      border-radius: .625rem;
+      transition: border-color .15s ease, background-color .15s ease;
+    }
+    .survey-builder-dropzone.is-drag-over {
+      border-color: var(--bs-primary);
+      background: var(--bs-primary-light);
+    }
+    .survey-builder-item {
+      transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+    }
+    .survey-builder-item:hover {
+      border-color: var(--bs-primary) !important;
+      box-shadow: var(--bs-card-box-shadow);
+    }
+    .survey-builder-item.is-dragging {
+      opacity: .55;
+      transform: scale(.995);
+    }
+    .survey-builder-side {
+      top: 1rem;
+    }
+  </style>
+{% endblock %}
+
+{% block breadcrumb_actions %}
+  {% if survey.status != "published" %}
+    <form method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="publish_survey">
+      <button type="submit" class="btn btn-sm btn-success">
+        <i data-lucide="radio" class="fs-4"></i> Publicar
+      </button>
+    </form>
+  {% else %}
+    <form method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="close_survey">
+      <button type="submit" class="btn btn-sm btn-light-danger">
+        <i data-lucide="lock" class="fs-4"></i> Cerrar
+      </button>
+    </form>
+  {% endif %}
+  <button type="button"
+          class="btn btn-sm btn-primary insoles-action"
+          data-url="{{ question_modal_url }}"
+          data-title="Agregar pregunta">
+    <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-light-primary insoles-action"
+          data-url="{{ section_modal_url }}"
+          data-title="Agregar sección">
+    <i data-lucide="panel-top" class="fs-4"></i> Agregar sección
+  </button>
+  <a href="{{ survey.get_public_url }}" class="btn btn-sm btn-light-primary">
+    <i data-lucide="eye" class="fs-4"></i> Vista previa
+  </a>
+  <a href="{{ survey.get_absolute_url }}" class="btn btn-sm btn-light">
+    <i data-lucide="arrow-left" class="fs-4"></i> Detalle
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-6">
+  <div class="col-12 col-xl-8">
+    <div class="card mb-6">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-4">
+          <div>
+            <span class="badge badge-light-success mb-3">{{ survey.get_status_display }}</span>
+            <h2 class="fw-bold mb-2">{{ survey.title }}</h2>
+            {% if survey.description %}
+              <div class="text-muted">{{ survey.description }}</div>
+            {% endif %}
+          </div>
+          <div class="d-flex flex-wrap gap-2 align-self-start">
+            <span class="badge badge-light-primary">{{ questions|length }} preguntas</span>
+            <span class="badge badge-light-info">{{ sections|length }} secciones</span>
+            {% if survey.requires_login %}
+              <span class="badge badge-light-info">Con login</span>
+            {% else %}
+              <span class="badge badge-light-warning">Pública</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-column gap-4" data-survey-builder data-reorder-url="{{ reorder_url }}">
+      {% if sections %}
+        <div class="d-flex align-items-center gap-2 text-muted fs-7 mb-1">
+          <i data-lucide="grip-vertical" class="fs-4"></i>
+          <span>Arrastra secciones o preguntas para ordenar el formulario.</span>
+        </div>
+      {% endif %}
+
+      <div class="d-flex flex-column gap-4" data-sortable="sections">
+      {% for section in sections %}
+        <div class="card" data-section-id="{{ section.pk }}" data-sort-item>
+          <div class="card-header min-h-60px">
+            <div class="card-title d-flex align-items-center gap-3">
+              <button type="button" class="btn btn-icon btn-sm btn-light" data-drag-handle title="Arrastrar sección">
+                <i data-lucide="grip-vertical" class="fs-4"></i>
+              </button>
+              <div>
+                <div class="fw-bold">{{ section.title }}</div>
+                {% if section.description %}<div class="text-muted fs-7">{{ section.description }}</div>{% endif %}
+              </div>
+            </div>
+            <div class="card-toolbar">
+              <button type="button"
+                      class="btn btn-icon btn-sm btn-light-primary insoles-action"
+                      data-url="{% url 'surveys:builder_section_edit_modal' survey.pk section.pk %}"
+                      data-title="Editar sección"
+                      title="Editar sección">
+                <i data-lucide="pencil" class="fs-4"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="d-flex flex-column gap-3 survey-builder-dropzone"
+                 data-sortable="questions"
+                 data-section-target="{{ section.pk }}">
+              {% for question in section.questions.all %}
+                {% if question.is_active %}
+                  <div class="border rounded p-4 bg-body survey-builder-item" data-question-id="{{ question.pk }}" data-sort-item>
+                    <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-3">
+                      <div class="min-w-0">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                          <button type="button" class="btn btn-icon btn-sm btn-light" data-drag-handle title="Arrastrar pregunta">
+                            <i data-lucide="grip-vertical" class="fs-4"></i>
+                          </button>
+                          <span class="badge badge-light">{{ question.order }}</span>
+                          <span class="badge badge-light-primary">{{ question.get_question_type_display }}</span>
+                          {% if question.is_required %}
+                            <span class="badge badge-light-danger">Obligatoria</span>
+                          {% endif %}
+                          {% if question.visibility_question_id %}
+                            <span class="badge badge-light-warning">Condicional</span>
+                          {% endif %}
+                        </div>
+                        <div class="fw-bold fs-5 text-gray-900">{{ question.text }}</div>
+                        {% if question.help_text %}
+                          <div class="text-muted fs-7 mt-1">{{ question.help_text }}</div>
+                        {% endif %}
+                        {% if question.visibility_question_id %}
+                          <div class="text-warning fs-7 mt-2">
+                            Visible si "{{ question.visibility_question.text }}" {{ question.get_visibility_operator_display|lower }}
+                            {% if question.visibility_option %}"{{ question.visibility_option.label }}"{% else %}"{{ question.visibility_value }}"{% endif %}
+                          </div>
+                        {% endif %}
+                        {% if question.options.all %}
+                          <div class="d-flex flex-wrap gap-2 mt-4">
+                            {% for option in question.options.all %}
+                              {% if option.is_active %}
+                                <span class="badge badge-light">{{ option.label }}</span>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex gap-2 align-self-start">
+                        <button type="button"
+                                class="btn btn-icon btn-sm btn-light-primary insoles-action"
+                                data-url="{% url 'surveys:builder_question_edit_modal' survey.pk question.pk %}"
+                                data-title="Editar pregunta"
+                                title="Editar pregunta">
+                          <i data-lucide="pencil" class="fs-4"></i>
+                        </button>
+                        <form method="post">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="duplicate_question">
+                          <input type="hidden" name="question_id" value="{{ question.pk }}">
+                          <button type="submit" class="btn btn-icon btn-sm btn-light-primary" title="Duplicar pregunta">
+                            <i data-lucide="copy" class="fs-4"></i>
+                          </button>
+                        </form>
+                        <form method="post">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="delete_question">
+                          <input type="hidden" name="question_id" value="{{ question.pk }}">
+                          <button type="submit" class="btn btn-icon btn-sm btn-light-danger" title="Retirar pregunta">
+                            <i data-lucide="trash-2" class="fs-4"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              {% empty %}
+                <div class="text-muted fs-7">Esta sección no tiene preguntas.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+      </div>
+
+      {% if questions %}
+        <div class="card">
+          <div class="card-header min-h-60px">
+            <div class="card-title d-flex align-items-center gap-3">
+              <i data-lucide="inbox" class="fs-3 text-muted"></i>
+              <span class="fw-bold">Sin sección</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="d-flex flex-column gap-3 survey-builder-dropzone"
+                 data-sortable="questions"
+                 data-section-target="">
+              {% for question in questions %}
+                {% if not question.section_id %}
+                  <div class="border rounded p-4 bg-body survey-builder-item" data-question-id="{{ question.pk }}" data-sort-item>
+                    <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-3">
+                      <div class="min-w-0">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                          <button type="button" class="btn btn-icon btn-sm btn-light" data-drag-handle title="Arrastrar pregunta">
+                            <i data-lucide="grip-vertical" class="fs-4"></i>
+                          </button>
+                          <span class="badge badge-light">{{ question.order }}</span>
+                          <span class="badge badge-light-primary">{{ question.get_question_type_display }}</span>
+                          {% if question.is_required %}
+                            <span class="badge badge-light-danger">Obligatoria</span>
+                          {% endif %}
+                          {% if question.visibility_question_id %}
+                            <span class="badge badge-light-warning">Condicional</span>
+                          {% endif %}
+                        </div>
+                        <div class="fw-bold fs-5 text-gray-900">{{ question.text }}</div>
+                        {% if question.help_text %}
+                          <div class="text-muted fs-7 mt-1">{{ question.help_text }}</div>
+                        {% endif %}
+                        {% if question.visibility_question_id %}
+                          <div class="text-warning fs-7 mt-2">
+                            Visible si "{{ question.visibility_question.text }}" {{ question.get_visibility_operator_display|lower }}
+                            {% if question.visibility_option %}"{{ question.visibility_option.label }}"{% else %}"{{ question.visibility_value }}"{% endif %}
+                          </div>
+                        {% endif %}
+                        {% if question.options.all %}
+                          <div class="d-flex flex-wrap gap-2 mt-4">
+                            {% for option in question.options.all %}
+                              {% if option.is_active %}
+                                <span class="badge badge-light">{{ option.label }}</span>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex gap-2 align-self-start">
+                        <button type="button"
+                                class="btn btn-icon btn-sm btn-light-primary insoles-action"
+                                data-url="{% url 'surveys:builder_question_edit_modal' survey.pk question.pk %}"
+                                data-title="Editar pregunta"
+                                title="Editar pregunta">
+                          <i data-lucide="pencil" class="fs-4"></i>
+                        </button>
+                        <form method="post">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="duplicate_question">
+                          <input type="hidden" name="question_id" value="{{ question.pk }}">
+                          <button type="submit" class="btn btn-icon btn-sm btn-light-primary" title="Duplicar pregunta">
+                            <i data-lucide="copy" class="fs-4"></i>
+                          </button>
+                        </form>
+                        <form method="post">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="delete_question">
+                          <input type="hidden" name="question_id" value="{{ question.pk }}">
+                          <button type="submit" class="btn btn-icon btn-sm btn-light-danger" title="Retirar pregunta">
+                            <i data-lucide="trash-2" class="fs-4"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if not questions and not sections %}
+        <div class="card">
+          <div class="card-body text-center py-12">
+            <i data-lucide="clipboard-list" class="fs-3x text-muted mb-4"></i>
+            <div class="fw-bold fs-4 mb-1">Todavía no hay preguntas</div>
+            <div class="text-muted">Agrega secciones y preguntas desde el panel lateral.</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-4">
+    <div class="card position-sticky survey-builder-side">
+      <div class="card-header">
+        <h3 class="card-title">Constructor</h3>
+      </div>
+      <div class="card-body">
+        <div class="d-flex flex-column gap-4">
+          <button type="button"
+                  class="btn btn-primary w-100 insoles-action"
+                  data-url="{{ question_modal_url }}"
+                  data-title="Agregar pregunta">
+            <i data-lucide="plus" class="fs-4"></i> Agregar pregunta
+          </button>
+          <button type="button"
+                  class="btn btn-light-primary w-100 insoles-action"
+                  data-url="{{ section_modal_url }}"
+                  data-title="Agregar sección">
+            <i data-lucide="panel-top" class="fs-4"></i> Agregar sección
+          </button>
+          <a href="{{ survey.get_public_url }}" class="btn btn-light-primary w-100">
+            <i data-lucide="eye" class="fs-4"></i> Probar formulario
+          </a>
+          <a href="{{ survey.get_results_url }}" class="btn btn-light w-100">
+            <i data-lucide="bar-chart-3" class="fs-4"></i> Ver resultados
+          </a>
+          <button type="button"
+                  class="btn btn-light w-100"
+                  data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
+            <i data-lucide="copy" class="fs-4"></i> Copiar enlace
+          </button>
+          <div class="separator"></div>
+          <div class="d-flex align-items-start gap-3">
+            <i data-lucide="mouse-pointer-click" class="fs-2 text-primary"></i>
+            <div>
+              <div class="fw-bold text-gray-800">Creación inline</div>
+              <div class="text-muted fs-7">Las preguntas se agregan en modal usando el patrón Insoles de la plataforma.</div>
+            </div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <i data-lucide="list-plus" class="fs-2 text-primary"></i>
+            <div>
+              <div class="fw-bold text-gray-800">Opciones rápidas</div>
+              <div class="text-muted fs-7">Para selección única o múltiple, escribe una opción por línea.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script>
+    (function () {
+      var root = document.querySelector("[data-survey-builder]");
+      if (!root) return;
+
+      function csrfToken() {
+        var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input) return input.value;
+        var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : "";
+      }
+
+      function postOrder(type, ids) {
+        var data = new FormData();
+        data.append("type", type);
+        ids.forEach(function (id) { data.append("ids[]", id); });
+        if (type === "questions" && arguments.length > 2) {
+          data.append("section_id", arguments[2] || "");
+        }
+        fetch(root.dataset.reorderUrl, {
+          method: "POST",
+          body: data,
+          headers: {
+            "X-CSRFToken": csrfToken(),
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          credentials: "same-origin"
+        });
+      }
+
+      function postAllQuestionOrders() {
+        root.querySelectorAll('[data-sortable="questions"]').forEach(function (container) {
+          var ids = [].slice.call(container.children)
+            .filter(function (child) { return child.matches("[data-sort-item]"); })
+            .map(function (node) { return node.dataset.questionId; })
+            .filter(Boolean);
+          postOrder("questions", ids, container.dataset.sectionTarget);
+        });
+      }
+
+      var activeDrag = null;
+      function enableSortable(container, type, idAttr) {
+        var dragging = null;
+        function sortableItems() {
+          return [].slice.call(container.children).filter(function (child) {
+            return child.matches("[data-sort-item]");
+          });
+        }
+        sortableItems().forEach(function (item) {
+          item.draggable = true;
+          item.addEventListener("dragstart", function (event) {
+            if (event.target.closest("[data-drag-handle]") === null && event.target !== item) {
+              event.preventDefault();
+              return;
+            }
+            dragging = item;
+            activeDrag = item;
+            item.classList.add("is-dragging");
+            event.dataTransfer.effectAllowed = "move";
+          });
+          item.addEventListener("dragend", function () {
+            item.classList.remove("is-dragging");
+            root.querySelectorAll(".is-drag-over").forEach(function (node) {
+              node.classList.remove("is-drag-over");
+            });
+            dragging = null;
+            activeDrag = null;
+            if (type === "questions") {
+              postAllQuestionOrders();
+            } else {
+              var ids = sortableItems()
+                .map(function (node) { return node.dataset[idAttr]; })
+                .filter(Boolean);
+              postOrder(type, ids, container.dataset.sectionTarget);
+            }
+          });
+          item.addEventListener("dragover", function (event) {
+            event.preventDefault();
+            if (!dragging || dragging === item) return;
+            var rect = item.getBoundingClientRect();
+            var after = event.clientY > rect.top + rect.height / 2;
+            container.insertBefore(dragging, after ? item.nextSibling : item);
+          });
+        });
+        container.addEventListener("dragenter", function (event) {
+          if (!activeDrag || type !== "questions") return;
+          event.preventDefault();
+          container.classList.add("is-drag-over");
+        });
+        container.addEventListener("dragleave", function (event) {
+          if (!container.contains(event.relatedTarget)) {
+            container.classList.remove("is-drag-over");
+          }
+        });
+        container.addEventListener("dragover", function (event) {
+          if (!activeDrag || type !== "questions") return;
+          event.preventDefault();
+          if (!container.contains(activeDrag)) {
+            container.appendChild(activeDrag);
+          }
+        });
+      }
+
+      root.querySelectorAll('[data-sortable="sections"]').forEach(function (container) {
+        enableSortable(container, "sections", "sectionId");
+      });
+      root.querySelectorAll('[data-sortable="questions"]').forEach(function (container) {
+        enableSortable(container, "questions", "questionId");
+      });
+
+      document.querySelectorAll("[data-copy-url]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          navigator.clipboard.writeText(button.dataset.copyUrl).then(function () {
+            if (window.toastr) window.toastr.success("Enlace copiado.");
+          });
+        });
+      });
+    })();
+  </script>
+{% endblock %}

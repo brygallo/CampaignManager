@@ -1,0 +1,8 @@
+<label class="survey-choice-card{% if widget.selected %} is-selected{% endif %}" for="{{ widget.attrs.id }}">
+  <span class="form-check form-check-custom form-check-solid form-check-sm survey-choice-check">
+    <input type="{{ widget.type }}" name="{{ widget.name }}" value="{{ widget.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" %}>
+  </span>
+  <span class="survey-choice-copy">
+    <span class="survey-choice-title">{{ widget.label }}</span>
+  </span>
+</label>

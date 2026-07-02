@@ -1,0 +1,82 @@
+{% extends "base/base.html" %}
+
+{% block breadcrumb_actions %}
+  <a class="btn btn-sm btn-light-primary" href="{% url 'surveys:export_csv' survey.pk %}">
+    <i data-lucide="download" class="fs-4"></i> Exportar CSV
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-5 mb-6">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted fw-semibold">Respuestas</div>
+        <div class="fs-1 fw-bold">{{ total_responses }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted fw-semibold">Enlace para responder</div>
+        <a href="{{ survey.get_public_url }}" class="fw-bold">{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if choice_summaries %}
+  <div class="row g-5 mb-6">
+    {% for summary in choice_summaries %}
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="card-title fs-5">{{ summary.question.text }}</h3></div>
+          <div class="card-body">
+            {% for row in summary.rows %}
+              <div class="d-flex justify-content-between border-bottom py-2">
+                <span>{{ row.label }}</span>
+                <span class="fw-bold">{{ row.count }}</span>
+              </div>
+            {% empty %}
+              <span class="text-muted">Sin respuestas.</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><h3 class="card-title">Últimas respuestas</h3></div>
+  <div class="card-body table-responsive">
+    <table class="table table-row-dashed align-middle">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Respuestas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for response in responses %}
+          <tr>
+            <td>{{ response.submitted_at }}</td>
+            <td>{% if survey.is_anonymous %}Anónima{% else %}{{ response.respondent|default:"Pública" }}{% endif %}</td>
+            <td>
+              <div class="d-flex flex-column gap-2">
+                {% for answer in response.answers.all %}
+                  <div><span class="fw-semibold">{{ answer.question.text }}:</span> {{ answer.display_value }}</div>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="text-muted">Todavía no hay respuestas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

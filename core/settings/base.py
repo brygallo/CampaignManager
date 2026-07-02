@@ -54,6 +54,8 @@ AUTHENTICATION_BACKENDS = [
 # SHARED_APPS live in the "public" schema. Only the tenant registry and the
 # bare minimum Django plumbing needed to serve the public landing/signup.
 SHARED_APPS = [
+    "daphne",
+    "channels",
     "apps.tenancy",
     "django_tenants",
     "django.contrib.contenttypes",
@@ -88,6 +90,7 @@ TENANT_APPS = [
     "apps.territorial_ads",
     "apps.field_surveys",
     "apps.political_agenda",
+    "apps.surveys",
 ]
 
 # Django requires a single INSTALLED_APPS list; dedupe shared entries.
@@ -223,6 +226,15 @@ CACHES = {
         "KEY_FUNCTION": "core.cache.tenant_cache_key",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    },
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
         },
     },
 }

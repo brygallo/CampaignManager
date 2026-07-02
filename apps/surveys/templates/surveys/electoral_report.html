@@ -1,0 +1,235 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+{{ payload.chart|json_script:"electoral-chart-data" }}
+<div id="electoral-report" data-data-url="{% url 'surveys:electoral_report_data' %}">
+  <div class="d-flex align-items-center gap-2 mb-5">
+    <span class="badge badge-light-success">En vivo</span>
+    <span class="text-muted">Reporte veedores</span>
+  </div>
+
+  <div class="row g-5 mb-6">
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Total votos</div>
+          <div class="fs-1 fw-bold" data-total-votes>{{ payload.total_votes }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Dignidades</div>
+          <div class="fs-1 fw-bold" data-dignities-count>{{ payload.dignities_count }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Listas</div>
+          <div class="fs-1 fw-bold" data-lists-count>{{ payload.lists_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="get" class="card mb-6" id="electoral-report-filters">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title mb-1">Filtros del reporte</h3>
+        <div class="text-muted fs-7">Cambie cualquier filtro para actualizar el gráfico automáticamente.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-5">
+        <div class="col-md-6 col-xl-3">
+          <label class="form-label">{{ form.dignity.label }}</label>
+          {{ form.dignity }}
+        </div>
+        <div class="col-md-6 col-xl-3">
+          <label class="form-label">{{ form.district.label }}</label>
+          {{ form.district }}
+        </div>
+        <div class="col-md-6 col-xl-2">
+          <label class="form-label">{{ form.parish.label }}</label>
+          {{ form.parish }}
+        </div>
+        <div class="col-md-6 col-xl-2">
+          <label class="form-label">{{ form.venue.label }}</label>
+          {{ form.venue }}
+        </div>
+        <div class="col-md-6 col-xl-2">
+          <label class="form-label">{{ form.table.label }}</label>
+          {{ form.table }}
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-6">
+    <div class="col-xl-7">
+      <div class="card h-100">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title mb-1">Votos por dignidad y lista</h3>
+            <div class="text-muted fs-7">Gráfico comparativo de votos acumulados.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="electoral-results-chart" style="height: 360px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-5">
+      <div class="card h-100">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title mb-1">Resumen del gráfico</h3>
+            <div class="text-muted fs-7">Votos y porcentaje sobre el total filtrado.</div>
+          </div>
+        </div>
+        <div class="card-body table-responsive">
+          <table class="table table-row-dashed align-middle">
+            <thead>
+              <tr>
+                <th>Lista / candidato</th>
+                <th class="text-end">Votos</th>
+                <th class="text-end">% del total</th>
+              </tr>
+            </thead>
+            <tbody data-summary-body>
+              {% for row in payload.summary_rows %}
+                <tr>
+                  <td>
+                    <div class="fw-bold">{{ row.list_code }}</div>
+                    <div class="text-muted">{{ row.candidate_name }}</div>
+                  </td>
+                  <td class="text-end fw-bold">{{ row.votes }}</td>
+                  <td class="text-end">{{ row.percent }}%</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-muted">Sin votos registrados.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-6">
+    <div class="card-header"><h3 class="card-title">Últimos registros</h3></div>
+    <div class="card-body table-responsive">
+      <table class="table table-row-dashed align-middle">
+        <thead>
+          <tr>
+            <th>Parroquia</th>
+            <th>Recinto</th>
+            <th>Mesa</th>
+            <th>Género</th>
+            <th>Dignidad</th>
+            <th>Lista</th>
+            <th>Candidato</th>
+            <th class="text-end">Votos</th>
+          </tr>
+        </thead>
+        <tbody data-latest-body>
+          {% for row in payload.latest %}
+            <tr>
+              <td>{{ row.parish }}</td>
+              <td>{{ row.venue }}</td>
+              <td>{{ row.table }}</td>
+              <td>{{ row.gender }}</td>
+              <td>{{ row.dignity }}</td>
+              <td>{{ row.list }}</td>
+              <td>{{ row.candidate }}</td>
+              <td class="text-end fw-bold">{{ row.votes }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="text-muted">Aún no hay registros.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script>
+    (function () {
+      var root = document.getElementById("electoral-report");
+      var chartEl = document.getElementById("electoral-results-chart");
+      if (!root || !chartEl || typeof ApexCharts === "undefined") return;
+      var chartData = JSON.parse(document.getElementById("electoral-chart-data").textContent);
+      var chart = new ApexCharts(chartEl, {
+        series: [{name: "Votos", data: chartData.series || []}],
+        chart: {type: "bar", height: 360, toolbar: {show: false}, fontFamily: "inherit"},
+        plotOptions: {bar: {horizontal: true, borderRadius: 4}},
+        dataLabels: {enabled: true},
+        xaxis: {categories: chartData.categories || []},
+        colors: ["#1b84ff"]
+      });
+      chart.render();
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+          return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"}[char];
+        });
+      }
+
+      function render(payload) {
+        root.querySelector("[data-total-votes]").textContent = payload.total_votes;
+        root.querySelector("[data-dignities-count]").textContent = payload.dignities_count;
+        root.querySelector("[data-lists-count]").textContent = payload.lists_count;
+        chart.updateOptions({xaxis: {categories: payload.chart.categories || []}});
+        chart.updateSeries([{name: "Votos", data: payload.chart.series || []}]);
+
+        var summary = root.querySelector("[data-summary-body]");
+        summary.innerHTML = "";
+        if (!payload.summary_rows.length) {
+          summary.innerHTML = '<tr><td colspan="3" class="text-muted">Sin votos registrados.</td></tr>';
+        } else {
+          payload.summary_rows.forEach(function (row) {
+            summary.insertAdjacentHTML("beforeend",
+              '<tr><td><div class="fw-bold">' + escapeHtml(row.list_code) + '</div><div class="text-muted">' +
+              escapeHtml(row.candidate_name) + '</div></td><td class="text-end fw-bold">' +
+              escapeHtml(row.votes) + '</td><td class="text-end">' + escapeHtml(row.percent) + '%</td></tr>'
+            );
+          });
+        }
+
+        var latest = root.querySelector("[data-latest-body]");
+        latest.innerHTML = "";
+        if (!payload.latest.length) {
+          latest.innerHTML = '<tr><td colspan="8" class="text-muted">Aún no hay registros.</td></tr>';
+        } else {
+          payload.latest.forEach(function (row) {
+            latest.insertAdjacentHTML("beforeend",
+              '<tr><td>' + escapeHtml(row.parish) + '</td><td>' + escapeHtml(row.venue) + '</td><td>' +
+              escapeHtml(row.table) + '</td><td>' + escapeHtml(row.gender) + '</td><td>' +
+              escapeHtml(row.dignity) + '</td><td>' + escapeHtml(row.list) + '</td><td>' +
+              escapeHtml(row.candidate) + '</td><td class="text-end fw-bold">' + escapeHtml(row.votes) + '</td></tr>'
+            );
+          });
+        }
+      }
+
+      function refresh() {
+        var params = new URLSearchParams(new FormData(document.getElementById("electoral-report-filters")));
+        fetch(root.dataset.dataUrl + "?" + params.toString(), {headers: {"X-Requested-With": "XMLHttpRequest"}})
+          .then(function (response) { return response.json(); })
+          .then(render);
+      }
+
+      document.getElementById("electoral-report-filters").addEventListener("change", refresh);
+
+      var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+      var socket = new WebSocket(protocol + window.location.host + "/ws/resultados-electorales/");
+      socket.onmessage = function () { refresh(); };
+    })();
+  </script>
+{% endblock %}

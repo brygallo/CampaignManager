@@ -1,0 +1,109 @@
+{% extends "base/base_detail.html" %}
+
+{% block toolbar_actions %}
+  <a class="btn btn-sm btn-light-primary" href="{{ object.get_public_url }}">
+    <i data-lucide="send" class="fs-4"></i> Responder
+  </a>
+  <a class="btn btn-sm btn-primary" href="{% url 'surveys:builder' object.pk %}">
+    <i data-lucide="layout-template" class="fs-4"></i> Constructor
+  </a>
+  <a class="btn btn-sm btn-light" href="{{ object.get_results_url }}">
+    <i data-lucide="bar-chart-3" class="fs-4"></i> Resultados
+  </a>
+{% endblock %}
+
+{% block detail_extra_tabs %}
+  <li class="nav-item" role="presentation">
+    <a class="nav-link"
+       id="tab-questions-trigger"
+       data-bs-toggle="tab"
+       href="#tab-questions"
+       role="tab"
+       aria-controls="tab-questions"
+       aria-selected="false">
+      <i data-lucide="list-checks" class="fs-3 me-2"></i>Preguntas
+    </a>
+  </li>
+{% endblock %}
+
+{% block detail_extra_panes %}
+  <div class="tab-pane fade"
+       id="tab-questions"
+       role="tabpanel"
+       aria-labelledby="tab-questions-trigger"
+       tabindex="0">
+    <div class="d-flex flex-column gap-5">
+      {% for section in object.sections.all %}
+        <div>
+          <div class="fw-bold fs-4 text-dark mb-1">{{ section.title }}</div>
+          {% if section.description %}
+            <div class="text-muted mb-4">{{ section.description }}</div>
+          {% endif %}
+          <div class="d-flex flex-column gap-3">
+            {% for question in section.questions.all %}
+              {% if question.is_active %}
+                <div class="border rounded p-4">
+                  <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-2">
+                    <div>
+                      <div class="fw-bold text-gray-900">
+                        {{ question.order }}. {{ question.text }}
+                        {% if question.is_required %}<span class="badge badge-light-danger ms-2">Obligatoria</span>{% endif %}
+                      </div>
+                      {% if question.help_text %}<div class="text-muted fs-7 mt-1">{{ question.help_text }}</div>{% endif %}
+                    </div>
+                    <span class="badge badge-light-primary align-self-start">{{ question.get_question_type_display }}</span>
+                  </div>
+                  {% if question.options.all %}
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                      {% for option in question.options.all %}
+                        {% if option.is_active %}
+                          <span class="badge badge-light">{{ option.label }}</span>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% empty %}
+              <div class="text-muted">Esta sección no tiene preguntas.</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="text-muted">Esta encuesta todavía no tiene secciones ni preguntas.</div>
+      {% endfor %}
+
+      {% with loose_questions=object.questions.all %}
+        {% if loose_questions %}
+          <div>
+            <div class="fw-bold fs-4 text-dark mb-4">Preguntas sin sección</div>
+            <div class="d-flex flex-column gap-3">
+              {% for question in loose_questions %}
+                {% if question.is_active and not question.section_id %}
+                  <div class="border rounded p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-2">
+                      <div class="fw-bold text-gray-900">
+                        {{ question.order }}. {{ question.text }}
+                        {% if question.is_required %}<span class="badge badge-light-danger ms-2">Obligatoria</span>{% endif %}
+                      </div>
+                      <span class="badge badge-light-primary align-self-start">{{ question.get_question_type_display }}</span>
+                    </div>
+                    {% if question.options.all %}
+                      <div class="d-flex flex-wrap gap-2 mt-3">
+                        {% for option in question.options.all %}
+                          {% if option.is_active %}
+                            <span class="badge badge-light">{{ option.label }}</span>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      {% endwith %}
+    </div>
+  </div>
+{% endblock %}

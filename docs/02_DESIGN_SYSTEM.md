@@ -202,6 +202,27 @@ data-kt-app-sidebar-push-toolbar="true"
 | Wizard | `utilities/wizards/` | `stepper` | Para campaña/elección Fase 5 |
 | Stepper | `utilities/wizards/horizontal.html` | `stepper-item` | Onboarding nuevo movimiento |
 
+### 6.3.1 Encuestas
+
+El módulo `apps.surveys` debe mantener una experiencia tipo formulario continuo
+para encuestadores, pero visualmente alineada a Metronic, no a Google Forms.
+
+| Caso | Implementación estándar | Regla visual |
+|---|---|---|
+| Constructor | `apps/surveys/templates/surveys/builder.html` | Cards Metronic, toolbar superior, panel lateral operativo |
+| Crear/editar pregunta | Insoles AJAX | No navegar fuera del constructor para acciones rápidas |
+| Ordenar | Drag and drop nativo con handle | Mostrar estado `drag-over` y guardar orden por endpoint |
+| Secciones | Bloques dentro del constructor | Sirven para organizar, no para partir el llenado en pantallas |
+| Responder | `respond.html` + widgets de encuesta | Una pregunta por card, footer sticky, sin listas HTML crudas |
+| Selección única / sí-no | `SurveyChoiceRadioSelect` | Tarjetas seleccionables con `form-check-custom form-check-solid` |
+| Selección múltiple | `SurveyChoiceCheckboxSelectMultiple` | Misma tarjeta, permite varias activas |
+| Escalas | `SurveyScaleRadioSelect` | Grid compacto de números, estado seleccionado primary |
+| Ubicación | `LeafletMapWidget` | Siempre mapa interactivo, nunca input manual de lat/lng visible |
+
+Los widgets personalizados viven en `apps/surveys/widgets.py` y sus templates en
+`apps/surveys/templates/surveys/widgets/`. Cualquier nuevo tipo de pregunta debe
+preferir un widget propio si el HTML default de Django no se ve profesional.
+
 ### 6.4 Detalle
 | Componente | Ref. demo55 | Clase | Uso CM |
 |---|---|---|---|

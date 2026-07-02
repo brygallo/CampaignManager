@@ -1,0 +1,4 @@
+<label class="survey-scale-option{% if widget.selected %} is-selected{% endif %}" for="{{ widget.attrs.id }}">
+  <input type="{{ widget.type }}" name="{{ widget.name }}" value="{{ widget.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" %}>
+  <span class="survey-scale-value">{{ widget.label }}</span>
+</label>

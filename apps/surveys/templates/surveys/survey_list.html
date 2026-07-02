@@ -1,0 +1,7 @@
+{% extends "base/base_list.html" %}
+
+{% block list_extra_actions %}
+  <a href="{% url 'site:surveys_survey_listar' %}" class="btn btn-light btn-sm">
+    <i data-lucide="clipboard-list" class="fs-4"></i><span class="d-none d-sm-inline">Encuestas</span>
+  </a>
+{% endblock %}

@@ -1,0 +1,248 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<div class="row g-6">
+  <div class="col-xl-4">
+    <div class="card mb-6">
+      <div class="card-header">
+        <h3 class="card-title">Mesas asignadas</h3>
+      </div>
+      <div class="card-body">
+        {% for assignment in assignments %}
+          <button type="button"
+                  class="btn btn-light btn-active-light-primary w-100 text-start mb-3 js-assignment"
+                  data-parish="{{ assignment.table.venue.parish_id }}"
+                  data-venue="{{ assignment.table.venue_id }}"
+                  data-table="{{ assignment.table_id }}">
+            <span class="d-block fw-bold text-gray-900">{{ assignment.table.venue.name }}</span>
+            <span class="d-block text-muted fs-7">
+              {{ assignment.table.venue.parish.name }} / {{ assignment.table.venue.parish.canton.name }} /
+              {{ assignment.table.venue.parish.canton.province.name }}
+            </span>
+            <span class="badge badge-light-primary mt-2">Mesa {{ assignment.table.number }} - {{ assignment.table.get_gender_display }}</span>
+          </button>
+        {% empty %}
+          <div class="text-muted">No tienes mesas asignadas.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Últimos registros</h3>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-row-dashed align-middle">
+            <thead>
+              <tr>
+                <th>Parroquia</th>
+                <th>Mesa</th>
+                <th>Dignidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for report in latest_reports %}
+                <tr>
+                  <td>{{ report.parish.name }}</td>
+                  <td>{{ report.table.number }}</td>
+                  <td>{{ report.dignity.name }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-muted">Aún no hay registros.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-8">
+    <form method="post" class="card" id="electoral-watcher-form" data-lookup-url="{% url 'surveys:electoral_lookup' %}">
+      {% csrf_token %}
+      <div class="card-header">
+        <div>
+          <h3 class="card-title mb-1">Módulo Veedor</h3>
+          <div class="text-muted fs-7">Registre los votos contados por lista y candidato en la mesa electoral.</div>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="row g-5 mb-6">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.parish.label }}</label>
+            {{ form.parish }}
+            {% for error in form.parish.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.venue.label }}</label>
+            {{ form.venue }}
+            {% for error in form.venue.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.table.label }}</label>
+            {{ form.table }}
+            {% for error in form.table.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.dignity.label }}</label>
+            {{ form.dignity }}
+            {% for error in form.dignity.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="separator my-6"></div>
+
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h4 class="fw-bold mb-1">Votos por lista y candidato</h4>
+            <div class="text-muted fs-7" id="district-label">Seleccione parroquia y dignidad.</div>
+          </div>
+        </div>
+        <div id="candidate-votes" class="d-flex flex-column gap-3">
+          {% for option in candidate_options %}
+            <div class="row g-3 align-items-center">
+              <div class="col">
+                <div class="fw-bold">{{ option.list_code }}</div>
+                <div class="text-muted">{{ option.candidate_name }}</div>
+              </div>
+              <div class="col-4 col-md-3">
+                <input type="number"
+                       min="0"
+                       value="0"
+                       name="candidate_{{ option.pk }}"
+                       class="form-control form-control-solid">
+              </div>
+            </div>
+          {% empty %}
+            <div class="text-muted">Elija una dignidad para cargar candidatos.</div>
+          {% endfor %}
+        </div>
+
+        <div class="separator my-6"></div>
+
+        <h4 class="fw-bold mb-4">Votos blancos y nulos</h4>
+        <div class="row g-5">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.blank_votes.label }}</label>
+            {{ form.blank_votes }}
+            {% for error in form.blank_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.null_votes.label }}</label>
+            {{ form.null_votes }}
+            {% for error in form.null_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="card-footer d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="save" class="fs-4"></i>
+          Guardar acta
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script>
+    (function () {
+      var form = document.getElementById("electoral-watcher-form");
+      if (!form) return;
+      var lookupUrl = form.dataset.lookupUrl;
+      var parish = document.getElementById("id_parish");
+      var venue = document.getElementById("id_venue");
+      var table = document.getElementById("id_table");
+      var dignity = document.getElementById("id_dignity");
+      var candidates = document.getElementById("candidate-votes");
+      var districtLabel = document.getElementById("district-label");
+
+      function setOptions(select, rows, placeholder) {
+        select.innerHTML = "";
+        select.appendChild(new Option(placeholder || "---------", ""));
+        rows.forEach(function (row) {
+          select.appendChild(new Option(row.text, row.id));
+        });
+      }
+
+      function fetchLookup(params) {
+        return fetch(lookupUrl + "?" + new URLSearchParams(params).toString(), {
+          headers: {"X-Requested-With": "XMLHttpRequest"}
+        }).then(function (response) { return response.json(); });
+      }
+
+      function loadVenues(selected) {
+        if (!parish.value) return;
+        fetchLookup({lookup: "venues", parish: parish.value}).then(function (data) {
+          setOptions(venue, data.results, "Seleccione recinto");
+          if (selected) venue.value = selected;
+          loadTables();
+        });
+        fetchLookup({lookup: "dignities", parish: parish.value}).then(function (data) {
+          setOptions(dignity, data.results, "Seleccione dignidad");
+        });
+      }
+
+      function loadTables(selected) {
+        if (!venue.value) {
+          setOptions(table, [], "Seleccione mesa");
+          return;
+        }
+        fetchLookup({lookup: "tables", venue: venue.value}).then(function (data) {
+          setOptions(table, data.results, "Seleccione mesa");
+          if (selected) table.value = selected;
+        });
+      }
+
+      function loadCandidates() {
+        if (!parish.value || !dignity.value) return;
+        fetchLookup({lookup: "candidates", parish: parish.value, dignity: dignity.value}).then(function (data) {
+          districtLabel.textContent = data.district ? data.district.text : "Sin circunscripción configurada.";
+          candidates.innerHTML = "";
+          if (!data.results.length) {
+            candidates.innerHTML = '<div class="text-muted">No hay candidaturas configuradas.</div>';
+            return;
+          }
+          data.results.forEach(function (row) {
+            candidates.insertAdjacentHTML("beforeend",
+              '<div class="row g-3 align-items-center">' +
+                '<div class="col"><div class="fw-bold"></div><div class="text-muted"></div></div>' +
+                '<div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_' + row.id + '" class="form-control form-control-solid"></div>' +
+              '</div>'
+            );
+            var item = candidates.lastElementChild;
+            item.querySelector(".fw-bold").textContent = row.list;
+            item.querySelector(".text-muted").textContent = row.candidate;
+          });
+        });
+      }
+
+      parish.addEventListener("change", function () {
+        setOptions(venue, [], "Seleccione recinto");
+        setOptions(table, [], "Seleccione mesa");
+        setOptions(dignity, [], "Seleccione dignidad");
+        candidates.innerHTML = '<div class="text-muted">Elija una dignidad para cargar candidatos.</div>';
+        loadVenues();
+      });
+      venue.addEventListener("change", function () { loadTables(); });
+      dignity.addEventListener("change", loadCandidates);
+
+      document.querySelectorAll(".js-assignment").forEach(function (button) {
+        button.addEventListener("click", function () {
+          parish.value = button.dataset.parish;
+          loadVenues(button.dataset.venue);
+          setTimeout(function () { loadTables(button.dataset.table); }, 250);
+        });
+      });
+    })();
+  </script>
+{% endblock %}

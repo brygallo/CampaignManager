@@ -1,0 +1,10 @@
+<div class="survey-choice-list" data-survey-choice-list>
+  {% for group, options, index in widget.optgroups %}
+    {% if group %}
+      <div class="text-muted fw-semibold fs-8 text-uppercase mt-2">{{ group }}</div>
+    {% endif %}
+    {% for option in options %}
+      {% include option.template_name with widget=option %}
+    {% endfor %}
+  {% endfor %}
+</div>
