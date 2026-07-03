@@ -327,6 +327,7 @@ TEMPLATE_WIDGETS = {
     "modelselect2": "widgets/selectinput.html",
     "modelselect2multiple": "widgets/selectinput.html",
     "surveyquestionconditionselect": "widgets/selectinput.html",
+    "surveyvisibilityoperatorselect": "widgets/selectinput.html",
     "surveyoptionconditionselect": "widgets/selectinput.html",
     "costtypeselect2": "widgets/selectinput.html",
     "typesizeselect": "widgets/selectinput.html",

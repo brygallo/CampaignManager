@@ -47,7 +47,7 @@
   </div>
 
   <div class="col-xl-8">
-    <form method="post" class="card" id="electoral-watcher-form" data-lookup-url="{% url 'votes:lookup' %}">
+    <form method="post" enctype="multipart/form-data" class="card" id="electoral-watcher-form" data-lookup-url="{% url 'votes:lookup' %}">
       {% csrf_token %}
       <div class="card-header">
         <div>
@@ -76,18 +76,45 @@
           {% for option in candidate_options %}
             <div class="row g-3 align-items-center">
               <div class="col"><div class="fw-bold">{{ option.list_code }}</div><div class="text-muted">{{ option.candidate_name }}</div></div>
-              <div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_{{ option.pk }}" class="form-control form-control-solid"></div>
+              <div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_{{ option.pk }}" class="form-control form-control-solid" data-candidate-vote></div>
             </div>
           {% empty %}
             <div class="text-muted">Elija una dignidad para cargar candidatos.</div>
           {% endfor %}
         </div>
         <div class="separator my-6"></div>
-        <h4 class="fw-bold mb-4">Cuadre de acta</h4>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+          <h4 class="fw-bold mb-0">Cuadre de acta</h4>
+          <span class="badge badge-light-secondary" data-balance-status>Sin datos</span>
+        </div>
         <div class="row g-5">
           <div class="col-md-4"><label class="form-label">{{ form.voters_count.label }}</label>{{ form.voters_count }}{% for error in form.voters_count.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
           <div class="col-md-4"><label class="form-label">{{ form.blank_votes.label }}</label>{{ form.blank_votes }}{% for error in form.blank_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
           <div class="col-md-4"><label class="form-label">{{ form.null_votes.label }}</label>{{ form.null_votes }}{% for error in form.null_votes.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
+        </div>
+        <div class="row g-5 mt-1">
+          <div class="col-md-4">
+            <div class="bg-light rounded p-4">
+              <div class="text-muted fs-7">Total calculado</div>
+              <div class="fs-3 fw-bold" data-balance-total>0</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="bg-light rounded p-4">
+              <div class="text-muted fs-7">Sufragantes</div>
+              <div class="fs-3 fw-bold" data-balance-voters>0</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="bg-light rounded p-4">
+              <div class="text-muted fs-7">Diferencia</div>
+              <div class="fs-3 fw-bold" data-balance-difference>0</div>
+            </div>
+          </div>
+        </div>
+        <div class="separator my-6"></div>
+        <div class="row g-5">
+          <div class="col-md-6"><label class="form-label">{{ form.evidence_file.label }}</label>{{ form.evidence_file }}{% for error in form.evidence_file.errors %}<div class="text-danger fs-7 mt-1">{{ error }}</div>{% endfor %}</div>
         </div>
       </div>
       <div class="card-footer d-flex justify-content-end">
@@ -111,6 +138,31 @@
       var dignity = document.getElementById("id_dignity");
       var candidates = document.getElementById("candidate-votes");
       var districtLabel = document.getElementById("district-label");
+      var votersCount = document.getElementById("id_voters_count");
+      var blankVotes = document.getElementById("id_blank_votes");
+      var nullVotes = document.getElementById("id_null_votes");
+      var balanceStatus = form.querySelector("[data-balance-status]");
+      var balanceTotal = form.querySelector("[data-balance-total]");
+      var balanceVoters = form.querySelector("[data-balance-voters]");
+      var balanceDifference = form.querySelector("[data-balance-difference]");
+      function numberValue(input) {
+        var value = parseInt(input && input.value ? input.value : "0", 10);
+        return isNaN(value) ? 0 : value;
+      }
+      function updateBalance() {
+        var candidateTotal = 0;
+        form.querySelectorAll("[data-candidate-vote]").forEach(function (input) {
+          candidateTotal += numberValue(input);
+        });
+        var total = candidateTotal + numberValue(blankVotes) + numberValue(nullVotes);
+        var voters = numberValue(votersCount);
+        var difference = total - voters;
+        balanceTotal.textContent = total;
+        balanceVoters.textContent = voters;
+        balanceDifference.textContent = difference;
+        balanceStatus.className = "badge " + (voters && difference === 0 ? "badge-light-success" : "badge-light-warning");
+        balanceStatus.textContent = voters && difference === 0 ? "Cuadra" : "No cuadra";
+      }
       function setOptions(select, rows, placeholder) {
         select.innerHTML = "";
         select.appendChild(new Option(placeholder || "---------", ""));
@@ -150,11 +202,12 @@
           }
           data.results.forEach(function (row) {
             candidates.insertAdjacentHTML("beforeend",
-              '<div class="row g-3 align-items-center"><div class="col"><div class="fw-bold"></div><div class="text-muted"></div></div><div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_' + row.id + '" class="form-control form-control-solid"></div></div>'
+              '<div class="row g-3 align-items-center"><div class="col"><div class="fw-bold"></div><div class="text-muted"></div></div><div class="col-4 col-md-3"><input type="number" min="0" value="0" name="candidate_' + row.id + '" class="form-control form-control-solid" data-candidate-vote></div></div>'
             );
             candidates.lastElementChild.querySelector(".fw-bold").textContent = row.list;
             candidates.lastElementChild.querySelector(".text-muted").textContent = row.candidate;
           });
+          updateBalance();
         });
       }
       parish.addEventListener("change", function () {
@@ -166,6 +219,11 @@
       });
       venue.addEventListener("change", function () { loadTables(); });
       dignity.addEventListener("change", loadCandidates);
+      form.addEventListener("input", function (event) {
+        if (event.target.matches("[data-candidate-vote], #id_voters_count, #id_blank_votes, #id_null_votes")) {
+          updateBalance();
+        }
+      });
       document.querySelectorAll(".js-assignment").forEach(function (button) {
         button.addEventListener("click", function () {
           parish.value = button.dataset.parish;
@@ -173,6 +231,7 @@
           setTimeout(function () { loadTables(button.dataset.table); }, 250);
         });
       });
+      updateBalance();
     })();
   </script>
 {% endblock %}

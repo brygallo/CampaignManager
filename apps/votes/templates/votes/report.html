@@ -9,9 +9,80 @@
   </div>
 
   <div class="row g-5 mb-6">
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Total votos</div><div class="fs-1 fw-bold" data-total-votes>{{ payload.total_votes }}</div></div></div></div>
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Dignidades</div><div class="fs-1 fw-bold" data-dignities-count>{{ payload.dignities_count }}</div></div></div></div>
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Listas</div><div class="fs-1 fw-bold" data-lists-count>{{ payload.lists_count }}</div></div></div></div>
+    <div class="col-6 col-lg-3 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Actas esperadas</div>
+          <div class="fs-2 fw-bold" data-expected-reports>{{ payload.operational_summary.expected_reports }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Actas recibidas</div>
+          <div class="fs-2 fw-bold" data-received-reports>{{ payload.operational_summary.received_reports }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Avance</div>
+          <div class="fs-2 fw-bold"><span data-progress-percent>{{ payload.operational_summary.progress_percent }}</span>%</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Votos válidos</div>
+          <div class="fs-2 fw-bold" data-valid-votes>{{ payload.operational_summary.valid_votes }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Blancos</div>
+          <div class="fs-2 fw-bold" data-blank-votes>{{ payload.operational_summary.blank_votes }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Nulos</div>
+          <div class="fs-2 fw-bold" data-null-votes>{{ payload.operational_summary.null_votes }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6 col-xxl">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold">Última actualización</div>
+          <div class="fs-6 fw-bold text-gray-800" data-latest-update>{{ payload.operational_summary.latest_update_display }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-6">
+    <div class="card-body py-4">
+      <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x border-transparent fs-6 fw-semibold flex-nowrap overflow-auto">
+        {% for tab in dignity_tabs %}
+          <li class="nav-item">
+            {% if tab.is_disabled %}
+              <span class="nav-link text-muted disabled px-4">{{ tab.label }}</span>
+            {% else %}
+              <a href="?{{ tab.query_string }}" class="nav-link px-4{% if tab.is_active %} active{% endif %}">
+                {{ tab.label }}
+              </a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
 
   <form method="get" class="card mb-6" id="electoral-report-filters">
@@ -45,6 +116,123 @@
     </div>
   </form>
 
+  <div class="card mb-6">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title mb-1">Semáforo por avance</h3>
+        <div class="text-muted fs-7">Estado operativo por recintos, mesas y dignidades.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-6">
+        <div class="col-xl-4">
+          <div class="fw-bold text-gray-800 mb-3">Recintos</div>
+          <div class="table-responsive">
+            <table class="table table-row-dashed align-middle mb-0">
+              <thead><tr><th>Recinto</th><th>Actas</th><th class="text-end">Estado</th></tr></thead>
+              <tbody data-progress-scope="venues">
+                {% for row in payload.progress_status.venues %}
+                  <tr><td class="fw-semibold">{{ row.label }}</td><td>{{ row.received }}/{{ row.expected }}</td><td class="text-end"><span class="badge {{ row.status_badge_class }}">{{ row.status_label }}</span></td></tr>
+                {% empty %}
+                  <tr><td colspan="3" class="text-muted">Sin datos.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-xl-4">
+          <div class="fw-bold text-gray-800 mb-3">Mesas</div>
+          <div class="table-responsive">
+            <table class="table table-row-dashed align-middle mb-0">
+              <thead><tr><th>Mesa</th><th>Actas</th><th class="text-end">Estado</th></tr></thead>
+              <tbody data-progress-scope="tables">
+                {% for row in payload.progress_status.tables %}
+                  <tr><td class="fw-semibold">{{ row.label }}</td><td>{{ row.received }}/{{ row.expected }}</td><td class="text-end"><span class="badge {{ row.status_badge_class }}">{{ row.status_label }}</span></td></tr>
+                {% empty %}
+                  <tr><td colspan="3" class="text-muted">Sin datos.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-xl-4">
+          <div class="fw-bold text-gray-800 mb-3">Dignidades</div>
+          <div class="table-responsive">
+            <table class="table table-row-dashed align-middle mb-0">
+              <thead><tr><th>Dignidad</th><th>Actas</th><th class="text-end">Estado</th></tr></thead>
+              <tbody data-progress-scope="dignities">
+                {% for row in payload.progress_status.dignities %}
+                  <tr><td class="fw-semibold">{{ row.label }}</td><td>{{ row.received }}/{{ row.expected }}</td><td class="text-end"><span class="badge {{ row.status_badge_class }}">{{ row.status_label }}</span></td></tr>
+                {% empty %}
+                  <tr><td colspan="3" class="text-muted">Sin datos.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-6 mb-6">
+    <div class="col-xl-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted fw-semibold mb-2">Diferencia primero / segundo</div>
+          <div class="fs-2hx fw-bold text-gray-900">
+            <span data-lead-margin-votes>{{ payload.lead_margin.votes }}</span> votos
+          </div>
+          <div class="fs-5 fw-semibold text-primary mb-3">
+            <span data-lead-margin-percent>{{ payload.lead_margin.percent }}</span>%
+          </div>
+          <div class="text-muted fs-7" data-lead-margin-label>
+            {% if payload.lead_margin.runner_up %}
+              {{ payload.lead_margin.leader }} sobre {{ payload.lead_margin.runner_up }}
+            {% else %}
+              Sin segundo lugar registrado.
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-8">
+      <div class="card h-100">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title mb-1">Ranking por lista</h3>
+            <div class="text-muted fs-7">Cards compactas con votos, porcentaje y tendencia actual.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-4" data-candidate-ranking>
+            {% for row in payload.candidate_ranking %}
+              <div class="col-md-6">
+                <div class="border rounded p-4 h-100">
+                  <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                      <div class="fw-bold text-gray-900">{{ row.list_code }}</div>
+                      <div class="text-muted fs-7">{{ row.candidate_name }}</div>
+                    </div>
+                    <span class="badge badge-light-primary">{{ row.trend_state }}</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-end mb-2">
+                    <span class="fs-2 fw-bold">{{ row.votes }}</span>
+                    <span class="fw-semibold">{{ row.percent }}%</span>
+                  </div>
+                  <div class="progress h-6px">
+                    <div class="progress-bar bg-primary" style="width: {{ row.bar_percent }}%"></div>
+                  </div>
+                </div>
+              </div>
+            {% empty %}
+              <div class="col-12 text-muted">Sin votos de candidatos.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-6">
     <div class="col-xl-7">
       <div class="card h-100">
@@ -72,18 +260,52 @@
   </div>
 
   <div class="card mt-6">
-    <div class="card-header"><h3 class="card-title">Últimos registros</h3></div>
+    <div class="card-header">
+      <div>
+        <h3 class="card-title mb-1">Conteo por parroquia</h3>
+        <div class="text-muted fs-7">Votos por candidato/lista en cada parroquia.</div>
+      </div>
+    </div>
     <div class="card-body table-responsive">
       <table class="table table-row-dashed align-middle">
-        <thead><tr><th>Parroquia</th><th>Recinto</th><th>Mesa</th><th>Dignidad</th><th>Circunscripción</th><th>Estado</th><th>Lista</th><th>Candidato</th><th class="text-end">Votos</th></tr></thead>
-        <tbody data-latest-body>
-          {% for row in payload.latest %}
-            <tr><td>{{ row.parish }}</td><td>{{ row.venue }}</td><td>{{ row.table }}</td><td>{{ row.dignity }}</td><td>{{ row.district }}</td><td>{{ row.status }}</td><td>{{ row.list }}</td><td>{{ row.candidate }}</td><td class="text-end fw-bold">{{ row.votes }}</td></tr>
+        <thead><tr><th>Parroquia</th><th>Lista / candidato</th><th class="text-end">Votos</th><th class="text-end">% parroquia</th></tr></thead>
+        <tbody data-parish-summary-body>
+          {% for parish in payload.parish_summary %}
+            {% for row in parish.rows %}
+              <tr><td class="fw-semibold">{{ parish.parish }}</td><td><div class="fw-bold">{{ row.list_code }}</div><div class="text-muted">{{ row.candidate_name }}</div></td><td class="text-end fw-bold">{{ row.votes }}</td><td class="text-end">{{ row.percent }}%</td></tr>
+            {% endfor %}
           {% empty %}
-            <tr><td colspan="9" class="text-muted">Aún no hay registros.</td></tr>
+            <tr><td colspan="4" class="text-muted">Sin conteo territorial.</td></tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <div class="card mt-6">
+    <div class="card-header"><h3 class="card-title">Últimas actas recibidas</h3></div>
+    <div class="card-body">
+      <div class="timeline timeline-border-dashed" data-latest-body>
+        {% for row in payload.latest %}
+          <div class="timeline-item">
+            <div class="timeline-line w-40px"></div>
+            <div class="timeline-icon symbol symbol-circle symbol-40px">
+              <span class="symbol-label bg-light-primary"><i data-lucide="file-check-2" class="fs-3 text-primary"></i></span>
+            </div>
+            <div class="timeline-content mb-8 mt-n1">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="fw-bold text-gray-900">{{ row.venue }}</span>
+                <span class="badge {{ row.status_badge_class }}">{{ row.status }}</span>
+              </div>
+              <div class="text-muted fs-7">
+                Mesa {{ row.table }} · {{ row.dignity }} · {{ row.watcher }} · {{ row.updated_at_display }}
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="text-muted">Aún no hay actas.</div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 </div>
@@ -111,10 +333,78 @@
           return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"}[char];
         });
       }
+      function renderProgressStatus(progressStatus) {
+        ["venues", "tables", "dignities"].forEach(function (scope) {
+          var body = root.querySelector('[data-progress-scope="' + scope + '"]');
+          if (!body) return;
+          var rows = (progressStatus && progressStatus[scope]) || [];
+          body.innerHTML = "";
+          if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="3" class="text-muted">Sin datos.</td></tr>';
+            return;
+          }
+          rows.forEach(function (row) {
+            body.insertAdjacentHTML("beforeend", '<tr><td class="fw-semibold">' + escapeHtml(row.label) + '</td><td>' + escapeHtml(row.received) + '/' + escapeHtml(row.expected) + '</td><td class="text-end"><span class="badge ' + escapeHtml(row.status_badge_class) + '">' + escapeHtml(row.status_label) + '</span></td></tr>');
+          });
+        });
+      }
+      function renderCandidateRanking(rows, leadMargin) {
+        root.querySelector("[data-lead-margin-votes]").textContent = (leadMargin && leadMargin.votes) || 0;
+        root.querySelector("[data-lead-margin-percent]").textContent = (leadMargin && leadMargin.percent) || 0;
+        root.querySelector("[data-lead-margin-label]").textContent = leadMargin && leadMargin.runner_up ? leadMargin.leader + " sobre " + leadMargin.runner_up : "Sin segundo lugar registrado.";
+        var container = root.querySelector("[data-candidate-ranking]");
+        if (!container) return;
+        container.innerHTML = "";
+        rows = rows || [];
+        if (!rows.length) {
+          container.innerHTML = '<div class="col-12 text-muted">Sin votos de candidatos.</div>';
+          return;
+        }
+        rows.forEach(function (row) {
+          container.insertAdjacentHTML("beforeend", '<div class="col-md-6"><div class="border rounded p-4 h-100"><div class="d-flex justify-content-between align-items-start gap-3 mb-3"><div><div class="fw-bold text-gray-900">' + escapeHtml(row.list_code) + '</div><div class="text-muted fs-7">' + escapeHtml(row.candidate_name) + '</div></div><span class="badge badge-light-primary">' + escapeHtml(row.trend_state) + '</span></div><div class="d-flex justify-content-between align-items-end mb-2"><span class="fs-2 fw-bold">' + escapeHtml(row.votes) + '</span><span class="fw-semibold">' + escapeHtml(row.percent) + '%</span></div><div class="progress h-6px"><div class="progress-bar bg-primary" style="width: ' + escapeHtml(row.bar_percent) + '%"></div></div></div></div>');
+        });
+      }
+      function renderParishSummary(parishes) {
+        var body = root.querySelector("[data-parish-summary-body]");
+        if (!body) return;
+        body.innerHTML = "";
+        parishes = parishes || [];
+        if (!parishes.length) {
+          body.innerHTML = '<tr><td colspan="4" class="text-muted">Sin conteo territorial.</td></tr>';
+          return;
+        }
+        parishes.forEach(function (parish) {
+          (parish.rows || []).forEach(function (row) {
+            body.insertAdjacentHTML("beforeend", '<tr><td class="fw-semibold">' + escapeHtml(parish.parish) + '</td><td><div class="fw-bold">' + escapeHtml(row.list_code) + '</div><div class="text-muted">' + escapeHtml(row.candidate_name) + '</div></td><td class="text-end fw-bold">' + escapeHtml(row.votes) + '</td><td class="text-end">' + escapeHtml(row.percent) + '%</td></tr>');
+          });
+        });
+      }
+      function renderLatestTimeline(rows) {
+        var body = root.querySelector("[data-latest-body]");
+        if (!body) return;
+        body.innerHTML = "";
+        rows = rows || [];
+        if (!rows.length) {
+          body.innerHTML = '<div class="text-muted">Aún no hay actas.</div>';
+          return;
+        }
+        rows.forEach(function (row) {
+          body.insertAdjacentHTML("beforeend", '<div class="timeline-item"><div class="timeline-line w-40px"></div><div class="timeline-icon symbol symbol-circle symbol-40px"><span class="symbol-label bg-light-primary"><i data-lucide="file-check-2" class="fs-3 text-primary"></i></span></div><div class="timeline-content mb-8 mt-n1"><div class="d-flex flex-wrap align-items-center gap-2 mb-1"><span class="fw-bold text-gray-900">' + escapeHtml(row.venue) + '</span><span class="badge ' + escapeHtml(row.status_badge_class) + '">' + escapeHtml(row.status) + '</span></div><div class="text-muted fs-7">Mesa ' + escapeHtml(row.table) + ' · ' + escapeHtml(row.dignity) + ' · ' + escapeHtml(row.watcher) + ' · ' + escapeHtml(row.updated_at_display) + '</div></div></div>');
+        });
+        if (window.cmRenderIcons) window.cmRenderIcons();
+      }
       function render(payload) {
-        root.querySelector("[data-total-votes]").textContent = payload.total_votes;
-        root.querySelector("[data-dignities-count]").textContent = payload.dignities_count;
-        root.querySelector("[data-lists-count]").textContent = payload.lists_count;
+        var operationalSummary = payload.operational_summary || {};
+        root.querySelector("[data-expected-reports]").textContent = operationalSummary.expected_reports || 0;
+        root.querySelector("[data-received-reports]").textContent = operationalSummary.received_reports || 0;
+        root.querySelector("[data-progress-percent]").textContent = operationalSummary.progress_percent || 0;
+        root.querySelector("[data-valid-votes]").textContent = operationalSummary.valid_votes || 0;
+        root.querySelector("[data-blank-votes]").textContent = operationalSummary.blank_votes || 0;
+        root.querySelector("[data-null-votes]").textContent = operationalSummary.null_votes || 0;
+        root.querySelector("[data-latest-update]").textContent = operationalSummary.latest_update_display || "Sin actualización";
+        renderProgressStatus(payload.progress_status);
+        renderCandidateRanking(payload.candidate_ranking, payload.lead_margin);
+        renderParishSummary(payload.parish_summary);
         chart.updateOptions({xaxis: {categories: payload.chart.categories || []}});
         chart.updateSeries([{name: "Votos", data: payload.chart.series || []}]);
         var summary = root.querySelector("[data-summary-body]");
@@ -126,24 +416,20 @@
             summary.insertAdjacentHTML("beforeend", '<tr><td><div class="fw-bold">' + escapeHtml(row.list_code) + '</div><div class="text-muted">' + escapeHtml(row.candidate_name) + '</div></td><td class="text-end fw-bold">' + escapeHtml(row.votes) + '</td><td class="text-end">' + escapeHtml(row.percent) + '%</td></tr>');
           });
         }
-        var latest = root.querySelector("[data-latest-body]");
-        latest.innerHTML = "";
-        if (!payload.latest.length) {
-          latest.innerHTML = '<tr><td colspan="9" class="text-muted">Aún no hay registros.</td></tr>';
-        } else {
-          payload.latest.forEach(function (row) {
-            latest.insertAdjacentHTML("beforeend", '<tr><td>' + escapeHtml(row.parish) + '</td><td>' + escapeHtml(row.venue) + '</td><td>' + escapeHtml(row.table) + '</td><td>' + escapeHtml(row.dignity) + '</td><td>' + escapeHtml(row.district) + '</td><td>' + escapeHtml(row.status) + '</td><td>' + escapeHtml(row.list) + '</td><td>' + escapeHtml(row.candidate) + '</td><td class="text-end fw-bold">' + escapeHtml(row.votes) + '</td></tr>');
-          });
-        }
+        renderLatestTimeline(payload.latest);
       }
       function refresh() {
         var params = new URLSearchParams(new FormData(document.getElementById("electoral-report-filters")));
         fetch(root.dataset.dataUrl + "?" + params.toString(), {headers: {"X-Requested-With": "XMLHttpRequest"}}).then(function (response) { return response.json(); }).then(render);
       }
       document.getElementById("electoral-report-filters").addEventListener("change", refresh);
-      var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-      var socket = new WebSocket(protocol + window.location.host + "/ws/resultados-electorales/");
-      socket.onmessage = function () { refresh(); };
+      function connectLiveSocket() {
+        var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+        var socket = new WebSocket(protocol + window.location.host + "/ws/resultados-electorales/");
+        socket.onmessage = function () { refresh(); };
+        socket.onclose = function () { setTimeout(connectLiveSocket, 3000); };
+      }
+      connectLiveSocket();
     })();
   </script>
 {% endblock %}

@@ -116,7 +116,7 @@ class ElectoralTableForm(ModelForm):
             "Mesa electoral": (
                 ("venue",),
                 ("number", "gender"),
-                ("is_active",),
+                ("registered_voters", "is_active"),
             ),
         }
 
@@ -142,6 +142,7 @@ class ElectoralResultReportForm(ModelForm):
                 ("table", "dignity"),
                 ("district", "watcher"),
                 ("status", "voters_count"),
+                ("evidence_file",),
                 ("validation_notes",),
                 ("is_active",),
             ),
@@ -244,6 +245,16 @@ class ElectoralWatcherForm(forms.Form):
         min_value=0,
         initial=0,
         widget=forms.NumberInput(attrs={"class": "form-control form-control-solid", "min": 0}),
+    )
+    evidence_file = forms.FileField(
+        label="Foto/PDF del acta",
+        required=False,
+        widget=forms.FileInput(
+            attrs={
+                "class": "form-control form-control-solid",
+                "accept": "image/*,application/pdf",
+            }
+        ),
     )
 
     def __init__(self, *args, watcher=None, **kwargs):

@@ -1,0 +1,29 @@
+<div id="insoles-drawer"
+     class="drawer drawer-end bg-body"
+     data-kt-drawer="true"
+     data-kt-drawer-name="insoles-drawer"
+     data-kt-drawer-activate="true"
+     data-kt-drawer-overlay="true"
+     data-kt-drawer-width="{default:'100%', 'sm':'480px', 'lg':'680px'}"
+     data-kt-drawer-direction="end">
+  <div class="w-100 h-100 d-flex flex-column">
+    <div class="d-flex align-items-center justify-content-between border-bottom px-8 min-h-60px flex-shrink-0">
+      <h2 class="fw-bold fs-3 m-0" data-drawer-title>Formulario</h2>
+      <button type="button" class="btn btn-icon btn-sm btn-active-light-primary" data-kt-drawer-dismiss="true" aria-label="Cerrar">
+        <i data-lucide="x" class="fs-1"></i>
+      </button>
+    </div>
+    <form action="" method="post" enctype="multipart/form-data" novalidate class="d-flex flex-column flex-grow-1 overflow-hidden">
+      {% csrf_token %}
+      <div class="flex-grow-1 overflow-auto px-8 py-6" data-drawer-body></div>
+      <div class="d-flex justify-content-end gap-2 border-top px-8 py-4 flex-shrink-0">
+        <button type="button" class="btn btn-light-danger btn-sm" data-kt-drawer-dismiss="true">
+          <i data-lucide="x" class="fs-3"></i>Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i data-lucide="check" class="fs-3"></i><span data-drawer-confirm>Guardar</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -310,7 +310,10 @@ class Command(BaseCommand):
                         venue=venue,
                         number=str(number),
                         gender=gender,
-                        defaults={"is_active": True},
+                        defaults={
+                            "registered_voters": random.randint(380, 460),
+                            "is_active": True,
+                        },
                     )
                     tables.append(table)
         return venues, tables

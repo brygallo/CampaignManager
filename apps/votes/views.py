@@ -1,6 +1,5 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.views.generic import TemplateView, View
@@ -23,85 +22,7 @@ from .models import (
     ElectoralVenue,
 )
 from .reports import electoral_results_report
-
-
-def build_electoral_report_payload(filters=None):
-    filters = filters or {}
-    reports = ElectoralResultReport.objects.select_related(
-        "parish", "venue", "table", "dignity", "district", "watcher"
-    )
-    if filters.get("dignity"):
-        reports = reports.filter(dignity=filters["dignity"])
-    if filters.get("district"):
-        reports = reports.filter(district=filters["district"])
-    if filters.get("parish"):
-        reports = reports.filter(parish=filters["parish"])
-    if filters.get("venue"):
-        reports = reports.filter(venue=filters["venue"])
-    if filters.get("table"):
-        reports = reports.filter(table=filters["table"])
-
-    lines = ElectoralResultLine.objects.filter(report__in=reports)
-    summary_rows = list(
-        lines.values("line_type", "list_code", "candidate_name")
-        .annotate(votes=Sum("votes"))
-        .order_by("-votes", "list_code", "candidate_name")
-    )
-    total_votes = sum(row["votes"] or 0 for row in summary_rows)
-    for row in summary_rows:
-        votes = row["votes"] or 0
-        row["percent"] = round((votes * 100 / total_votes), 1) if total_votes else 0
-        row["label"] = row["list_code"]
-        if row["candidate_name"]:
-            row["label"] = f"{row['list_code']} - {row['candidate_name']}"
-
-    latest = []
-    for report in reports.prefetch_related("lines").order_by("-created_date")[:20]:
-        for line in report.lines.all().order_by("order", "list_code"):
-            latest.append(
-                {
-                    "parish": report.parish.name,
-                    "venue": report.venue.name,
-                    "table": report.table.number,
-                    "gender": report.table.get_gender_display(),
-                    "dignity": report.dignity.name,
-                    "district": report.district.name,
-                    "status": report.get_status_display(),
-                    "list": line.list_code,
-                    "candidate": line.candidate_name,
-                    "votes": line.votes,
-                }
-            )
-    return {
-        "total_votes": total_votes,
-        "dignities_count": reports.values("dignity").distinct().count(),
-        "lists_count": lines.values("list_code").distinct().count(),
-        "summary_rows": summary_rows,
-        "chart": {
-            "categories": [row["label"] for row in summary_rows],
-            "series": [row["votes"] or 0 for row in summary_rows],
-        },
-        "latest": latest[:30],
-    }
-
-
-def broadcast_electoral_report_update():
-    try:
-        from asgiref.sync import async_to_sync
-        from channels.layers import get_channel_layer
-    except ImportError:
-        return
-
-    channel_layer = get_channel_layer()
-    if channel_layer is None:
-        return
-    async_to_sync(channel_layer.group_send)(
-        "electoral_results",
-        {
-            "type": "electoral_results_updated",
-            "payload": build_electoral_report_payload(),
-        },
-    )
+from .services import ElectoralReportConsistencyService, ElectoralReportDashboardService
 
 
 class ElectoralWatcherPanelView(LoginRequiredMixin, TemplateView):
@@ -132,12 +53,15 @@ class ElectoralWatcherPanelView(LoginRequiredMixin, TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
-        form = ElectoralWatcherForm(request.POST, watcher=request.user)
+        form = ElectoralWatcherForm(request.POST, request.FILES, watcher=request.user)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
+        alerts = ElectoralReportConsistencyService(form).build_alerts()
         report = self._save_report(form)
         messages.success(request, f"Acta registrada para {report.table}.")
-        broadcast_electoral_report_update()
+        for alert in alerts:
+            messages.warning(request, alert)
+        ElectoralReportDashboardService.broadcast_update()
         return HttpResponseRedirect(reverse("votes:watcher"))
 
     def _save_report(self, form):
@@ -155,6 +79,9 @@ class ElectoralWatcherPanelView(LoginRequiredMixin, TemplateView):
                 "is_active": True,
             },
         )
+        if cleaned.get("evidence_file"):
+            report.evidence_file = cleaned["evidence_file"]
+            report.save(update_fields=["evidence_file"])
         report.lines.all().delete()
         order = 1
         for option in form.candidate_options:
@@ -203,10 +130,12 @@ class ElectoralReportView(LoginRequiredMixin, TemplateView):
         filters = {}
         if form.is_valid():
             filters = {key: value for key, value in form.cleaned_data.items() if value}
+        dashboard_service = ElectoralReportDashboardService(filters)
         context.update(
             {
                 "form": form,
-                "payload": build_electoral_report_payload(filters),
+                "payload": dashboard_service.build_payload(),
+                "dignity_tabs": dashboard_service.build_dignity_tabs(self.request.GET),
                 "page_title": "Reporte veedores",
                 "breadcrumbs": [
                     ("Inicio", "/"),
@@ -224,7 +153,7 @@ class ElectoralReportDataView(LoginRequiredMixin, View):
         filters = {}
         if form.is_valid():
             filters = {key: value for key, value in form.cleaned_data.items() if value}
-        return JsonResponse(build_electoral_report_payload(filters))
+        return JsonResponse(ElectoralReportDashboardService(filters).build_payload())
 
 
 class ElectoralLookupView(LoginRequiredMixin, View):

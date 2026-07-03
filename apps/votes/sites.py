@@ -75,7 +75,7 @@ class ElectoralTableSite(BaseSite):
     respect_active_campaign = False
     list_mixins = (OrderingMixin, DropdownFilterMixin)
     title = "Mesas electorales"
-    list_fields = ("venue", "number", "get_gender_display:Género", "is_active:Activo")
+    list_fields = ("venue", "number", "get_gender_display:Género", "registered_voters", "is_active:Activo")
     detail_fields = ElectoralTableForm.Meta.fieldsets
     search_params = ("number__icontains", "venue__name__icontains", "venue__parish__name__icontains")
     filter_fields = ("venue:Recinto", "gender:Género", "is_active:Activo")
@@ -99,7 +99,7 @@ class ElectoralResultReportSite(BaseSite):
     respect_active_campaign = False
     list_mixins = (OrderingMixin, DropdownFilterMixin)
     title = "Actas de resultados"
-    list_fields = ("parish", "venue", "table", "dignity", "district", "get_status_display:Estado", "voters_count")
+    list_fields = ("parish", "venue", "table", "dignity", "district", "get_status_display:Estado", "voters_count", "evidence_file")
     detail_fields = ElectoralResultReportForm.Meta.fieldsets
     search_params = ("venue__name__icontains", "table__number__icontains", "dignity__name__icontains", "district__name__icontains")
     filter_fields = ("dignity:Dignidad", "district:Circunscripción", "status:Estado", "parish:Parroquia")

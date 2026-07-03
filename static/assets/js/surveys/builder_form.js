@@ -128,4 +128,7 @@
   document.addEventListener("shown.bs.modal", function (event) {
     initQuestionBuilderForm(event.target);
   });
+  document.addEventListener("drawer:shown", function (event) {
+    initQuestionBuilderForm((event.detail && event.detail.drawer) || event.target);
+  });
 })();

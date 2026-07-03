@@ -178,7 +178,7 @@
                       </div>
                       <div class="d-flex gap-2 align-self-start">
                         <button type="button"
-                                class="btn btn-icon btn-sm btn-light-primary insoles-action"
+                                class="btn btn-icon btn-sm btn-light-primary drawer-action"
                                 data-url="{% url 'surveys:builder_question_edit_modal' survey.pk question.pk %}"
                                 data-title="Editar pregunta"
                                 title="Editar pregunta">
@@ -281,7 +281,7 @@
                       </div>
                       <div class="d-flex gap-2 align-self-start">
                         <button type="button"
-                                class="btn btn-icon btn-sm btn-light-primary insoles-action"
+                                class="btn btn-icon btn-sm btn-light-primary drawer-action"
                                 data-url="{% url 'surveys:builder_question_edit_modal' survey.pk question.pk %}"
                                 data-title="Editar pregunta"
                                 title="Editar pregunta">
@@ -394,7 +394,7 @@
 {% block extra_js %}
   {{ block.super }}
   <script src="{% static 'assets/js/surveys/builder_sortable.js' %}?v=20260702-3"></script>
-  <script src="{% static 'assets/js/surveys/builder_form.js' %}?v=20260702-2"></script>
+  <script src="{% static 'assets/js/surveys/builder_form.js' %}?v=20260703-1"></script>
   <script>
     (function () {
       var root = document.querySelector("[data-survey-builder]");

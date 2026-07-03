@@ -173,6 +173,11 @@ class ElectoralTable(BaseModel):
     )
     number = models.CharField("Mesa", max_length=24)
     gender = models.CharField("Género", max_length=1, choices=Gender.choices, default=Gender.MIXED)
+    registered_voters = models.PositiveIntegerField(
+        "Electores registrados",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "Mesa electoral"
@@ -264,6 +269,11 @@ class ElectoralResultReport(BaseModel):
         "Estado", max_length=20, choices=Status.choices, default=Status.SUBMITTED
     )
     voters_count = models.PositiveIntegerField("Sufragantes", null=True, blank=True)
+    evidence_file = models.FileField(
+        "Evidencia del acta",
+        upload_to="votes/reports/evidence/%Y/%m/",
+        blank=True,
+    )
     validation_notes = models.TextField("Observaciones de validación", blank=True)
 
     class Meta:
@@ -283,6 +293,18 @@ class ElectoralResultReport(BaseModel):
     @property
     def total_votes(self):
         return sum(line.votes for line in self.lines.all())
+
+    @property
+    def evidence_is_image(self):
+        if not self.evidence_file:
+            return False
+        return self.evidence_file.name.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
+
+    @property
+    def evidence_is_pdf(self):
+        if not self.evidence_file:
+            return False
+        return self.evidence_file.name.lower().endswith(".pdf")
 
 
 class ElectoralResultLine(BaseModel):

@@ -1,3 +1,4 @@
+from django.http import QueryDict
 from django.test import TestCase
 
 from apps.authentication.tests.factories import UserFactory
@@ -7,11 +8,13 @@ from apps.votes.models import (
     ElectoralCandidateOption,
     ElectoralDignity,
     ElectoralDistrict,
+    ElectoralResultLine,
     ElectoralResultReport,
     ElectoralTable,
     ElectoralTableAssignment,
     ElectoralVenue,
 )
+from apps.votes.services import ElectoralReportDashboardService
 
 
 class ElectoralWatcherFormTests(TestCase):
@@ -222,3 +225,232 @@ class ElectoralDistrictFormTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
+
+
+class ElectoralReportPayloadTests(TestCase):
+    def test_builds_fixed_dignity_tabs_from_configured_dignities(self):
+        prefect = ElectoralDignity.objects.create(
+            name="Prefecto/a",
+            scope=ElectoralDignity.Scope.PROVINCE,
+            parish_kind_rule=ElectoralDignity.ParishKindRule.ALL,
+            order=10,
+        )
+        mayor = ElectoralDignity.objects.create(
+            name="Alcalde/sa de Morona",
+            scope=ElectoralDignity.Scope.CANTON,
+            parish_kind_rule=ElectoralDignity.ParishKindRule.ALL,
+            order=20,
+        )
+        ElectoralDignity.objects.create(
+            name="Concejales urbanos de Morona",
+            scope=ElectoralDignity.Scope.DISTRICT,
+            parish_kind_rule=ElectoralDignity.ParishKindRule.URBAN,
+            order=30,
+        )
+        ElectoralDignity.objects.create(
+            name="Concejales rurales de Morona",
+            scope=ElectoralDignity.Scope.DISTRICT,
+            parish_kind_rule=ElectoralDignity.ParishKindRule.RURAL,
+            order=40,
+        )
+        ElectoralDignity.objects.create(
+            name="Vocales de junta parroquial",
+            scope=ElectoralDignity.Scope.PARISH,
+            parish_kind_rule=ElectoralDignity.ParishKindRule.RURAL,
+            order=50,
+        )
+
+        query = QueryDict("", mutable=True)
+        query["dignity"] = str(mayor.pk)
+        query["parish"] = "7"
+        query["page"] = "3"
+        tabs = ElectoralReportDashboardService({"dignity": mayor}).build_dignity_tabs(query)
+
+        self.assertEqual(
+            [tab["label"] for tab in tabs],
+            [
+                "Prefectura",
+                "Alcaldía",
+                "Concejales urbanos",
+                "Concejales rurales",
+                "Juntas parroquiales",
+            ],
+        )
+        self.assertEqual(tabs[0]["dignity_id"], prefect.pk)
+        self.assertTrue(tabs[1]["is_active"])
+        self.assertIn(f"dignity={prefect.pk}", tabs[0]["query_string"])
+        self.assertIn("parish=7", tabs[0]["query_string"])
+        self.assertNotIn("page=3", tabs[0]["query_string"])
+
+    def test_operational_summary_counts_expected_received_and_vote_types(self):
+        parish = ParishFactory()
+        venue = ElectoralVenue.objects.create(parish=parish, name="Recinto")
+        table_one = ElectoralTable.objects.create(venue=venue, number="1")
+        ElectoralTable.objects.create(venue=venue, number="2")
+        dignity = ElectoralDignity.objects.create(
+            name="Alcalde",
+            scope=ElectoralDignity.Scope.CANTON,
+        )
+        district = ElectoralDistrict.objects.create(
+            dignity=dignity,
+            name="Cantonal",
+            kind=ElectoralDistrict.DistrictKind.CANTON,
+            canton=parish.canton,
+        )
+        option = ElectoralCandidateOption.objects.create(
+            district=district,
+            list_code="A",
+            candidate_name="Candidato",
+        )
+        report = ElectoralResultReport.objects.create(
+            parish=parish,
+            venue=venue,
+            table=table_one,
+            dignity=dignity,
+            district=district,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.CANDIDATE,
+            candidate_option=option,
+            list_code=option.list_code,
+            candidate_name=option.candidate_name,
+            votes=30,
+            order=1,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.BLANK,
+            list_code="BLANCOS",
+            votes=2,
+            order=2,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.NULL,
+            list_code="NULOS",
+            votes=3,
+            order=3,
+        )
+
+        payload = ElectoralReportDashboardService({"dignity": dignity}).build_payload()
+        summary = payload["operational_summary"]
+
+        self.assertEqual(summary["expected_reports"], 2)
+        self.assertEqual(summary["received_reports"], 1)
+        self.assertEqual(summary["progress_percent"], 50.0)
+        self.assertEqual(summary["valid_votes"], 30)
+        self.assertEqual(summary["blank_votes"], 2)
+        self.assertEqual(summary["null_votes"], 3)
+        self.assertIsNotNone(summary["latest_update"])
+
+    def test_candidate_ranking_lead_margin_and_parish_summary(self):
+        parish = ParishFactory(name="Macas")
+        venue = ElectoralVenue.objects.create(parish=parish, name="Recinto")
+        table = ElectoralTable.objects.create(venue=venue, number="1")
+        dignity = ElectoralDignity.objects.create(
+            name="Alcalde",
+            scope=ElectoralDignity.Scope.CANTON,
+        )
+        district = ElectoralDistrict.objects.create(
+            dignity=dignity,
+            name="Cantonal",
+            kind=ElectoralDistrict.DistrictKind.CANTON,
+            canton=parish.canton,
+        )
+        first = ElectoralCandidateOption.objects.create(
+            district=district,
+            list_code="A",
+            candidate_name="Primera",
+        )
+        second = ElectoralCandidateOption.objects.create(
+            district=district,
+            list_code="B",
+            candidate_name="Segundo",
+        )
+        report = ElectoralResultReport.objects.create(
+            parish=parish,
+            venue=venue,
+            table=table,
+            dignity=dignity,
+            district=district,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.CANDIDATE,
+            candidate_option=first,
+            list_code=first.list_code,
+            candidate_name=first.candidate_name,
+            votes=127,
+            order=1,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.CANDIDATE,
+            candidate_option=second,
+            list_code=second.list_code,
+            candidate_name=second.candidate_name,
+            votes=100,
+            order=2,
+        )
+
+        payload = ElectoralReportDashboardService({"dignity": dignity}).build_payload()
+
+        self.assertEqual(payload["candidate_ranking"][0]["label"], "A - Primera")
+        self.assertEqual(payload["candidate_ranking"][0]["trend_state"], "Lidera")
+        self.assertEqual(payload["lead_margin"]["votes"], 27)
+        self.assertEqual(payload["lead_margin"]["percent"], 11.8)
+        self.assertEqual(payload["parish_summary"][0]["parish"], "Macas")
+        self.assertEqual(payload["parish_summary"][0]["rows"][0]["votes"], 127)
+
+    def test_progress_status_groups_by_venue_table_and_dignity(self):
+        parish = ParishFactory()
+        partial_venue = ElectoralVenue.objects.create(parish=parish, name="Recinto parcial")
+        submitted_table = ElectoralTable.objects.create(venue=partial_venue, number="1")
+        missing_table = ElectoralTable.objects.create(venue=partial_venue, number="2")
+        observed_venue = ElectoralVenue.objects.create(parish=parish, name="Recinto observado")
+        observed_table = ElectoralTable.objects.create(venue=observed_venue, number="3")
+        validated_venue = ElectoralVenue.objects.create(parish=parish, name="Recinto validado")
+        validated_table = ElectoralTable.objects.create(venue=validated_venue, number="4")
+        dignity = ElectoralDignity.objects.create(
+            name="Alcalde",
+            scope=ElectoralDignity.Scope.CANTON,
+        )
+        district = ElectoralDistrict.objects.create(
+            dignity=dignity,
+            name="Cantonal",
+            kind=ElectoralDistrict.DistrictKind.CANTON,
+            canton=parish.canton,
+        )
+        for table, status in (
+            (submitted_table, ElectoralResultReport.Status.SUBMITTED),
+            (observed_table, ElectoralResultReport.Status.OBSERVED),
+            (validated_table, ElectoralResultReport.Status.VALIDATED),
+        ):
+            ElectoralResultReport.objects.create(
+                parish=parish,
+                venue=table.venue,
+                table=table,
+                dignity=dignity,
+                district=district,
+                status=status,
+            )
+
+        payload = ElectoralReportDashboardService({"dignity": dignity}).build_payload()
+        table_statuses = {
+            row["label"]: (row["status_label"], row["status_badge_class"])
+            for row in payload["progress_status"]["tables"]
+        }
+        venue_statuses = {
+            row["label"]: row["status_label"] for row in payload["progress_status"]["venues"]
+        }
+        dignity_statuses = {
+            row["label"]: row["status_label"] for row in payload["progress_status"]["dignities"]
+        }
+
+        self.assertEqual(table_statuses["1 - Mixta"], ("Ingresada", "badge-light-primary"))
+        self.assertEqual(table_statuses["2 - Mixta"], ("Sin acta", "badge-light-secondary"))
+        self.assertEqual(table_statuses["3 - Mixta"], ("Observada", "badge-light-danger"))
+        self.assertEqual(table_statuses["4 - Mixta"], ("Validada", "badge-light-success"))
+        self.assertEqual(venue_statuses["Recinto parcial"], "Parcial")
+        self.assertEqual(dignity_statuses["Alcalde"], "Parcial")
