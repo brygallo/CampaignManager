@@ -17,12 +17,12 @@ from apps.surveys.models import (
     SurveyResponse,
     SurveySection,
 )
+from apps.surveys.services import SurveyResultsSummary
 from apps.surveys.views import (
     SurveyApplyListView,
     SurveyBuilderView,
     SurveyBuilderQuestionInsoleView,
     SurveyRespondView,
-    SurveyResultsView,
     user_can_apply_survey,
 )
 from core.form_policies import apply_declared_form_policies
@@ -312,6 +312,6 @@ class SurveyResultsViewTests(TestCase):
         response = SurveyResponse.objects.create(survey=survey)
         SurveyAnswer.objects.create(response=response, question=question, value_text="4")
 
-        summaries = SurveyResultsView()._choice_summaries([question])
+        summaries = SurveyResultsSummary(survey).choice_summaries
 
         self.assertEqual(summaries[0]["rows"], [{"label": "4", "count": 1, "percent": 100}])

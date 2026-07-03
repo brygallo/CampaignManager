@@ -10,6 +10,25 @@ from typing import Any, Iterable
 from django import forms
 
 
+def dumps_for_script(data: Any) -> str:
+    """JSON-encode ``data`` for embedding inside a ``<script type="application/json">`` block.
+
+    Policy payloads can carry editor/user-controlled strings (question text,
+    option labels/values, expected condition values, disabled reasons,
+    etc.). Escaping ``<``, ``>`` and ``&`` prevents a value containing
+    something like ``</script><script>...`` from ever breaking out of the
+    script tag it's embedded in (stored XSS), while still round-tripping
+    through ``JSON.parse``/``json.loads`` unchanged since ``\\uXXXX``
+    escapes are valid JSON string content.
+    """
+    encoded = json.dumps(data, ensure_ascii=False)
+    return (
+        encoded.replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
+
+
 class Predicate:
     """Boolean expression evaluated against request, object and form values."""
 
@@ -481,10 +500,7 @@ def apply_form_policies(
         for policy in [*conditional_policies, *required_policies]
         if policy.as_client() is not None
     ]
-    form.conditional_policies_json = json.dumps(
-        client_policies,
-        ensure_ascii=False,
-    )
+    form.conditional_policies_json = dumps_for_script(client_policies)
     wrap_clean(form, conditional_policies, required_policies, request, obj)
     return form
 

@@ -128,6 +128,17 @@ class SurveyQuestion(BaseModel):
         ALWAYS = "always", "Siempre visible"
         EQUALS = "equals", "Mostrar si es igual a"
         NOT_EQUALS = "not_equals", "Mostrar si es distinto de"
+        GREATER_THAN = "greater_than", "Mostrar si es mayor que"
+        LESS_THAN = "less_than", "Mostrar si es menor que"
+
+    # Operators that only make sense when the conditioning question answers
+    # with a comparable numeric value.
+    NUMERIC_VISIBILITY_OPERATORS = {VisibilityOperator.GREATER_THAN, VisibilityOperator.LESS_THAN}
+    # Question types whose answer can be safely cast to float() for the
+    # numeric visibility operators above.
+    NUMERIC_QUESTION_TYPES = {QuestionType.NUMBER, QuestionType.SCALE_5, QuestionType.SCALE_10}
+    # Bounded walk guard for visibility_question ancestor-chain cycle checks.
+    MAX_VISIBILITY_CHAIN_DEPTH = 50
 
     survey = models.ForeignKey(
         Survey, on_delete=models.CASCADE, related_name="questions", verbose_name="Encuesta"
@@ -196,10 +207,49 @@ class SurveyQuestion(BaseModel):
             )
         if self.visibility_question_id and self.visibility_question_id == self.pk:
             raise ValidationError({"visibility_question": "Una pregunta no puede depender de sí misma."})
+        if self.visibility_question_id:
+            self._check_visibility_chain_has_no_cycle()
         if self.visibility_option_id and self.visibility_option.question_id != self.visibility_question_id:
             raise ValidationError(
                 {"visibility_option": "La opción debe pertenecer a la pregunta condicionante."}
             )
+        if (
+            self.visibility_operator in self.NUMERIC_VISIBILITY_OPERATORS
+            and self.visibility_question_id
+            and self.visibility_question.question_type not in self.NUMERIC_QUESTION_TYPES
+        ):
+            raise ValidationError(
+                {
+                    "visibility_operator": (
+                        "Este operador solo aplica cuando la pregunta condicionante es numérica."
+                    )
+                }
+            )
+
+    def _check_visibility_chain_has_no_cycle(self):
+        """Walk the visibility_question ancestor chain looking for a cycle.
+
+        Direct self-reference (A depends on A) is already rejected above;
+        this covers longer chains such as A -> B -> A. The walk is bounded
+        so malformed/unexpected data can never hang validation.
+        """
+        node = self.visibility_question
+        visited_ids = set()
+        while node is not None:
+            if self.pk is not None and node.pk == self.pk:
+                raise ValidationError(
+                    {"visibility_question": "La condición genera un ciclo entre preguntas."}
+                )
+            if node.pk in visited_ids:
+                # Cycle among ancestors unrelated to self; stop walking
+                # rather than looping forever.
+                break
+            visited_ids.add(node.pk)
+            if len(visited_ids) > self.MAX_VISIBILITY_CHAIN_DEPTH:
+                raise ValidationError(
+                    {"visibility_question": "La cadena de preguntas condicionantes es demasiado larga."}
+                )
+            node = node.visibility_question
 
 
 class SurveyOption(BaseModel):

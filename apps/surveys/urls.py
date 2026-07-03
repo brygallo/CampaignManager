@@ -35,6 +35,16 @@ urlpatterns = [
     path("encuestas/<slug:slug>/responder/", views.SurveyRespondView.as_view(), name="respond"),
     path("encuestas/<slug:slug>/gracias/", views.SurveyThanksView.as_view(), name="thanks"),
     path("encuestas/<int:pk>/resultados/", views.SurveyResultsView.as_view(), name="results"),
+    path(
+        "encuestas/<int:pk>/resultados/datos/",
+        views.SurveyResultsDataView.as_view(),
+        name="results_data",
+    ),
+    path(
+        "encuestas/<int:pk>/resultados/mapa-datos/",
+        views.SurveyResultsMapDataView.as_view(),
+        name="results_map_data",
+    ),
     path("encuestas/<int:pk>/exportar.csv", views.SurveyExportCsvView.as_view(), name="export_csv"),
     path(
         "encuestas/<int:pk>/exportar.<str:file_format>",

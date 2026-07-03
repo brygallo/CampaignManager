@@ -1,5 +1,6 @@
 (function () {
   var OPTION_TYPES = ["single_choice", "multiple_choice"];
+  var NUMERIC_TYPES = ["number", "scale_5", "scale_10"];
 
   function closestField(field) {
     if (!field) return null;
@@ -33,6 +34,27 @@
   function parentUsesOptions(questionSelect) {
     var option = selectedOption(questionSelect);
     return option && OPTION_TYPES.indexOf(option.dataset.questionType) !== -1;
+  }
+
+  function parentIsNumeric(questionSelect) {
+    var option = selectedOption(questionSelect);
+    return !!option && NUMERIC_TYPES.indexOf(option.dataset.questionType) !== -1;
+  }
+
+  function filterVisibilityOperatorOptions(operatorSelect, questionSelect) {
+    if (!operatorSelect) return;
+    var numericAllowed = parentIsNumeric(questionSelect);
+    var currentValid = true;
+    Array.prototype.slice.call(operatorSelect.options).forEach(function (option) {
+      if (option.dataset.numericOnly !== "true") return;
+      option.hidden = !numericAllowed;
+      option.disabled = !numericAllowed;
+      if (!numericAllowed && option.selected) currentValid = false;
+    });
+    if (!currentValid) operatorSelect.value = "equals";
+    if (window.jQuery && window.jQuery.fn.select2) {
+      window.jQuery(operatorSelect).trigger("change.select2");
+    }
   }
 
   function filterVisibilityOptions(optionSelect, questionSelect) {
@@ -81,6 +103,7 @@
       if (visibilityOperator && visibilityOperator.value === "always") {
         visibilityOperator.value = "equals";
       }
+      filterVisibilityOperatorOptions(visibilityOperator, visibilityQuestion);
       var canUseParentOptions = parentUsesOptions(visibilityQuestion);
       filterVisibilityOptions(visibilityOption, visibilityQuestion);
       setFieldVisible(visibilityOption, canUseParentOptions);

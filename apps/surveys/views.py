@@ -3,12 +3,12 @@ import json
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.core.paginator import Paginator
+from django.db.models import Max, Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import ListView, TemplateView, View
-from django.utils import timezone
 
 from apps.insoles.views import InstanceBaseFormView
 from apps.reporting.views import ReportExportView
@@ -27,7 +27,11 @@ from .models import (
     SurveyResponse,
     SurveySection,
 )
-from .services import update_survey_question_positions
+from .services import (
+    SurveyResultsSummary,
+    get_survey_publication_issues,
+    update_survey_question_positions,
+)
 
 def user_can_apply_survey(user, survey):
     if not survey.requires_login:
@@ -200,6 +204,12 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
     def _change_status(self, status, message):
         if not self.request.user.has_perm("surveys.publish_survey"):
             raise PermissionDenied
+        if status == Survey.Status.PUBLISHED:
+            issues = get_survey_publication_issues(self.survey)
+            if issues:
+                for issue in issues:
+                    messages.error(self.request, issue)
+                return HttpResponseRedirect(reverse("surveys:builder", kwargs={"pk": self.survey.pk}))
         self.survey.status = status
         self.survey.save(update_fields=["status"])
         messages.success(self.request, message)
@@ -411,20 +421,39 @@ class SurveyRespondView(SurveyAccessMixin, TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         self.survey = self.get_survey()
+        # Editors can preview a non-open survey even if they are not part of
+        # the assigned audience; the preview never allows submitting (POST
+        # is still rejected for non-open surveys below).
+        self.can_preview = request.user.has_perm("surveys.change_survey")
         if self.survey.requires_login and not request.user.is_authenticated:
             from django.contrib.auth.views import redirect_to_login
 
             return redirect_to_login(request.get_full_path())
         if not user_can_apply_survey(request.user, self.survey):
-            messages.error(request, "No tienes asignada esta encuesta.")
-            return HttpResponseRedirect(reverse("surveys:apply_list"))
+            is_preview_bypass = self.can_preview and not self.survey.is_open
+            if not is_preview_bypass:
+                messages.error(request, "No tienes asignada esta encuesta.")
+                return HttpResponseRedirect(reverse("surveys:apply_list"))
         return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        if not self.survey.is_open and not self.can_preview:
+            return self.render_to_response(self.get_unavailable_context())
+        return super().get(request, *args, **kwargs)
+
+    def get_unavailable_context(self):
+        return {
+            "survey": self.survey,
+            "survey_unavailable": True,
+            "page_title": self.survey.title,
+        }
 
     def get_form(self):
         return DynamicSurveyResponseForm(
             self.request.POST or None,
             self.request.FILES or None,
             survey=self.survey,
+            user=self.request.user,
         )
 
     def get_context_data(self, **kwargs):
@@ -434,23 +463,35 @@ class SurveyRespondView(SurveyAccessMixin, TemplateView):
         context["form"] = form
         context["question_groups"] = form.grouped_bound_fields()
         context["page_title"] = self.survey.title
+        context["survey_unavailable"] = False
+        context["is_preview"] = not self.survey.is_open and self.can_preview
         return context
 
     def post(self, request, *args, **kwargs):
         form = self.get_form()
         if not self.survey.is_open:
             messages.error(request, "Esta encuesta no está disponible.")
+            if not self.can_preview:
+                return self.render_to_response(self.get_unavailable_context())
             return self.render_to_response(self.get_context_data(form=form))
         if self._has_existing_response(request):
             messages.error(request, "Ya registraste una respuesta para esta encuesta.")
             return self.render_to_response(self.get_context_data(form=form))
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
+        respondent_name = ""
+        respondent_email = ""
+        if getattr(form, "include_respondent_fields", False):
+            respondent_name = form.cleaned_data.get("respondent_name", "")
+            respondent_email = form.cleaned_data.get("respondent_email", "")
         response = SurveyResponse.objects.create(
             survey=self.survey,
             respondent=None if self.survey.is_anonymous else request.user if request.user.is_authenticated else None,
-            ip_address=self._client_ip(),
-            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            respondent_name=respondent_name,
+            respondent_email=respondent_email,
+            # Anonymous surveys must not retain identifying request metadata.
+            ip_address=None if self.survey.is_anonymous else self._client_ip(),
+            user_agent="" if self.survey.is_anonymous else request.META.get("HTTP_USER_AGENT", ""),
         )
         self._save_answers(response, form)
         return HttpResponseRedirect(reverse("surveys:thanks", kwargs={"slug": self.survey.slug}))
@@ -517,122 +558,66 @@ class SurveyResultsView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         survey = self.get_survey()
-        questions = list(
-            survey.questions.filter(is_active=True)
-            .select_related("section")
-            .prefetch_related("options")
-            .order_by("section__order", "order", "id")
-        )
-        responses = filtered_survey_responses(survey, self.request.GET)
-        total_responses = responses.count()
-        response_ids = list(responses.values_list("pk", flat=True))
-        now = timezone.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        last_7_days = now - timezone.timedelta(days=7)
+        summary = SurveyResultsSummary(survey, self.request.GET)
+
+        paginator = Paginator(summary.responses, 25)
+        page_obj = paginator.get_page(self.request.GET.get("page"))
+
+        filter_params = self.request.GET.copy()
+        filter_params.pop("page", None)
+
         context.update(
             {
                 "survey": survey,
-                "questions": questions,
-                "responses": responses[:100],
-                "total_responses": total_responses,
-                "responses_today": responses.filter(submitted_at__gte=today_start).count(),
-                "responses_last_7_days": responses.filter(submitted_at__gte=last_7_days).count(),
-                "latest_response": responses.first(),
+                "questions": summary.questions,
+                "payload": summary.payload(),
+                "page_obj": page_obj,
+                "responses": page_obj.object_list,
                 "filters": {
                     "q": self.request.GET.get("q", ""),
                     "date_from": self.request.GET.get("date_from", ""),
                     "date_to": self.request.GET.get("date_to", ""),
                 },
+                "filters_querystring": filter_params.urlencode(),
                 "page_title": f"Resultados: {survey.title}",
-                "choice_summaries": self._choice_summaries(
-                    questions,
-                    total_responses=total_responses,
-                    response_ids=response_ids,
+                "has_location_questions": summary.has_location_questions,
+                "results_data_url": reverse("surveys:results_data", kwargs={"pk": survey.pk}),
+                "results_map_data_url": reverse(
+                    "surveys:results_map_data", kwargs={"pk": survey.pk}
                 ),
-                "question_summaries": self._question_summaries(
-                    questions,
-                    total_responses=total_responses,
-                    response_ids=response_ids,
-                ),
+                "question_summaries": summary.question_summaries,
             }
         )
         return context
 
-    def _choice_summaries(self, questions, total_responses=None, response_ids=None):
-        summaries = []
-        answer_filter = Q()
-        if response_ids is not None:
-            answer_filter = Q(answers__response_id__in=response_ids)
-        for question in questions:
-            if question.question_type not in {
-                SurveyQuestion.QuestionType.SINGLE_CHOICE,
-                SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
-                SurveyQuestion.QuestionType.YES_NO,
-                SurveyQuestion.QuestionType.SCALE_5,
-                SurveyQuestion.QuestionType.SCALE_10,
-            }:
-                continue
-            if question.uses_options:
-                rows = (
-                    question.options.annotate(count=Count("answers", filter=answer_filter))
-                    .values("label", "count")
-                    .order_by("order", "label")
-                )
-                rows = list(rows)
-            else:
-                answers = SurveyAnswer.objects.filter(question=question)
-                if response_ids is not None:
-                    answers = answers.filter(response_id__in=response_ids)
-                rows = answers.values("value_text").annotate(count=Count("id")).order_by("value_text")
-                rows = [{"label": row["value_text"] or "Sin respuesta", "count": row["count"]} for row in rows]
-            denominator = total_responses if total_responses is not None else sum(row["count"] for row in rows)
-            for row in rows:
-                row["percent"] = round((row["count"] / denominator) * 100) if denominator else 0
-            summaries.append({"question": question, "rows": rows, "answered": sum(row["count"] for row in rows)})
-        return summaries
 
-    def _question_summaries(self, questions, total_responses, response_ids=None):
-        summaries = []
-        for question in questions:
-            answers = SurveyAnswer.objects.filter(question=question)
-            if response_ids is not None:
-                answers = answers.filter(response_id__in=response_ids)
-            answered = answers.exclude(
-                value_text="",
-                value_number__isnull=True,
-                value_date__isnull=True,
-                value_time__isnull=True,
-                value_file="",
-                latitude__isnull=True,
-                longitude__isnull=True,
-                selected_options__isnull=True,
-            ).distinct().count()
-            summary = {
-                "question": question,
-                "answered": answered,
-                "missing": max(total_responses - answered, 0),
-                "completion_percent": round((answered / total_responses) * 100) if total_responses else 0,
-            }
-            if question.question_type == SurveyQuestion.QuestionType.NUMBER:
-                stats = answers.aggregate(
-                    avg=Avg("value_number"),
-                    min=Min("value_number"),
-                    max=Max("value_number"),
-                )
-                summary["number_stats"] = stats
-            elif question.question_type in {
-                SurveyQuestion.QuestionType.SHORT_TEXT,
-                SurveyQuestion.QuestionType.LONG_TEXT,
-                SurveyQuestion.QuestionType.EMAIL,
-                SurveyQuestion.QuestionType.PHONE,
-            }:
-                summary["samples"] = list(
-                    answers.exclude(value_text="")
-                    .order_by("-response__submitted_at")
-                    .values_list("value_text", flat=True)[:3]
-                )
-            summaries.append(summary)
-        return summaries
+class SurveyResultsDataView(
+    LoginRequiredMixin, PermissionRequiredMixin, SurveyAccessMixin, View
+):
+    """Live JSON feed for the results dashboard (tiles + charts + trend).
+
+    Honors the same GET filters as ``SurveyResultsView`` so the page can
+    re-render without a full reload.
+    """
+
+    permission_required = "surveys.view_survey_results"
+
+    def get(self, request, *args, **kwargs):
+        survey = self.get_survey()
+        return JsonResponse(SurveyResultsSummary(survey, request.GET).payload())
+
+
+class SurveyResultsMapDataView(
+    LoginRequiredMixin, PermissionRequiredMixin, SurveyAccessMixin, View
+):
+    """Return geo points for LOCATION-type answers, honoring active filters."""
+
+    permission_required = "surveys.view_survey_results"
+
+    def get(self, request, *args, **kwargs):
+        survey = self.get_survey()
+        points = SurveyResultsSummary(survey, request.GET).location_points
+        return JsonResponse({"points": points, "count": len(points)})
 
 
 class SurveyExportView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAccessMixin, ReportExportView):

@@ -1,10 +1,33 @@
 from __future__ import annotations
 
+from collections import defaultdict
+
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Avg, Count, Max, Min, Q
+from django.db.models.functions import TruncDate
+from django.utils import timezone
+from django.utils.functional import cached_property
 from django.utils.text import slugify
 
-from .models import Survey, SurveyAnswer, SurveyOption, SurveyQuestion, SurveySection
+from .models import (
+    Survey,
+    SurveyAnswer,
+    SurveyOption,
+    SurveyQuestion,
+    SurveyResponse,
+    SurveySection,
+)
+from .reports import filtered_survey_responses
+
+CHOICE_QUESTION_TYPES = frozenset(
+    {
+        SurveyQuestion.QuestionType.SINGLE_CHOICE,
+        SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
+        SurveyQuestion.QuestionType.YES_NO,
+        SurveyQuestion.QuestionType.SCALE_5,
+        SurveyQuestion.QuestionType.SCALE_10,
+    }
+)
 
 
 SURVEY_TEMPLATE_LIBRARY = [
@@ -221,82 +244,304 @@ def update_survey_question_positions(survey, placements):
     return updated
 
 
-def build_survey_results_payload(survey):
-    questions = list(survey.questions.filter(is_active=True).prefetch_related("options"))
-    responses = survey.responses.prefetch_related("answers__question", "answers__selected_options")
-    choice_summaries = []
-    for question in questions:
-        if question.question_type not in {
-            SurveyQuestion.QuestionType.SINGLE_CHOICE,
-            SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
-            SurveyQuestion.QuestionType.YES_NO,
-            SurveyQuestion.QuestionType.SCALE_5,
-            SurveyQuestion.QuestionType.SCALE_10,
-        }:
-            continue
-        if question.uses_options:
-            rows = list(
-                question.options.filter(is_active=True)
-                .annotate(count=Count("answers"))
-                .values("label", "count")
-                .order_by("order", "label")
-            )
-        else:
-            rows = list(
-                SurveyAnswer.objects.filter(question=question)
-                .values("value_text")
-                .annotate(count=Count("id"))
-                .order_by("value_text")
-            )
-            rows = [
-                {"label": row["value_text"] or "Sin respuesta", "count": row["count"]}
-                for row in rows
-            ]
-        choice_summaries.append(
-            {
-                "question_id": question.pk,
-                "question": question.text,
-                "rows": rows,
-            }
-        )
-    latest = []
-    for survey_response in responses[:10]:
-        latest.append(
-            {
-                "id": survey_response.pk,
-                "submitted_at": survey_response.submitted_at.strftime("%d/%m/%Y %H:%M"),
-                "respondent": "Anónima"
-                if survey.is_anonymous
-                else str(survey_response.respondent or "Pública"),
-                "answers": [
-                    {"question": answer.question.text, "value": answer.display_value}
-                    for answer in survey_response.answers.all()
-                ],
-            }
-        )
-    return {
-        "survey_id": survey.pk,
-        "total_responses": responses.count(),
-        "question_count": len(questions),
-        "choice_summaries": choice_summaries,
-        "latest": latest,
+TEXT_QUESTION_TYPES = frozenset(
+    {
+        SurveyQuestion.QuestionType.SHORT_TEXT,
+        SurveyQuestion.QuestionType.LONG_TEXT,
+        SurveyQuestion.QuestionType.EMAIL,
+        SurveyQuestion.QuestionType.PHONE,
     }
+)
 
 
-def broadcast_survey_results_update(survey):
-    try:
-        from asgiref.sync import async_to_sync
-        from channels.layers import get_channel_layer
-    except ImportError:
-        return
+class SurveyResultsSummary:
+    """Single filter-aware computation of a survey's results.
 
-    channel_layer = get_channel_layer()
-    if channel_layer is None:
-        return
-    async_to_sync(channel_layer.group_send)(
-        f"survey_results_{survey.pk}",
-        {
-            "type": "survey_results_updated",
-            "payload": build_survey_results_payload(survey),
-        },
-    )
+    Instantiated once per request by the results dashboard view and the
+    ``results_data`` / ``results_map_data`` endpoints so the filtered response
+    query and every per-question aggregate run once and are reused across the
+    stat tiles, charts, completion table, trend and map instead of being
+    recomputed per consumer. Every heavy attribute is a ``cached_property`` so
+    consumers can read only what they need.
+    """
+
+    def __init__(self, survey, params=None):
+        self.survey = survey
+        self.params = params or {}
+
+    @cached_property
+    def questions(self):
+        """Active questions ordered as rendered, with section and options loaded."""
+        return list(
+            self.survey.questions.filter(is_active=True)
+            .select_related("section")
+            .prefetch_related("options")
+            .order_by("section__order", "order", "id")
+        )
+
+    @cached_property
+    def responses(self):
+        """Filtered response queryset (used for pagination and export)."""
+        return filtered_survey_responses(self.survey, self.params)
+
+    @cached_property
+    def response_ids(self):
+        return list(self.responses.values_list("pk", flat=True))
+
+    @cached_property
+    def total_responses(self):
+        return len(self.response_ids)
+
+    @cached_property
+    def _base_responses(self):
+        return SurveyResponse.objects.filter(pk__in=self.response_ids)
+
+    @cached_property
+    def has_location_questions(self):
+        return any(
+            question.question_type == SurveyQuestion.QuestionType.LOCATION
+            for question in self.questions
+        )
+
+    @cached_property
+    def stat_tiles(self):
+        """Headline counters shown as tiles and refreshed by the live feed."""
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        last_7_days = now - timezone.timedelta(days=7)
+        latest = self._base_responses.order_by("-submitted_at").first()
+        return {
+            "total_responses": self.total_responses,
+            "responses_today": self._base_responses.filter(
+                submitted_at__gte=today_start
+            ).count(),
+            "responses_last_7_days": self._base_responses.filter(
+                submitted_at__gte=last_7_days
+            ).count(),
+            "latest_response": latest.submitted_at.strftime("%d/%m/%Y %H:%M")
+            if latest
+            else "",
+        }
+
+    @cached_property
+    def choice_summaries(self):
+        """Per-question choice aggregates (chart categories/series and rows).
+
+        All option/text aggregates are batched into a constant number of
+        queries instead of one query per question.
+        """
+        option_question_ids = [q.pk for q in self.questions if q.uses_options]
+        text_choice_ids = [
+            q.pk
+            for q in self.questions
+            if q.question_type in CHOICE_QUESTION_TYPES and not q.uses_options
+        ]
+
+        option_rows = defaultdict(list)
+        if option_question_ids:
+            answer_filter = Q(answers__response_id__in=self.response_ids)
+            for row in (
+                SurveyOption.objects.filter(
+                    question_id__in=option_question_ids, is_active=True
+                )
+                .annotate(count=Count("answers", filter=answer_filter))
+                .values("question_id", "label", "count")
+                .order_by("question_id", "order", "label")
+            ):
+                option_rows[row["question_id"]].append(
+                    {"label": row["label"], "count": row["count"]}
+                )
+
+        text_rows = defaultdict(list)
+        if text_choice_ids:
+            for row in (
+                SurveyAnswer.objects.filter(
+                    question_id__in=text_choice_ids, response_id__in=self.response_ids
+                )
+                .values("question_id", "value_text")
+                .annotate(count=Count("id"))
+                .order_by("question_id", "value_text")
+            ):
+                text_rows[row["question_id"]].append(
+                    {
+                        "label": row["value_text"] or "Sin respuesta",
+                        "count": row["count"],
+                    }
+                )
+
+        summaries = []
+        for question in self.questions:
+            if question.question_type not in CHOICE_QUESTION_TYPES:
+                continue
+            rows = (
+                option_rows.get(question.pk, [])
+                if question.uses_options
+                else text_rows.get(question.pk, [])
+            )
+            denominator = self.total_responses or sum(row["count"] for row in rows)
+            for row in rows:
+                row["percent"] = (
+                    round((row["count"] / denominator) * 100) if denominator else 0
+                )
+            chart_type = (
+                "donut"
+                if question.question_type == SurveyQuestion.QuestionType.YES_NO
+                else "bar"
+            )
+            summaries.append(
+                {
+                    "question_id": question.pk,
+                    "question": question.text,
+                    "chart_type": chart_type,
+                    "rows": rows,
+                    "categories": [row["label"] for row in rows],
+                    "series": [row["count"] for row in rows],
+                    "answered": sum(row["count"] for row in rows),
+                }
+            )
+        return summaries
+
+    @cached_property
+    def trend(self):
+        """30-day daily submission counts (categories + series)."""
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        trend_start = today_start - timezone.timedelta(days=29)
+        trend_map = {
+            row["day"]: row["count"]
+            for row in (
+                self._base_responses.filter(submitted_at__gte=trend_start)
+                .annotate(day=TruncDate("submitted_at"))
+                .values("day")
+                .annotate(count=Count("id"))
+            )
+        }
+        categories = []
+        series = []
+        for offset in range(30):
+            day = (trend_start + timezone.timedelta(days=offset)).date()
+            categories.append(day.strftime("%d/%m"))
+            series.append(trend_map.get(day, 0))
+        return {"categories": categories, "series": series}
+
+    @cached_property
+    def question_summaries(self):
+        """Completion table: answered/missing counts plus number stats and text samples."""
+        question_ids = [question.pk for question in self.questions]
+        answers = SurveyAnswer.objects.filter(
+            question_id__in=question_ids, response_id__in=self.response_ids
+        )
+
+        # An answer row is created for every visible question during submit, so
+        # "answered" must count only rows that hold actual content. The combined
+        # AND condition matches fully-empty answers; ``distinct`` collapses the
+        # M2M fan-out from the ``selected_options`` join.
+        empty_answer = (
+            Q(value_text="")
+            & Q(value_number__isnull=True)
+            & Q(value_date__isnull=True)
+            & Q(value_time__isnull=True)
+            & (Q(value_file="") | Q(value_file__isnull=True))
+            & Q(latitude__isnull=True)
+            & Q(longitude__isnull=True)
+            & Q(selected_options__isnull=True)
+        )
+        answered_map = {
+            row["question_id"]: row["count"]
+            for row in answers.exclude(empty_answer)
+            .values("question_id")
+            .annotate(count=Count("id", distinct=True))
+        }
+
+        number_map = {
+            row["question_id"]: row
+            for row in answers.filter(
+                question__question_type=SurveyQuestion.QuestionType.NUMBER
+            )
+            .values("question_id")
+            .annotate(
+                avg=Avg("value_number"),
+                min=Min("value_number"),
+                max=Max("value_number"),
+            )
+        }
+
+        text_question_ids = [
+            question.pk
+            for question in self.questions
+            if question.question_type in TEXT_QUESTION_TYPES
+        ]
+        samples_map = defaultdict(list)
+        if text_question_ids:
+            for row in (
+                answers.filter(question_id__in=text_question_ids)
+                .exclude(value_text="")
+                .order_by("question_id", "-response__submitted_at")
+                .values("question_id", "value_text")
+            ):
+                bucket = samples_map[row["question_id"]]
+                if len(bucket) < 3:
+                    bucket.append(row["value_text"])
+
+        total_responses = self.total_responses
+        summaries = []
+        for question in self.questions:
+            answered = answered_map.get(question.pk, 0)
+            summary = {
+                "question": question,
+                "answered": answered,
+                "missing": max(total_responses - answered, 0),
+                "completion_percent": round((answered / total_responses) * 100)
+                if total_responses
+                else 0,
+            }
+            if question.question_type == SurveyQuestion.QuestionType.NUMBER:
+                stats = number_map.get(question.pk)
+                summary["number_stats"] = (
+                    {"avg": stats["avg"], "min": stats["min"], "max": stats["max"]}
+                    if stats
+                    else {"avg": None, "min": None, "max": None}
+                )
+            elif question.question_type in TEXT_QUESTION_TYPES:
+                summary["samples"] = samples_map.get(question.pk, [])
+            summaries.append(summary)
+        return summaries
+
+    @cached_property
+    def location_points(self):
+        """Lat/lng rows for LOCATION answers, consumed by the map endpoint."""
+        location_question_ids = [
+            question.pk
+            for question in self.questions
+            if question.question_type == SurveyQuestion.QuestionType.LOCATION
+        ]
+        if not location_question_ids or not self.response_ids:
+            return []
+        rows = (
+            SurveyAnswer.objects.filter(
+                question_id__in=location_question_ids,
+                response_id__in=self.response_ids,
+                latitude__isnull=False,
+                longitude__isnull=False,
+            )
+            .values("latitude", "longitude", "question__text")
+            .order_by("-response__submitted_at")
+        )
+        return [
+            {
+                "lat": float(row["latitude"]),
+                "lng": float(row["longitude"]),
+                "question": row["question__text"],
+            }
+            for row in rows
+        ]
+
+    def payload(self):
+        """JSON-serializable payload for the dashboard initial render and live feed."""
+        return {
+            "survey_id": self.survey.pk,
+            "question_count": len(self.questions),
+            "choice_summaries": self.choice_summaries,
+            "trend": self.trend,
+            **self.stat_tiles,
+        }

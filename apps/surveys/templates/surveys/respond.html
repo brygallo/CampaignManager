@@ -237,48 +237,99 @@
 
 {% block content %}
 <div class="survey-shell">
-  {% if not survey.is_open %}
-    <div class="alert alert-warning d-flex align-items-center gap-3">
-      <i data-lucide="lock" class="fs-2"></i>
-      <span>Esta encuesta no está disponible.</span>
-    </div>
-  {% endif %}
-
-  <form method="post" enctype="multipart/form-data" novalidate>
-    {% csrf_token %}
-    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  {% if survey_unavailable %}
     <div class="survey-hero">
       <div class="d-flex flex-column flex-sm-row justify-content-sm-between gap-3 mb-3">
         <div>
           <div class="text-muted fw-semibold fs-7 text-uppercase mb-1">Encuesta</div>
           <h1 class="fw-bold text-gray-900 mb-0">{{ survey.title }}</h1>
         </div>
-        <span class="badge badge-light-success align-self-start">Publicada</span>
-      </div>
-      {% if survey.description %}
-        <div class="text-gray-700 fs-6">{{ survey.description|linebreaksbr }}</div>
-      {% endif %}
-      <div class="separator my-5"></div>
-      <div class="d-flex flex-column gap-3">
-        <div class="d-flex justify-content-between align-items-center gap-3 text-muted fs-7">
-          <span><span class="badge badge-light-danger me-2">*</span>Pregunta obligatoria</span>
-          <span data-survey-progress-label>0 de {{ form.visible_question_count }}</span>
-        </div>
-        <div class="survey-progress" aria-hidden="true">
-          <div class="survey-progress__bar" data-survey-progress-bar></div>
-        </div>
+        {% if survey.status == "draft" %}
+          <span class="badge badge-light-warning align-self-start">{{ survey.get_status_display }}</span>
+        {% elif survey.status == "closed" %}
+          <span class="badge badge-light-danger align-self-start">{{ survey.get_status_display }}</span>
+        {% else %}
+          <span class="badge badge-light-secondary align-self-start">{{ survey.get_status_display }}</span>
+        {% endif %}
       </div>
     </div>
-
-    {% if form.non_field_errors %}
-      <div class="survey-card border-danger">
-        {% for error in form.non_field_errors %}
-          <div class="text-danger">{{ error }}</div>
-        {% endfor %}
+    <div class="alert alert-warning d-flex align-items-center gap-3">
+      <i data-lucide="lock" class="fs-2"></i>
+      <span>Esta encuesta no está disponible.</span>
+    </div>
+  {% else %}
+    {% if is_preview %}
+      <div class="alert alert-warning d-flex align-items-center gap-3">
+        <i data-lucide="eye" class="fs-2"></i>
+        <span>Vista previa — la encuesta no está abierta; las respuestas no se guardarán.</span>
       </div>
     {% endif %}
 
-    {% for group in question_groups %}
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% if form.conditional_policies_json %}
+        <script type="application/json" data-form-conditional-policies>{{ form.conditional_policies_json|safe }}</script>
+      {% endif %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      <div class="survey-hero">
+        <div class="d-flex flex-column flex-sm-row justify-content-sm-between gap-3 mb-3">
+          <div>
+            <div class="text-muted fw-semibold fs-7 text-uppercase mb-1">Encuesta</div>
+            <h1 class="fw-bold text-gray-900 mb-0">{{ survey.title }}</h1>
+          </div>
+          {% if survey.status == "published" %}
+            <span class="badge badge-light-success align-self-start">{{ survey.get_status_display }}</span>
+          {% elif survey.status == "draft" %}
+            <span class="badge badge-light-warning align-self-start">{{ survey.get_status_display }}</span>
+          {% elif survey.status == "closed" %}
+            <span class="badge badge-light-danger align-self-start">{{ survey.get_status_display }}</span>
+          {% else %}
+            <span class="badge badge-light-secondary align-self-start">{{ survey.get_status_display }}</span>
+          {% endif %}
+        </div>
+        {% if survey.description %}
+          <div class="text-gray-700 fs-6">{{ survey.description|linebreaksbr }}</div>
+        {% endif %}
+        <div class="separator my-5"></div>
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex justify-content-between align-items-center gap-3 text-muted fs-7">
+            <span><span class="badge badge-light-danger me-2">*</span>Pregunta obligatoria</span>
+            <span data-survey-progress-label>0 de {{ form.visible_question_count }}</span>
+          </div>
+          <div class="survey-progress" aria-hidden="true">
+            <div class="survey-progress__bar" data-survey-progress-bar></div>
+          </div>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="survey-card border-danger">
+          {% for error in form.non_field_errors %}
+            <div class="text-danger">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if form.include_respondent_fields %}
+        <div class="survey-card">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.respondent_name.id_for_label }}">
+                {{ form.respondent_name.label }}
+              </label>
+              {{ form.respondent_name }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.respondent_email.id_for_label }}">
+                {{ form.respondent_email.label }}
+              </label>
+              {{ form.respondent_email }}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% for group in question_groups %}
       {% if group.section %}
         <div class="survey-section">
           <span class="survey-section__mark">{{ forloop.counter }}</span>
@@ -293,11 +344,7 @@
       {% for item in group.fields %}
         <div class="survey-card {% if item.field.errors %}border-danger{% endif %}"
              data-survey-question="{{ item.field_name }}"
-             {% if item.condition_question_name %}
-               data-condition-question="{{ item.condition_question_name }}"
-               data-condition-operator="{{ item.condition_operator }}"
-               data-condition-expected="{{ item.condition_expected }}"
-             {% endif %}>
+             data-form-field-container="{{ item.field_name }}">
           <div class="d-flex gap-3 align-items-start mb-3">
             <span class="survey-question-number">{{ item.question_number }}</span>
             <label class="form-label fw-semibold fs-5 text-gray-900 mb-0" for="{{ item.field.id_for_label }}">
@@ -327,7 +374,8 @@
         Enviar
       </button>
     </div>
-  </form>
+    </form>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -340,32 +388,12 @@
       var progressBar = form.querySelector("[data-survey-progress-bar]");
       var progressLabel = form.querySelector("[data-survey-progress-label]");
 
-      function valuesFor(name) {
-        return Array.prototype.slice.call(form.querySelectorAll('[name="' + name + '"]'))
-          .filter(function (input) {
-            if ((input.type === "radio" || input.type === "checkbox") && !input.checked) return false;
-            return true;
-          })
-          .map(function (input) { return input.value; });
-      }
-
-      function setCardEnabled(card, enabled) {
-        card.classList.toggle("d-none", !enabled);
-        card.querySelectorAll("input, select, textarea, button").forEach(function (input) {
-          if (input.closest(".survey-actions")) return;
-          input.disabled = !enabled;
-        });
-      }
-
-      function refreshConditions() {
-        form.querySelectorAll("[data-condition-question]").forEach(function (card) {
-          var expected = card.dataset.conditionExpected || "";
-          var values = valuesFor(card.dataset.conditionQuestion);
-          var matched = values.indexOf(expected) !== -1;
-          var visible = card.dataset.conditionOperator === "not_equals" ? !matched : matched;
-          setCardEnabled(card, visible);
-        });
-      }
+      // Question visibility (show/hide + disable) is driven by the global
+      // conditional-fields engine (static/assets/js/forms/conditional_fields.js)
+      // reading the [data-form-conditional-policies] block rendered above —
+      // see DynamicSurveyResponseForm.build_conditional_policies(). This
+      // script only reacts to the resulting DOM state to keep the progress
+      // bar and choice-card styling in sync.
 
       function refreshChoiceState(scope) {
         (scope || form).querySelectorAll("[data-survey-choice-list]").forEach(function (list) {
@@ -399,17 +427,27 @@
         if (progressLabel) progressLabel.textContent = complete + " de " + total;
       }
 
+      // conditional_fields.js binds its "change"/"input" listeners on the
+      // form in the capture phase, so they always run before these
+      // bubble-phase listeners — the visibility state is already settled
+      // by the time refreshProgress() reads the DOM below.
       form.addEventListener("change", function (event) {
-        refreshConditions();
         if (event.target.matches(".survey-choice-input")) {
           refreshChoiceState();
         }
         refreshProgress();
       });
       form.addEventListener("input", refreshProgress);
-      refreshConditions();
-      refreshChoiceState();
-      refreshProgress();
+
+      // conditional_fields.js also applies its *initial* sync on
+      // DOMContentLoaded, and it registers that listener earlier in the
+      // document (base/js.html is included before this block), so ours
+      // fires afterwards with the correct initial hide/show state already
+      // applied.
+      document.addEventListener("DOMContentLoaded", function () {
+        refreshChoiceState();
+        refreshProgress();
+      });
     })();
   </script>
 {% endblock %}

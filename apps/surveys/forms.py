@@ -3,7 +3,7 @@ from django.utils.text import slugify
 from django_select2.forms import ModelSelect2MultipleWidget
 from superadmin.forms import ModelForm
 
-from core.form_policies import ConditionalPolicy
+from core.form_policies import ConditionalPolicy, FieldValue, Not, dumps_for_script
 from core.widgets import LeafletMapWidget
 
 from .models import (
@@ -84,6 +84,22 @@ class SurveyQuestionConditionSelect(forms.Select):
                 question = None
             if question is not None:
                 option["attrs"]["data-question-type"] = question.question_type
+        return option
+
+
+class SurveyVisibilityOperatorSelect(forms.Select):
+    """Marks operators that only make sense for a numeric source question.
+
+    The builder JS (builder_form.js) reads ``data-numeric-only`` to hide
+    those options unless the currently selected ``visibility_question`` is
+    of a numeric type.
+    """
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        raw_value = getattr(value, "value", value)
+        if raw_value in SurveyQuestion.NUMERIC_VISIBILITY_OPERATORS:
+            option["attrs"]["data-numeric-only"] = "true"
         return option
 
 
@@ -169,7 +185,7 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
                 }
             ),
             "is_required": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "visibility_operator": forms.Select(
+            "visibility_operator": SurveyVisibilityOperatorSelect(
                 attrs={
                     "class": "form-select form-select-solid",
                     "data-survey-builder-field": "visibility-operator",
@@ -280,6 +296,13 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
         visibility_option = cleaned_data.get("visibility_option")
         if visibility_option and visibility_question and visibility_option.question_id != visibility_question.pk:
             self.add_error("visibility_option", "La opción debe pertenecer a la pregunta condicionante.")
+        if cleaned_data.get("visibility_operator") in SurveyQuestion.NUMERIC_VISIBILITY_OPERATORS and (
+            not visibility_question or visibility_question.question_type not in SurveyQuestion.NUMERIC_QUESTION_TYPES
+        ):
+            self.add_error(
+                "visibility_operator",
+                "Este operador solo aplica cuando la pregunta condicionante es numérica.",
+            )
         return cleaned_data
 
 
@@ -296,9 +319,27 @@ class SurveySectionBuilderForm(forms.ModelForm):
 
 
 class DynamicSurveyResponseForm(forms.Form):
-    def __init__(self, *args, survey, **kwargs):
+    def __init__(self, *args, survey, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.survey = survey
+        # Optional identity fields for public, non-anonymous surveys answered
+        # by a visitor who isn't logged in (there is no other way to know
+        # who responded).
+        self.include_respondent_fields = (
+            not survey.requires_login
+            and not survey.is_anonymous
+            and not (user is not None and user.is_authenticated)
+        )
+        if self.include_respondent_fields:
+            self.fields["respondent_name"] = forms.CharField(
+                label="Nombre",
+                required=False,
+                max_length=180,
+            )
+            self.fields["respondent_email"] = forms.EmailField(
+                label="Correo electrónico",
+                required=False,
+            )
         self.questions = list(
             survey.questions.filter(is_active=True)
             .select_related("section")
@@ -322,6 +363,7 @@ class DynamicSurveyResponseForm(forms.Form):
                     widget=forms.HiddenInput(),
                 )
         self._apply_widget_classes()
+        self.conditional_policies_json = dumps_for_script(self.build_conditional_policies())
 
     @staticmethod
     def field_name(question):
@@ -423,12 +465,22 @@ class DynamicSurveyResponseForm(forms.Form):
         parent_value = cleaned_data.get(self.field_name(parent))
         if parent_value in (None, "", []):
             return False
+        operator = question.visibility_operator
+        if operator in SurveyQuestion.NUMERIC_VISIBILITY_OPERATORS:
+            try:
+                actual_number = float(parent_value)
+                expected_number = float(question.visibility_value)
+            except (TypeError, ValueError):
+                return False
+            if operator == SurveyQuestion.VisibilityOperator.GREATER_THAN:
+                return actual_number > expected_number
+            return actual_number < expected_number
         expected = str(question.visibility_option_id or question.visibility_value or "")
         if isinstance(parent_value, (list, tuple)):
             matched = expected in [str(value) for value in parent_value]
         else:
             matched = str(parent_value) == expected
-        if question.visibility_operator == SurveyQuestion.VisibilityOperator.NOT_EQUALS:
+        if operator == SurveyQuestion.VisibilityOperator.NOT_EQUALS:
             return not matched
         return matched
 
@@ -454,18 +506,79 @@ class DynamicSurveyResponseForm(forms.Form):
                     "question_number": question_number,
                     "field": self[self.field_name(question)],
                     "field_name": self.field_name(question),
-                    "condition_question_name": (
-                        self.field_name(question.visibility_question)
-                        if question.visibility_question_id
-                        else ""
-                    ),
-                    "condition_operator": question.visibility_operator,
-                    "condition_expected": str(
-                        question.visibility_option_id or question.visibility_value or ""
-                    ),
                 }
             )
         return groups
+
+    # Client-side operator equivalents in core.form_policies / conditional_fields.js
+    # for each SurveyQuestion.VisibilityOperator that has a direct match.
+    _CLIENT_OPERATOR_MAP = {
+        SurveyQuestion.VisibilityOperator.EQUALS: "equals",
+        SurveyQuestion.VisibilityOperator.NOT_EQUALS: "not_equals",
+        SurveyQuestion.VisibilityOperator.GREATER_THAN: ">",
+        SurveyQuestion.VisibilityOperator.LESS_THAN: "<",
+    }
+
+    def build_conditional_policies(self):
+        """Emit question-visibility rules as the global form-policies engine's
+        client JSON (see core/form_policies.py + conditional_fields.js), so
+        respond.html can drive show/hide with the same shared engine used by
+        normal forms instead of bespoke inline JS.
+
+        Server-side visibility (is_question_visible) stays authoritative for
+        validation; this only mirrors it for the client preview.
+        """
+        policies = []
+        for question in self.questions:
+            if not question.visibility_question_id:
+                continue
+            parent = question.visibility_question
+            source = self.field_name(parent)
+            targets = [self.field_name(question)]
+            if question.question_type == SurveyQuestion.QuestionType.LOCATION:
+                # The map widget doesn't render an input named after the
+                # main field; the actual submitted data lives in the
+                # lat/lng hidden fields, so those need to be disabled too
+                # when the question is hidden.
+                targets.extend([self.lat_field_name(question), self.lng_field_name(question)])
+            operator = question.visibility_operator
+            expected = str(question.visibility_option_id or question.visibility_value or "")
+            client_operator = self._CLIENT_OPERATOR_MAP.get(
+                operator, "equals"
+            )
+            if (
+                parent.question_type == SurveyQuestion.QuestionType.MULTIPLE_CHOICE
+                and operator
+                in (
+                    SurveyQuestion.VisibilityOperator.EQUALS,
+                    SurveyQuestion.VisibilityOperator.NOT_EQUALS,
+                )
+            ):
+                # A multiple_choice source submits a list of checked option
+                # ids. Server-side is_question_visible treats equals/not_equals
+                # as list-membership ("is the expected option among the
+                # checked ones?"), not exact-array equality, so mirror that
+                # with the engine's "contains" operator (negated via Not()
+                # for not_equals — the engine has no built-in "not_contains").
+                condition = FieldValue(source, "contains", expected)
+                if operator == SurveyQuestion.VisibilityOperator.NOT_EQUALS:
+                    condition = Not(condition)
+            else:
+                condition = FieldValue(source, client_operator, expected)
+            policy = ConditionalPolicy(
+                source=source,
+                targets=targets,
+                condition=condition,
+                # "show" without "hide" means: suppress (hide + disable) the
+                # target when the condition is NOT active, matching the old
+                # bespoke JS which hid+disabled the card without clearing
+                # any previously entered value.
+                effects=("show", "disable"),
+            )
+            client_policy = policy.as_client()
+            if client_policy is not None:
+                policies.append(client_policy)
+        return policies
 
     def _apply_widget_classes(self):
         for field in self.fields.values():

@@ -34,6 +34,13 @@
     if (!fields.length) return "";
     var first = fields[0];
     if (first.type === "checkbox" && fields.length === 1) return first.checked;
+    if (first.type === "checkbox") {
+      // A group of checkboxes sharing the same name (e.g. CheckboxSelectMultiple)
+      // — return the checked values so "contains"/"in" can match against them.
+      return fields.filter(function (field) { return field.checked; }).map(function (field) {
+        return field.value;
+      });
+    }
     if (first.type === "radio") {
       var checked = fields.find(function (field) { return field.checked; });
       return checked ? checked.value : "";

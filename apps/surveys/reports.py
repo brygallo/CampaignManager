@@ -5,7 +5,9 @@ from apps.reporting.exporters import ReportColumn, TabularReport
 
 def filtered_survey_responses(survey, params=None):
     params = params or {}
-    responses = survey.responses.prefetch_related("answers__question", "answers__selected_options")
+    responses = survey.responses.select_related("respondent").prefetch_related(
+        "answers__question", "answers__selected_options"
+    )
     date_from = params.get("date_from")
     date_to = params.get("date_to")
     search = (params.get("q") or "").strip()

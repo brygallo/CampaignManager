@@ -13,170 +13,196 @@
 {% endblock %}
 
 {% block content %}
-<div class="row g-5 mb-6">
-  <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Respuestas</div><div class="fs-1 fw-bold">{{ total_responses }}</div></div></div></div>
-  <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Hoy</div><div class="fs-1 fw-bold">{{ responses_today }}</div></div></div></div>
-  <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Últimos 7 días</div><div class="fs-1 fw-bold">{{ responses_last_7_days }}</div></div></div></div>
-  <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Última respuesta</div><div class="fw-bold">{% if latest_response %}{{ latest_response.submitted_at|date:"d/m/Y H:i" }}{% else %}Sin respuestas{% endif %}</div></div></div></div>
-</div>
+{{ payload|json_script:"survey-results-payload" }}
+<div id="survey-results"
+     data-data-url="{{ results_data_url }}"
+     data-map-data-url="{{ results_map_data_url }}"
+     data-has-location="{% if has_location_questions %}1{% else %}0{% endif %}">
 
-<div class="card mb-6">
-  <div class="card-body">
-    <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-4">
-      <div class="min-w-0">
-        <div class="text-muted fw-semibold">Enlace para responder</div>
-        <a href="{{ survey.get_public_url }}" class="fw-bold text-break">{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}</a>
+  <div class="d-flex align-items-center gap-2 mb-5">
+    <span class="badge badge-light-success">En vivo</span>
+    <span class="text-muted">Actualización automática cada 30 s</span>
+  </div>
+
+  <div class="row g-5 mb-6">
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Respuestas</div><div class="fs-1 fw-bold" data-total-responses>{{ payload.total_responses }}</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Hoy</div><div class="fs-1 fw-bold" data-responses-today>{{ payload.responses_today }}</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Últimos 7 días</div><div class="fs-1 fw-bold" data-responses-7>{{ payload.responses_last_7_days }}</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted fw-semibold">Última respuesta</div><div class="fw-bold" data-latest-response>{% if payload.latest_response %}{{ payload.latest_response }}{% else %}Sin respuestas{% endif %}</div></div></div></div>
+  </div>
+
+  <div class="card mb-6">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-4">
+        <div class="min-w-0">
+          <div class="text-muted fw-semibold">Enlace para responder</div>
+          <a href="{{ survey.get_public_url }}" class="fw-bold text-break">{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}</a>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-self-start">
+          <button type="button"
+                  class="btn btn-sm btn-light-primary"
+                  data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
+            <i data-lucide="copy" class="fs-4"></i> Copiar enlace
+          </button>
+          <a class="btn btn-sm btn-success" href="{% url 'surveys:export' survey.pk 'xlsx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+            <i data-lucide="file-spreadsheet" class="fs-4"></i> Descargar Excel
+          </a>
+        </div>
       </div>
-      <div class="d-flex flex-wrap gap-2 align-self-start">
-        <button type="button"
-                class="btn btn-sm btn-light-primary"
-                data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
-          <i data-lucide="copy" class="fs-4"></i> Copiar enlace
+    </div>
+  </div>
+
+  <form method="get" class="card mb-6" id="survey-results-filters">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title mb-1">Filtros</h3>
+        <div class="text-muted fs-7">Filtra el resumen, las respuestas y las exportaciones.</div>
+      </div>
+      <div class="card-toolbar d-flex gap-2">
+        <a href="{% url 'surveys:results' survey.pk %}" class="btn btn-sm btn-light">Limpiar</a>
+        <button type="submit" class="btn btn-sm btn-primary">
+          <i data-lucide="filter" class="fs-4"></i> Aplicar
         </button>
-        <a class="btn btn-sm btn-success" href="{% url 'surveys:export' survey.pk 'xlsx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
-          <i data-lucide="file-spreadsheet" class="fs-4"></i> Descargar Excel
-        </a>
       </div>
     </div>
-  </div>
-</div>
+    <div class="card-body">
+      <div class="row g-4">
+        <div class="col-md-4">
+          <label class="form-label">Buscar</label>
+          <input type="search" name="q" value="{{ filters.q }}" class="form-control form-control-solid" placeholder="Usuario, texto u opción">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Desde</label>
+          <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-solid">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Hasta</label>
+          <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-solid">
+        </div>
+      </div>
+    </div>
+  </form>
 
-<form method="get" class="card mb-6">
-  <div class="card-header">
-    <div>
-      <h3 class="card-title mb-1">Filtros</h3>
-      <div class="text-muted fs-7">Filtra el resumen, las respuestas y las exportaciones.</div>
-    </div>
-    <div class="card-toolbar d-flex gap-2">
-      <a href="{% url 'surveys:results' survey.pk %}" class="btn btn-sm btn-light">Limpiar</a>
-      <button type="submit" class="btn btn-sm btn-primary">
-        <i data-lucide="filter" class="fs-4"></i> Aplicar
-      </button>
-    </div>
-  </div>
-  <div class="card-body">
-    <div class="row g-4">
-      <div class="col-md-4">
-        <label class="form-label">Buscar</label>
-        <input type="search" name="q" value="{{ filters.q }}" class="form-control form-control-solid" placeholder="Usuario, texto u opción">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Desde</label>
-        <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-solid">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Hasta</label>
-        <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-solid">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <ul class="nav nav-tabs nav-line-tabs nav-stretch fs-6 border-0">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#survey-results-summary" type="button">Resumen</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#survey-results-responses" type="button">Respuestas</button></li>
+          {% if has_location_questions %}
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#survey-results-map" type="button" id="survey-results-map-tab">Mapa</button></li>
+          {% endif %}
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#survey-results-export" type="button">Exportar</button></li>
+        </ul>
       </div>
     </div>
-  </div>
-</form>
-
-<div class="card">
-  <div class="card-header">
-    <div class="card-title">
-      <ul class="nav nav-tabs nav-line-tabs nav-stretch fs-6 border-0">
-        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#survey-results-summary" type="button">Resumen</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#survey-results-responses" type="button">Respuestas</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#survey-results-export" type="button">Exportar</button></li>
-      </ul>
-    </div>
-  </div>
-  <div class="card-body">
-    <div class="tab-content">
-      <div class="tab-pane fade show active" id="survey-results-summary">
-        {% if choice_summaries %}
-          <div class="row g-5 mb-6">
-            {% for summary in choice_summaries %}
-              <div class="col-lg-6">
-                <div class="border rounded p-5 h-100">
-                  <h3 class="fs-5 fw-bold mb-5">{{ summary.question.text }}</h3>
-                  {% for row in summary.rows %}
-                    <div class="mb-4">
-                      <div class="d-flex justify-content-between fs-7 mb-1">
-                        <span class="fw-semibold">{{ row.label }}</span>
-                        <span class="text-muted">{{ row.count }} · {{ row.percent }}%</span>
-                      </div>
-                      <div class="progress h-8px">
-                        <div class="progress-bar bg-primary" style="width: {{ row.percent }}%"></div>
-                      </div>
-                    </div>
-                  {% empty %}
-                    <span class="text-muted">Sin respuestas.</span>
-                  {% endfor %}
-                </div>
-              </div>
-            {% endfor %}
+    <div class="card-body">
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="survey-results-summary">
+          <div class="card mb-6">
+            <div class="card-header"><div><h3 class="card-title mb-1">Respuestas por día</h3><div class="text-muted fs-7">Últimos 30 días.</div></div></div>
+            <div class="card-body"><div id="survey-trend-chart" style="height: 260px;"></div></div>
           </div>
-        {% endif %}
+          <div class="row g-5 mb-6" id="survey-charts"></div>
 
-        {% if question_summaries %}
+          {% if question_summaries %}
+            <div class="table-responsive">
+              <table class="table table-row-dashed align-middle">
+                <thead><tr><th>Pregunta</th><th>Respondidas</th><th>Sin respuesta</th><th>Detalle</th></tr></thead>
+                <tbody>
+                  {% for summary in question_summaries %}
+                    <tr>
+                      <td><div class="fw-semibold">{{ summary.question.text }}</div><div class="text-muted fs-7">{{ summary.question.get_question_type_display }}</div></td>
+                      <td><div class="fw-bold">{{ summary.answered }}</div><div class="progress h-6px w-100px"><div class="progress-bar bg-success" style="width: {{ summary.completion_percent }}%"></div></div></td>
+                      <td>{{ summary.missing }}</td>
+                      <td>
+                        {% if summary.number_stats %}
+                          <span class="badge badge-light-primary">Prom. {{ summary.number_stats.avg|default:"-" }}</span>
+                          <span class="badge badge-light">Min. {{ summary.number_stats.min|default:"-" }}</span>
+                          <span class="badge badge-light">Max. {{ summary.number_stats.max|default:"-" }}</span>
+                        {% elif summary.samples %}
+                          <div class="d-flex flex-column gap-1 fs-7">
+                            {% for sample in summary.samples %}<span class="text-muted">{{ sample|truncatechars:80 }}</span>{% endfor %}
+                          </div>
+                        {% else %}
+                          <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="tab-pane fade" id="survey-results-responses">
           <div class="table-responsive">
             <table class="table table-row-dashed align-middle">
-              <thead><tr><th>Pregunta</th><th>Respondidas</th><th>Sin respuesta</th><th>Detalle</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Usuario</th><th>Respuestas</th></tr></thead>
               <tbody>
-                {% for summary in question_summaries %}
+                {% for response in responses %}
                   <tr>
-                    <td><div class="fw-semibold">{{ summary.question.text }}</div><div class="text-muted fs-7">{{ summary.question.get_question_type_display }}</div></td>
-                    <td><div class="fw-bold">{{ summary.answered }}</div><div class="progress h-6px w-100px"><div class="progress-bar bg-success" style="width: {{ summary.completion_percent }}%"></div></div></td>
-                    <td>{{ summary.missing }}</td>
+                    <td>{{ response.submitted_at|date:"d/m/Y H:i" }}</td>
+                    <td>{% if survey.is_anonymous %}Anónima{% else %}{{ response.respondent|default:"Pública" }}{% endif %}</td>
                     <td>
-                      {% if summary.number_stats %}
-                        <span class="badge badge-light-primary">Prom. {{ summary.number_stats.avg|default:"-" }}</span>
-                        <span class="badge badge-light">Min. {{ summary.number_stats.min|default:"-" }}</span>
-                        <span class="badge badge-light">Max. {{ summary.number_stats.max|default:"-" }}</span>
-                      {% elif summary.samples %}
-                        <div class="d-flex flex-column gap-1 fs-7">
-                          {% for sample in summary.samples %}<span class="text-muted">{{ sample|truncatechars:80 }}</span>{% endfor %}
-                        </div>
-                      {% else %}
-                        <span class="text-muted">-</span>
-                      {% endif %}
+                      <div class="d-flex flex-column gap-2">
+                        {% for answer in response.answers.all %}
+                          <div><span class="fw-semibold">{{ answer.question.text }}:</span> {{ answer.display_value }}</div>
+                        {% endfor %}
+                      </div>
                     </td>
                   </tr>
+                {% empty %}
+                  <tr><td colspan="3" class="text-muted">Todavía no hay respuestas.</td></tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-        {% endif %}
-      </div>
-
-      <div class="tab-pane fade" id="survey-results-responses">
-        <div class="table-responsive">
-          <table class="table table-row-dashed align-middle">
-            <thead><tr><th>Fecha</th><th>Usuario</th><th>Respuestas</th></tr></thead>
-            <tbody>
-              {% for response in responses %}
-                <tr>
-                  <td>{{ response.submitted_at|date:"d/m/Y H:i" }}</td>
-                  <td>{% if survey.is_anonymous %}Anónima{% else %}{{ response.respondent|default:"Pública" }}{% endif %}</td>
-                  <td>
-                    <div class="d-flex flex-column gap-2">
-                      {% for answer in response.answers.all %}
-                        <div><span class="fw-semibold">{{ answer.question.text }}:</span> {{ answer.display_value }}</div>
-                      {% endfor %}
-                    </div>
-                  </td>
-                </tr>
-              {% empty %}
-                <tr><td colspan="3" class="text-muted">Todavía no hay respuestas.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          {% if page_obj.paginator.num_pages > 1 %}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4">
+              <div class="text-muted fs-7">
+                Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} respuestas.
+              </div>
+              <ul class="pagination mb-0">
+                {% if page_obj.has_previous %}
+                  <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filters_querystring %}&{{ filters_querystring }}{% endif %}">Anterior</a></li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                  <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filters_querystring %}&{{ filters_querystring }}{% endif %}">Siguiente</a></li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
+              </ul>
+            </div>
+          {% endif %}
         </div>
-      </div>
 
-      <div class="tab-pane fade" id="survey-results-export">
-        <div class="d-flex flex-wrap gap-3">
-          <a class="btn btn-success" href="{% url 'surveys:export' survey.pk 'xlsx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
-            <i data-lucide="file-spreadsheet" class="fs-3"></i> Excel
-          </a>
-          <a class="btn btn-light-primary" href="{% url 'surveys:export_csv' survey.pk %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
-            <i data-lucide="download" class="fs-3"></i> CSV
-          </a>
-          <a class="btn btn-light-primary" href="{% url 'surveys:export' survey.pk 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
-            <i data-lucide="file-text" class="fs-3"></i> PDF
-          </a>
+        {% if has_location_questions %}
+          <div class="tab-pane fade" id="survey-results-map">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="text-muted fs-7">Ubicaciones registradas en preguntas de tipo GPS.</div>
+              <span class="badge badge-light-primary" id="survey-map-count">0 puntos</span>
+            </div>
+            <div id="survey-results-map-canvas" style="height: 520px; border-radius: 0.75rem;"></div>
+          </div>
+        {% endif %}
+
+        <div class="tab-pane fade" id="survey-results-export">
+          <div class="d-flex flex-wrap gap-3">
+            <a class="btn btn-success" href="{% url 'surveys:export' survey.pk 'xlsx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+              <i data-lucide="file-spreadsheet" class="fs-3"></i> Excel
+            </a>
+            <a class="btn btn-light-primary" href="{% url 'surveys:export_csv' survey.pk %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+              <i data-lucide="download" class="fs-3"></i> CSV
+            </a>
+            <a class="btn btn-light-primary" href="{% url 'surveys:export' survey.pk 'pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+              <i data-lucide="file-text" class="fs-3"></i> PDF
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -194,5 +220,179 @@
         });
       });
     });
+  </script>
+  <script>
+    (function () {
+      var root = document.getElementById("survey-results");
+      if (!root) return;
+      var payloadEl = document.getElementById("survey-results-payload");
+      var payload = payloadEl ? JSON.parse(payloadEl.textContent) : null;
+      var filtersForm = document.getElementById("survey-results-filters");
+      var hasApex = typeof ApexCharts !== "undefined";
+      var CHART_COLORS = ["#1b84ff", "#50cd89", "#ffc700", "#f1416c", "#7239ea", "#00c2ff", "#f6c000"];
+      var choiceCharts = [];
+      var trendChart = null;
+
+      function currentParams() {
+        return filtersForm ? new URLSearchParams(new FormData(filtersForm)).toString() : "";
+      }
+
+      function setText(selector, value) {
+        var el = root.querySelector(selector);
+        if (el) el.textContent = value;
+      }
+
+      function buildChoiceCharts(summaries) {
+        var container = document.getElementById("survey-charts");
+        if (!container) return;
+        choiceCharts.forEach(function (chart) { chart.destroy(); });
+        choiceCharts = [];
+        container.innerHTML = "";
+        if (!hasApex) return;
+        (summaries || []).forEach(function (summary, index) {
+          var col = document.createElement("div");
+          col.className = "col-lg-6";
+          var card = document.createElement("div");
+          card.className = "border rounded p-5 h-100";
+          var title = document.createElement("h3");
+          title.className = "fs-5 fw-bold mb-4";
+          title.textContent = summary.question;
+          card.appendChild(title);
+          var chartHost = document.createElement("div");
+          card.appendChild(chartHost);
+          col.appendChild(card);
+          container.appendChild(col);
+
+          var series = summary.series || [];
+          if (!series.length) {
+            var empty = document.createElement("span");
+            empty.className = "text-muted";
+            empty.textContent = "Sin respuestas.";
+            card.appendChild(empty);
+            return;
+          }
+          var color = CHART_COLORS[index % CHART_COLORS.length];
+          var options;
+          if (summary.chart_type === "donut") {
+            options = {
+              series: series,
+              labels: summary.categories || [],
+              chart: {type: "donut", height: 280, fontFamily: "inherit"},
+              legend: {position: "bottom"},
+              colors: CHART_COLORS
+            };
+          } else {
+            options = {
+              series: [{name: "Respuestas", data: series}],
+              chart: {type: "bar", height: 280, toolbar: {show: false}, fontFamily: "inherit"},
+              plotOptions: {bar: {horizontal: true, borderRadius: 4}},
+              dataLabels: {enabled: true},
+              xaxis: {categories: summary.categories || []},
+              colors: [color]
+            };
+          }
+          var chart = new ApexCharts(chartHost, options);
+          chart.render();
+          choiceCharts.push(chart);
+        });
+      }
+
+      function buildTrendChart(trend) {
+        var host = document.getElementById("survey-trend-chart");
+        if (!host || !hasApex || !trend) return;
+        if (trendChart) {
+          trendChart.updateOptions({xaxis: {categories: trend.categories || []}});
+          trendChart.updateSeries([{name: "Respuestas", data: trend.series || []}]);
+          return;
+        }
+        trendChart = new ApexCharts(host, {
+          series: [{name: "Respuestas", data: trend.series || []}],
+          chart: {type: "area", height: 260, toolbar: {show: false}, fontFamily: "inherit"},
+          dataLabels: {enabled: false},
+          stroke: {curve: "smooth", width: 2},
+          fill: {type: "gradient", gradient: {opacityFrom: 0.4, opacityTo: 0.05}},
+          xaxis: {categories: trend.categories || [], labels: {rotate: -45, hideOverlappingLabels: true}},
+          colors: ["#1b84ff"]
+        });
+        trendChart.render();
+      }
+
+      function renderPayload(data) {
+        if (!data) return;
+        setText("[data-total-responses]", data.total_responses);
+        setText("[data-responses-today]", data.responses_today);
+        setText("[data-responses-7]", data.responses_last_7_days);
+        setText("[data-latest-response]", data.latest_response || "Sin respuestas");
+        buildTrendChart(data.trend);
+        buildChoiceCharts(data.choice_summaries);
+      }
+
+      function refreshPayload() {
+        fetch(root.dataset.dataUrl + "?" + currentParams(), {headers: {"X-Requested-With": "XMLHttpRequest"}})
+          .then(function (response) { return response.json(); })
+          .then(renderPayload)
+          .catch(function () {});
+      }
+
+      renderPayload(payload);
+
+      if (filtersForm) {
+        filtersForm.addEventListener("change", refreshPayload);
+      }
+
+      window.setInterval(function () {
+        if (document.visibilityState === "visible") refreshPayload();
+      }, 30000);
+
+      // Map tab (lazy Leaflet init on first show).
+      var map = null;
+      var cluster = null;
+      function loadMapPoints() {
+        if (!map) return;
+        fetch(root.dataset.mapDataUrl + "?" + currentParams(), {headers: {"X-Requested-With": "XMLHttpRequest"}})
+          .then(function (response) { return response.json(); })
+          .then(function (data) {
+            if (cluster) cluster.clearLayers();
+            var bounds = [];
+            (data.points || []).forEach(function (point) {
+              var marker = window.L.marker([point.lat, point.lng]);
+              if (point.question) marker.bindPopup(point.question);
+              cluster.addLayer(marker);
+              bounds.push([point.lat, point.lng]);
+            });
+            var badge = document.getElementById("survey-map-count");
+            if (badge) badge.textContent = (data.count || 0) + (data.count === 1 ? " punto" : " puntos");
+            if (bounds.length) map.fitBounds(bounds, {padding: [40, 40], maxZoom: 15});
+          })
+          .catch(function () {});
+      }
+      function initMap() {
+        if (map || !window.L) return;
+        var canvas = document.getElementById("survey-results-map-canvas");
+        if (!canvas) return;
+        var center = window.TENANT_MAP_CENTER || {lat: -2.3046, lng: -78.1175, zoom: 12};
+        map = window.L.map(canvas, {scrollWheelZoom: false}).setView([center.lat, center.lng], center.zoom);
+        if (window.LeafletBasemaps && window.LeafletBasemaps.build) {
+          window.LeafletBasemaps.build(map, null, {});
+        } else {
+          window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+            maxZoom: 20, subdomains: "abcd"
+          }).addTo(map);
+        }
+        cluster = window.L.markerClusterGroup ? window.L.markerClusterGroup() : window.L.layerGroup();
+        map.addLayer(cluster);
+        loadMapPoints();
+      }
+      var mapTab = document.getElementById("survey-results-map-tab");
+      if (mapTab) {
+        mapTab.addEventListener("shown.bs.tab", function () {
+          initMap();
+          window.setTimeout(function () { if (map) map.invalidateSize(); }, 200);
+        });
+        if (filtersForm) {
+          filtersForm.addEventListener("change", function () { if (map) loadMapPoints(); });
+        }
+      }
+    })();
   </script>
 {% endblock %}
