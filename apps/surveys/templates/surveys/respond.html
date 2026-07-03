@@ -294,12 +294,12 @@
           <div class="text-muted fw-semibold fs-7 text-uppercase mb-1">Encuesta</div>
           <h1 class="fw-bold text-gray-900 mb-0">{{ survey.title }}</h1>
         </div>
-        {% if survey.status == "draft" %}
-          <span class="badge badge-light-warning align-self-start">{{ survey.get_status_display }}</span>
-        {% elif survey.status == "closed" %}
-          <span class="badge badge-light-danger align-self-start">{{ survey.get_status_display }}</span>
+        {% if survey.state == survey.workflow.DRAFT %}
+          <span class="badge badge-light-warning align-self-start">{{ survey.get_state_display }}</span>
+        {% elif survey.state == survey.workflow.CLOSED %}
+          <span class="badge badge-light-danger align-self-start">{{ survey.get_state_display }}</span>
         {% else %}
-          <span class="badge badge-light-secondary align-self-start">{{ survey.get_status_display }}</span>
+          <span class="badge badge-light-secondary align-self-start">{{ survey.get_state_display }}</span>
         {% endif %}
       </div>
     </div>
@@ -327,14 +327,14 @@
             <div class="text-muted fw-semibold fs-7 text-uppercase mb-1">Encuesta</div>
             <h1 class="fw-bold text-gray-900 mb-0">{{ survey.title }}</h1>
           </div>
-          {% if survey.status == "published" %}
-            <span class="badge badge-light-success align-self-start">{{ survey.get_status_display }}</span>
-          {% elif survey.status == "draft" %}
-            <span class="badge badge-light-warning align-self-start">{{ survey.get_status_display }}</span>
-          {% elif survey.status == "closed" %}
-            <span class="badge badge-light-danger align-self-start">{{ survey.get_status_display }}</span>
+          {% if survey.state == survey.workflow.PUBLISHED %}
+            <span class="badge badge-light-success align-self-start">{{ survey.get_state_display }}</span>
+          {% elif survey.state == survey.workflow.DRAFT %}
+            <span class="badge badge-light-warning align-self-start">{{ survey.get_state_display }}</span>
+          {% elif survey.state == survey.workflow.CLOSED %}
+            <span class="badge badge-light-danger align-self-start">{{ survey.get_state_display }}</span>
           {% else %}
-            <span class="badge badge-light-secondary align-self-start">{{ survey.get_status_display }}</span>
+            <span class="badge badge-light-secondary align-self-start">{{ survey.get_state_display }}</span>
           {% endif %}
         </div>
         {% if survey.description %}

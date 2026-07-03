@@ -43,7 +43,7 @@
 
 {% block breadcrumb_actions %}
   {% if perms.surveys.publish_survey %}
-    {% if survey.status != "published" %}
+    {% if survey.state == survey.workflow.DRAFT %}
       <form method="post" class="d-inline">
         {% csrf_token %}
         <input type="hidden" name="action" value="publish_survey">
@@ -51,12 +51,20 @@
           <i data-lucide="radio" class="fs-4"></i> Publicar
         </button>
       </form>
-    {% else %}
+    {% elif survey.state == survey.workflow.PUBLISHED %}
       <form method="post" class="d-inline">
         {% csrf_token %}
         <input type="hidden" name="action" value="close_survey">
         <button type="submit" class="btn btn-sm btn-light-danger">
           <i data-lucide="lock" class="fs-4"></i> Cerrar
+        </button>
+      </form>
+    {% elif survey.state == survey.workflow.CLOSED %}
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reopen_survey">
+        <button type="submit" class="btn btn-sm btn-warning">
+          <i data-lucide="rotate-ccw" class="fs-4"></i> Reabrir
         </button>
       </form>
     {% endif %}
@@ -76,7 +84,7 @@
       <div class="card-body">
         <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-4">
           <div>
-            <span class="badge badge-light-success mb-3">{{ survey.get_status_display }}</span>
+            <span class="badge badge-light-success mb-3">{{ survey.get_state_display }}</span>
             <h2 class="fw-bold mb-2">{{ survey.title }}</h2>
             {% if survey.description %}
               <div class="text-muted">{{ survey.description }}</div>

@@ -34,7 +34,7 @@ class ResultsDashboardTestBase(TestCase):
         self.survey = Survey.objects.create(
             title="Diagnóstico",
             slug="diagnostico-dashboard",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
         )
         self.text_question = SurveyQuestion.objects.create(
             survey=self.survey,

@@ -40,7 +40,7 @@ class NpsQuestionTests(TestCase):
         self.survey = Survey.objects.create(
             title="NPS",
             slug="nps-survey",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -86,7 +86,7 @@ class RankingQuestionTests(TestCase):
         self.survey = Survey.objects.create(
             title="Ranking",
             slug="ranking-survey",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -178,7 +178,7 @@ class AllowOtherQuestionTests(TestCase):
         self.survey = Survey.objects.create(
             title="Otro",
             slug="otro-survey",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -232,7 +232,7 @@ class SelectionLimitsTests(TestCase):
         self.survey = Survey.objects.create(
             title="Limites",
             slug="limites-survey",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -285,7 +285,7 @@ class NumberRangeTests(TestCase):
         self.survey = Survey.objects.create(
             title="Rango",
             slug="rango-survey",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -328,7 +328,7 @@ class SurveyQuestionModelConstraintTests(TestCase):
         self.survey = Survey.objects.create(
             title="Modelo",
             slug="modelo-survey",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
         )
 
     def test_allow_other_on_non_choice_type_is_rejected(self):
@@ -359,7 +359,7 @@ class SurveyQuestionBuilderFormConstraintTests(TestCase):
         self.survey = Survey.objects.create(
             title="Constructor tipos",
             slug="constructor-tipos-survey",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
         )
 
     def _data(self, **overrides):

@@ -34,20 +34,22 @@ class SurveyPublishValidationTests(TestCase):
         survey = Survey.objects.create(
             title="Sin preguntas",
             slug="sin-preguntas",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
         )
 
         response = self._publish(survey)
 
         self.assertEqual(response.status_code, 302)
-        survey.refresh_from_db()
-        self.assertEqual(survey.status, Survey.Status.DRAFT)
+        # ``refresh_from_db`` is blocked by django-fsm on the protected state
+        # field; re-fetch the row to read the persisted state.
+        survey = Survey.objects.get(pk=survey.pk)
+        self.assertEqual(survey.state, Survey.workflow.DRAFT)
 
     def test_publishing_valid_survey_succeeds(self):
         survey = Survey.objects.create(
             title="Encuesta valida",
             slug="encuesta-valida",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
         )
         question = SurveyQuestion.objects.create(
             survey=survey,
@@ -61,5 +63,5 @@ class SurveyPublishValidationTests(TestCase):
         response = self._publish(survey)
 
         self.assertEqual(response.status_code, 302)
-        survey.refresh_from_db()
-        self.assertEqual(survey.status, Survey.Status.PUBLISHED)
+        survey = Survey.objects.get(pk=survey.pk)
+        self.assertEqual(survey.state, Survey.workflow.PUBLISHED)

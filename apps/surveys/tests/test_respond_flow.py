@@ -30,7 +30,7 @@ class SurveyRespondNonOpenAccessTests(TestCase):
         self.survey = Survey.objects.create(
             title="Encuesta borrador",
             slug="encuesta-borrador",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
             requires_login=False,
         )
         SurveyQuestion.objects.create(
@@ -109,7 +109,7 @@ class SurveyRespondPrivacyTests(TestCase):
         self.survey = Survey.objects.create(
             title="Encuesta anonima",
             slug="encuesta-anonima",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
             is_anonymous=True,
         )
@@ -149,7 +149,7 @@ class SurveyRespondRespondentIdentityTests(TestCase):
         self.survey = Survey.objects.create(
             title="Encuesta publica",
             slug="encuesta-publica",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
             is_anonymous=False,
         )
@@ -204,7 +204,7 @@ class SurveyRespondAuthenticatedFlowTests(TestCase):
         self.survey = Survey.objects.create(
             title="Encuesta autenticada",
             slug="encuesta-autenticada",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=True,
             all_users_can_respond=True,
             is_anonymous=False,

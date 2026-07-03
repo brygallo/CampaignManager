@@ -29,7 +29,6 @@ class SurveyForm(ModelForm):
             "Encuesta": (
                 ("title", "slug"),
                 ("description",),
-                ("status",),
             ),
             "Disponibilidad": (
                 ("starts_at", "ends_at"),

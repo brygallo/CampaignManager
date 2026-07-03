@@ -34,7 +34,7 @@ class DynamicSurveyResponseFormTests(TestCase):
         self.survey = Survey.objects.create(
             title="Diagnostico",
             slug="diagnostico",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.parent = SurveyQuestion.objects.create(
@@ -110,7 +110,7 @@ class SurveyRespondViewTests(TestCase):
         self.survey = Survey.objects.create(
             title="Encuesta abierta",
             slug="encuesta-abierta",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -147,7 +147,7 @@ class SurveyAccessTests(TestCase):
         self.survey = Survey.objects.create(
             title="Asignada",
             slug="asignada",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=True,
         )
         self.survey.assigned_users.add(self.assigned_user)
@@ -171,7 +171,7 @@ class SurveyAccessTests(TestCase):
         public = Survey.objects.create(
             title="Publica",
             slug="publica",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         request = RequestFactory().get(reverse("surveys:apply_list"))
@@ -190,7 +190,7 @@ class SurveyFormPolicyTests(TestCase):
         self.survey = Survey.objects.create(
             title="Controlada",
             slug="controlada",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
             requires_login=True,
         )
         self.survey.assigned_users.add(self.assigned_user)
@@ -207,14 +207,16 @@ class SurveyFormPolicyTests(TestCase):
             site=self.survey_site,
         )
 
-    def test_user_without_field_permissions_cannot_change_status_or_assignment(self):
+    def test_user_without_assignment_permission_cannot_change_assignment(self):
+        # ``state`` is a protected FSM field driven by the workflow, so it is no
+        # longer part of the form; a posted ``state`` key must be ignored.
         form = self._form_for(
             self.editor,
             {
                 "title": "Controlada actualizada",
                 "slug": "controlada",
                 "description": "",
-                "status": Survey.Status.PUBLISHED,
+                "state": Survey.workflow.PUBLISHED,
                 "requires_login": "on",
                 "all_users_can_respond": "on",
                 "assigned_users": [],
@@ -224,15 +226,14 @@ class SurveyFormPolicyTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.survey.refresh_from_db()
+        survey = Survey.objects.get(pk=self.survey.pk)
 
-        self.assertEqual(self.survey.status, Survey.Status.DRAFT)
-        self.assertFalse(self.survey.all_users_can_respond)
-        self.assertEqual(list(self.survey.assigned_users.all()), [self.assigned_user])
+        self.assertEqual(survey.state, Survey.workflow.DRAFT)
+        self.assertFalse(survey.all_users_can_respond)
+        self.assertEqual(list(survey.assigned_users.all()), [self.assigned_user])
 
-    def test_user_with_field_permissions_can_change_status_and_assignment(self):
+    def test_user_with_assignment_permission_can_change_assignment(self):
         self.editor.user_permissions.add(
-            Permission.objects.get(codename="publish_survey"),
             Permission.objects.get(codename="manage_survey_assignments"),
         )
         form = self._form_for(
@@ -241,7 +242,7 @@ class SurveyFormPolicyTests(TestCase):
                 "title": "Controlada actualizada",
                 "slug": "controlada",
                 "description": "",
-                "status": Survey.Status.PUBLISHED,
+                "state": Survey.workflow.PUBLISHED,
                 "requires_login": "on",
                 "all_users_can_respond": "on",
                 "assigned_users": [],
@@ -251,11 +252,12 @@ class SurveyFormPolicyTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.survey.refresh_from_db()
+        survey = Survey.objects.get(pk=self.survey.pk)
 
-        self.assertEqual(self.survey.status, Survey.Status.PUBLISHED)
-        self.assertTrue(self.survey.all_users_can_respond)
-        self.assertEqual(list(self.survey.assigned_users.all()), [])
+        # The workflow owns state; the form never publishes it.
+        self.assertEqual(survey.state, Survey.workflow.DRAFT)
+        self.assertTrue(survey.all_users_can_respond)
+        self.assertEqual(list(survey.assigned_users.all()), [])
 
 
 class SurveyBuilderQuestionInsoleViewTests(TestCase):
@@ -263,7 +265,7 @@ class SurveyBuilderQuestionInsoleViewTests(TestCase):
         survey = Survey.objects.create(
             title="Constructor",
             slug="constructor",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
         )
         section = survey.sections.create(title="Territorio")
         view = SurveyBuilderQuestionInsoleView()
@@ -283,7 +285,7 @@ class SurveyBuilderPermissionTests(TestCase):
         survey = Survey.objects.create(
             title="Borrador",
             slug="borrador",
-            status=Survey.Status.DRAFT,
+            state=Survey.workflow.DRAFT,
         )
         user = UserFactory()
         user.user_permissions.add(Permission.objects.get(codename="change_survey"))
@@ -295,9 +297,9 @@ class SurveyBuilderPermissionTests(TestCase):
 
         with self.assertRaises(PermissionDenied):
             SurveyBuilderView.as_view()(request, pk=survey.pk)
-        survey.refresh_from_db()
+        survey = Survey.objects.get(pk=survey.pk)
 
-        self.assertEqual(survey.status, Survey.Status.DRAFT)
+        self.assertEqual(survey.state, Survey.workflow.DRAFT)
 
 
 class SurveyResultsViewTests(TestCase):
@@ -305,7 +307,7 @@ class SurveyResultsViewTests(TestCase):
         survey = Survey.objects.create(
             title="Resultados",
             slug="resultados",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
         )
         question = SurveyQuestion.objects.create(
             survey=survey,

@@ -133,7 +133,6 @@ def create_survey_from_template(template_key, *, user=None):
         title=template["title"],
         slug=unique_survey_slug(template["title"]),
         description=template.get("description", ""),
-        status=Survey.Status.DRAFT,
         created_by=user if user and user.is_authenticated else None,
     )
     for section_index, section_spec in enumerate(template["sections"], start=1):

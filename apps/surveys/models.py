@@ -6,25 +6,27 @@ from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
+from django_fsm import FSMIntegerField
 from tracing.models import BaseModel
+
+from apps.surveys.transitions import SurveyTransitions
 
 # Salt for signed public survey links (django.core.signing). Keeping it as a
 # module-level constant avoids typos between the signer and the resolver.
 PUBLIC_LINK_SALT = "surveys.public-link"
 
 
-class Survey(BaseModel):
-    class Status(models.TextChoices):
-        DRAFT = "draft", "Borrador"
-        PUBLISHED = "published", "Publicada"
-        CLOSED = "closed", "Cerrada"
-        ARCHIVED = "archived", "Archivada"
+class Survey(BaseModel, SurveyTransitions):
+    workflow = SurveyTransitions.workflow
 
     title = models.CharField("Título", max_length=180)
     slug = models.SlugField("Slug", max_length=220, unique=True)
     description = models.TextField("Descripción", blank=True)
-    status = models.CharField(
-        "Estado", max_length=20, choices=Status.choices, default=Status.DRAFT
+    state = FSMIntegerField(
+        "Estado",
+        choices=workflow.choices,
+        default=workflow.DRAFT,
+        protected=True,
     )
     starts_at = models.DateTimeField("Inicio", null=True, blank=True)
     ends_at = models.DateTimeField("Fin", null=True, blank=True)
@@ -77,13 +79,21 @@ class Survey(BaseModel):
         from django.utils import timezone
 
         now = timezone.now()
-        if self.status != self.Status.PUBLISHED:
+        if self.state != self.workflow.PUBLISHED:
             return False
         if self.starts_at and self.starts_at > now:
             return False
         if self.ends_at and self.ends_at < now:
             return False
         return True
+
+    @property
+    def transition_requirements(self):
+        """Checklist payload for the next forward transition, consumed by
+        ``workflows/includes/transition_requirements.html``."""
+        from apps.workflows.requirements import RequirementsValidator
+
+        return RequirementsValidator.for_next_forward_transition(self)
 
     def get_absolute_url(self):
         return reverse("site:surveys_survey_", kwargs={"slug": self.slug})

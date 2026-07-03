@@ -52,7 +52,6 @@ class Command(BaseCommand):
                     "Encuesta de ejemplo para levantar necesidades, nivel de satisfacción "
                     "y prioridades de atención. Puede usarse como base para cualquier área."
                 ),
-                "status": Survey.Status.PUBLISHED,
                 "starts_at": timezone.now(),
                 "ends_at": None,
                 "requires_login": False,
@@ -63,6 +62,9 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
+        # ``state`` is a protected FSM field: assigning it via ``defaults`` above
+        # would raise, so publish the seeded survey with a direct queryset update.
+        Survey.objects.filter(pk=survey.pk).update(state=Survey.workflow.PUBLISHED)
 
         general, _ = SurveySection.objects.update_or_create(
             survey=survey,

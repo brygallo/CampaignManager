@@ -9,9 +9,11 @@ from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import ListView, TemplateView, View
+from django_fsm import TransitionNotAllowed
 
 from apps.insoles.views import InstanceBaseFormView
 from apps.reporting.views import ReportExportView
+from apps.workflows.exceptions import WorkflowException
 
 from .forms import (
     DynamicSurveyResponseForm,
@@ -54,7 +56,7 @@ class SurveyApplyListView(LoginRequiredMixin, ListView):
 
         now = timezone.now()
         queryset = (
-            Survey.objects.filter(status=Survey.Status.PUBLISHED, is_active=True)
+            Survey.objects.filter(state=Survey.workflow.PUBLISHED, is_active=True)
             .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
             .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=now))
         )
@@ -128,9 +130,11 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
         if action == "duplicate_question":
             return self._duplicate_question(request)
         if action == "publish_survey":
-            return self._change_status(Survey.Status.PUBLISHED, "Encuesta publicada.")
+            return self._run_transition("publish", "Encuesta publicada.")
         if action == "close_survey":
-            return self._change_status(Survey.Status.CLOSED, "Encuesta cerrada.")
+            return self._run_transition("close", "Encuesta cerrada.")
+        if action == "reopen_survey":
+            return self._run_transition("reopen", "Encuesta reabierta.")
         form = SurveyQuestionBuilderForm(request.POST, survey=self.survey)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
@@ -201,18 +205,27 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
             values = option_lines or []
         return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))
 
-    def _change_status(self, status, message):
+    def _run_transition(self, transition_name, message):
         if not self.request.user.has_perm("surveys.publish_survey"):
             raise PermissionDenied
-        if status == Survey.Status.PUBLISHED:
+        # Surface every publication issue as its own message before attempting
+        # the transition, so the builder shows the detailed checklist instead
+        # of a single generic error.
+        if transition_name in ("publish", "reopen"):
             issues = get_survey_publication_issues(self.survey)
             if issues:
                 for issue in issues:
                     messages.error(self.request, issue)
                 return HttpResponseRedirect(reverse("surveys:builder", kwargs={"pk": self.survey.pk}))
-        self.survey.status = status
-        self.survey.save(update_fields=["status"])
-        messages.success(self.request, message)
+        try:
+            getattr(self.survey, transition_name)()
+        except TransitionNotAllowed:
+            messages.error(self.request, "Esta acción no está permitida desde el estado actual.")
+        except WorkflowException as exc:
+            messages.error(self.request, str(exc))
+        else:
+            self.survey.save()
+            messages.success(self.request, message)
         return HttpResponseRedirect(reverse("surveys:builder", kwargs={"pk": self.survey.pk}))
 
 

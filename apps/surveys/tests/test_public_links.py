@@ -20,13 +20,13 @@ class SurveyPublicTokenModelTests(TestCase):
         self.open_survey = Survey.objects.create(
             title="Encuesta abierta",
             slug="token-encuesta-abierta",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.internal_survey = Survey.objects.create(
             title="Encuesta interna",
             slug="token-encuesta-interna",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=True,
         )
 
@@ -80,7 +80,7 @@ class SurveyPublicRespondViewTests(TestCase):
         self.survey = Survey.objects.create(
             title="Encuesta publica token",
             slug="encuesta-publica-token",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.question = SurveyQuestion.objects.create(
@@ -92,7 +92,7 @@ class SurveyPublicRespondViewTests(TestCase):
         self.internal_survey = Survey.objects.create(
             title="Encuesta interna token",
             slug="encuesta-interna-token",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=True,
         )
 

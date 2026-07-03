@@ -18,7 +18,7 @@ class VisibilityCycleValidationTests(TestCase):
         self.survey = Survey.objects.create(
             title="Ciclos",
             slug="ciclos",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
 
@@ -135,7 +135,7 @@ class NumericVisibilityOperatorModelTests(TestCase):
         self.survey = Survey.objects.create(
             title="Operadores numericos",
             slug="operadores-numericos",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
 
@@ -211,7 +211,7 @@ class NumericVisibilityOperatorBuilderFormTests(TestCase):
         self.survey = Survey.objects.create(
             title="Constructor numerico",
             slug="constructor-numerico",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.text_source = SurveyQuestion.objects.create(
@@ -267,7 +267,7 @@ class NumericVisibilityServerSideTests(TestCase):
         self.survey = Survey.objects.create(
             title="Edad minima",
             slug="edad-minima",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.age = SurveyQuestion.objects.create(
@@ -332,7 +332,7 @@ class RespondPageConditionalPoliciesTests(TestCase):
         self.survey = Survey.objects.create(
             title="Con condiciones",
             slug="con-condiciones",
-            status=Survey.Status.PUBLISHED,
+            state=Survey.workflow.PUBLISHED,
             requires_login=False,
         )
         self.parent = SurveyQuestion.objects.create(
