@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from apps.surveys.forms import DynamicSurveyResponseForm, SurveyQuestionBuilderForm
 from apps.surveys.models import Survey, SurveyOption, SurveyQuestion
-from apps.surveys.views import SurveyRespondView
+from apps.surveys.views import SurveyPublicRespondView
 
 
 class VisibilityCycleValidationTests(TestCase):
@@ -373,9 +373,12 @@ class RespondPageConditionalPoliciesTests(TestCase):
         )
 
     def _get_rendered_respond_page(self):
-        request = self.factory.get(reverse("surveys:respond", kwargs={"slug": self.survey.slug}))
+        # Anonymous visitors reach this open, requires_login=False survey
+        # through the signed public token route, not the slug route.
+        token = self.survey.public_token()
+        request = self.factory.get(reverse("surveys:respond_public", kwargs={"token": token}))
         request.user = AnonymousUser()
-        response = SurveyRespondView.as_view()(request, slug=self.survey.slug)
+        response = SurveyPublicRespondView.as_view()(request, token=token)
         response.render()
         return response.content.decode()
 

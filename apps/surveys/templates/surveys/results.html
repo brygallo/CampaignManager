@@ -34,16 +34,25 @@
   <div class="card mb-6">
     <div class="card-body">
       <div class="d-flex flex-column flex-lg-row justify-content-lg-between gap-4">
-        <div class="min-w-0">
-          <div class="text-muted fw-semibold">Enlace para responder</div>
-          <a href="{{ survey.get_public_url }}" class="fw-bold text-break">{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}</a>
-        </div>
+        {% if survey.requires_login %}
+          <div class="min-w-0">
+            <div class="text-muted fw-semibold">Enlace para responder</div>
+            <div class="fw-bold text-gray-700">Esta encuesta es interna: requiere inicio de sesión y no tiene enlace público.</div>
+          </div>
+        {% else %}
+          <div class="min-w-0">
+            <div class="text-muted fw-semibold">Enlace para responder</div>
+            <a href="{{ survey.get_public_url }}" class="fw-bold text-break">{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}</a>
+          </div>
+        {% endif %}
         <div class="d-flex flex-wrap gap-2 align-self-start">
-          <button type="button"
-                  class="btn btn-sm btn-light-primary"
-                  data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
-            <i data-lucide="copy" class="fs-4"></i> Copiar enlace
-          </button>
+          {% if not survey.requires_login %}
+            <button type="button"
+                    class="btn btn-sm btn-light-primary"
+                    data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
+              <i data-lucide="copy" class="fs-4"></i> Copiar enlace
+            </button>
+          {% endif %}
           <a class="btn btn-sm btn-success" href="{% url 'surveys:export' survey.pk 'xlsx' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
             <i data-lucide="file-spreadsheet" class="fs-4"></i> Descargar Excel
           </a>
@@ -255,16 +264,24 @@
           var card = document.createElement("div");
           card.className = "border rounded p-5 h-100";
           var title = document.createElement("h3");
-          title.className = "fs-5 fw-bold mb-4";
+          title.className = "fs-5 fw-bold mb-1";
           title.textContent = summary.question;
           card.appendChild(title);
+          if (summary.subtitle) {
+            var subtitle = document.createElement("div");
+            subtitle.className = "text-muted fs-7 mb-4";
+            subtitle.textContent = summary.subtitle;
+            card.appendChild(subtitle);
+          } else {
+            title.className += " mb-4";
+          }
           var chartHost = document.createElement("div");
           card.appendChild(chartHost);
           col.appendChild(card);
           container.appendChild(col);
 
           var series = summary.series || [];
-          if (!series.length) {
+          if (!series.length || !summary.answered) {
             var empty = document.createElement("span");
             empty.className = "text-muted";
             empty.textContent = "Sin respuestas.";

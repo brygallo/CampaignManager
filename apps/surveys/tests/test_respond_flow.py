@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from apps.authentication.tests.factories import UserFactory
 from apps.surveys.models import Survey, SurveyQuestion, SurveyResponse
-from apps.surveys.views import SurveyRespondView
+from apps.surveys.views import SurveyPublicRespondView, SurveyRespondView
 
 
 def attach_session_and_messages(request):
@@ -55,7 +55,14 @@ class SurveyRespondNonOpenAccessTests(TestCase):
         self.assertNotIn(b'name="question_', response.content)
 
     def test_anonymous_visitor_sees_unavailable_state(self):
-        response = self._get(AnonymousUser())
+        # Anonymous visitors no longer reach the slug route at all (see
+        # SurveyAnonymousSlugAccessTests below); the non-open preview check
+        # for anonymous visitors is exercised through the public token route.
+        token = self.survey.public_token()
+        request = self.factory.get(reverse("surveys:respond_public", kwargs={"token": token}))
+        request.user = AnonymousUser()
+
+        response = SurveyPublicRespondView.as_view()(request, token=token)
         response.render()
 
         self.assertEqual(response.status_code, 200)
@@ -114,15 +121,18 @@ class SurveyRespondPrivacyTests(TestCase):
         )
 
     def test_anonymous_survey_does_not_store_ip_or_user_agent(self):
+        # Anonymous visitors now submit through the signed public token
+        # route rather than the slug route (which requires login).
+        token = self.survey.public_token()
         request = self.factory.post(
-            reverse("surveys:respond", kwargs={"slug": self.survey.slug}),
+            reverse("surveys:respond_public", kwargs={"token": token}),
             data={f"question_{self.question.pk}": "Respuesta libre"},
         )
         request.user = AnonymousUser()
         request.META["REMOTE_ADDR"] = "10.0.0.5"
         request.META["HTTP_USER_AGENT"] = "pytest-agent/1.0"
 
-        response = SurveyRespondView.as_view()(request, slug=self.survey.slug)
+        response = SurveyPublicRespondView.as_view()(request, token=token)
 
         self.assertEqual(response.status_code, 302)
         survey_response = SurveyResponse.objects.get(survey=self.survey)
@@ -151,10 +161,11 @@ class SurveyRespondRespondentIdentityTests(TestCase):
         )
 
     def test_get_renders_respondent_fields_for_anonymous_visitor(self):
-        request = self.factory.get(reverse("surveys:respond", kwargs={"slug": self.survey.slug}))
+        token = self.survey.public_token()
+        request = self.factory.get(reverse("surveys:respond_public", kwargs={"token": token}))
         request.user = AnonymousUser()
 
-        response = SurveyRespondView.as_view()(request, slug=self.survey.slug)
+        response = SurveyPublicRespondView.as_view()(request, token=token)
         response.render()
 
         content = response.content.decode()
@@ -162,8 +173,9 @@ class SurveyRespondRespondentIdentityTests(TestCase):
         self.assertIn('name="respondent_email"', content)
 
     def test_public_non_anonymous_response_captures_respondent_name_and_email(self):
+        token = self.survey.public_token()
         request = self.factory.post(
-            reverse("surveys:respond", kwargs={"slug": self.survey.slug}),
+            reverse("surveys:respond_public", kwargs={"token": token}),
             data={
                 f"question_{self.question.pk}": "Respuesta libre",
                 "respondent_name": "Maria Perez",
@@ -173,7 +185,7 @@ class SurveyRespondRespondentIdentityTests(TestCase):
         request.user = AnonymousUser()
         request.META["REMOTE_ADDR"] = "10.0.0.9"
 
-        response = SurveyRespondView.as_view()(request, slug=self.survey.slug)
+        response = SurveyPublicRespondView.as_view()(request, token=token)
 
         self.assertEqual(response.status_code, 302)
         survey_response = SurveyResponse.objects.get(survey=self.survey)

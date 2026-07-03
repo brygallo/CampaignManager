@@ -1,6 +1,6 @@
 (function () {
-  var OPTION_TYPES = ["single_choice", "multiple_choice"];
-  var NUMERIC_TYPES = ["number", "scale_5", "scale_10"];
+  var OPTION_TYPES = ["single_choice", "multiple_choice", "ranking"];
+  var NUMERIC_TYPES = ["number", "scale_5", "scale_10", "nps"];
 
   function closestField(field) {
     if (!field) return null;

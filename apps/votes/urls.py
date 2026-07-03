@@ -14,7 +14,5 @@ urlpatterns = [
         views.ElectoralExportView.as_view(),
         name="export",
     ),
-    path("resultados-electorales/mapa/", views.ElectoralMapView.as_view(), name="map"),
-    path("resultados-electorales/mapa/datos/", views.ElectoralMapDataView.as_view(), name="map_data"),
     path("resultados-electorales/buscar/", views.ElectoralLookupView.as_view(), name="lookup"),
 ]

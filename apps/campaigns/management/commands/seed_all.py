@@ -12,6 +12,7 @@ Equivale a:
     seed_field_surveys
     seed_political_agenda
     seed_territorial_ads
+    seed_votes
 """
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -30,6 +31,7 @@ SEEDS = [
     ("seed_field_surveys",           True),
     ("seed_political_agenda",        True),
     ("seed_territorial_ads",         True),
+    ("seed_votes",                   True),
 ]
 
 

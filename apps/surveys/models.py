@@ -1,10 +1,16 @@
+import json
 import uuid
 
 from django.conf import settings
+from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from tracing.models import BaseModel
+
+# Salt for signed public survey links (django.core.signing). Keeping it as a
+# module-level constant avoids typos between the signer and the resolver.
+PUBLIC_LINK_SALT = "surveys.public-link"
 
 
 class Survey(BaseModel):
@@ -82,8 +88,47 @@ class Survey(BaseModel):
     def get_absolute_url(self):
         return reverse("site:surveys_survey_", kwargs={"slug": self.slug})
 
+    def public_token(self):
+        """Return a signed token identifying this survey for anonymous access.
+
+        The token carries no expiry (``max_age`` is not used at verification
+        time): availability of the survey is governed by ``is_open`` /
+        ``requires_login``, which are enforced wherever the token is resolved.
+        """
+        return signing.dumps({"survey": self.pk}, salt=PUBLIC_LINK_SALT)
+
+    @classmethod
+    def resolve_public_token(cls, token):
+        """Resolve a signed token back into a Survey, or ``None``.
+
+        Returns ``None`` for a malformed/tampered token, a token pointing at
+        a survey that no longer exists, or a survey that requires login
+        (tokens are only meant to grant anonymous access).
+        """
+        try:
+            data = signing.loads(token, salt=PUBLIC_LINK_SALT)
+            survey_pk = data["survey"]
+        except (signing.BadSignature, KeyError, TypeError, ValueError):
+            return None
+        try:
+            survey = cls.objects.get(pk=survey_pk)
+        except cls.DoesNotExist:
+            return None
+        if survey.requires_login:
+            return None
+        return survey
+
     def get_public_url(self):
-        return reverse("surveys:respond", kwargs={"slug": self.slug})
+        """Return the shareable link for this survey.
+
+        Surveys open to anonymous visitors get the signed token URL (the
+        slug route now always requires login for anonymous users). Surveys
+        that require login keep the slug URL, which is only ever reached by
+        authenticated users anyway.
+        """
+        if self.requires_login:
+            return reverse("surveys:respond", kwargs={"slug": self.slug})
+        return reverse("surveys:respond_public", kwargs={"token": self.public_token()})
 
     def get_results_url(self):
         return reverse("surveys:results", kwargs={"pk": self.pk})
@@ -123,6 +168,8 @@ class SurveyQuestion(BaseModel):
         FILE = "file", "Archivo"
         IMAGE = "image", "Imagen"
         LOCATION = "location", "Ubicación GPS"
+        NPS = "nps", "NPS (0-10)"
+        RANKING = "ranking", "Ordenar opciones"
 
     class VisibilityOperator(models.TextChoices):
         ALWAYS = "always", "Siempre visible"
@@ -136,7 +183,14 @@ class SurveyQuestion(BaseModel):
     NUMERIC_VISIBILITY_OPERATORS = {VisibilityOperator.GREATER_THAN, VisibilityOperator.LESS_THAN}
     # Question types whose answer can be safely cast to float() for the
     # numeric visibility operators above.
-    NUMERIC_QUESTION_TYPES = {QuestionType.NUMBER, QuestionType.SCALE_5, QuestionType.SCALE_10}
+    NUMERIC_QUESTION_TYPES = {
+        QuestionType.NUMBER,
+        QuestionType.SCALE_5,
+        QuestionType.SCALE_10,
+        QuestionType.NPS,
+    }
+    # Question types that render an "Otro" free-text option (see allow_other).
+    OTHER_ALLOWED_QUESTION_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
     # Bounded walk guard for visibility_question ancestor-chain cycle checks.
     MAX_VISIBILITY_CHAIN_DEPTH = 50
 
@@ -181,6 +235,39 @@ class SurveyQuestion(BaseModel):
         blank=True,
     )
     visibility_value = models.CharField("Valor esperado", max_length=180, blank=True)
+    allow_other = models.BooleanField(
+        "Permitir opción \"Otro\"",
+        default=False,
+        help_text="Solo aplica a selección única o múltiple.",
+    )
+    min_selections = models.PositiveSmallIntegerField(
+        "Mínimo de opciones",
+        null=True,
+        blank=True,
+        help_text="Solo aplica a selección múltiple.",
+    )
+    max_selections = models.PositiveSmallIntegerField(
+        "Máximo de opciones",
+        null=True,
+        blank=True,
+        help_text="Solo aplica a selección múltiple.",
+    )
+    min_value = models.DecimalField(
+        "Valor mínimo",
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Solo aplica a preguntas de tipo número.",
+    )
+    max_value = models.DecimalField(
+        "Valor máximo",
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Solo aplica a preguntas de tipo número.",
+    )
 
     class Meta:
         verbose_name = "Pregunta de encuesta"
@@ -195,10 +282,35 @@ class SurveyQuestion(BaseModel):
         return self.question_type in {
             self.QuestionType.SINGLE_CHOICE,
             self.QuestionType.MULTIPLE_CHOICE,
+            self.QuestionType.RANKING,
         }
 
     def clean(self):
         super().clean()
+        if self.allow_other and self.question_type not in self.OTHER_ALLOWED_QUESTION_TYPES:
+            raise ValidationError(
+                {"allow_other": "La opción \"Otro\" solo aplica a preguntas de selección única o múltiple."}
+            )
+        if (
+            self.min_selections is not None or self.max_selections is not None
+        ) and self.question_type != self.QuestionType.MULTIPLE_CHOICE:
+            raise ValidationError(
+                {"min_selections": "Los límites de selección solo aplican a preguntas de selección múltiple."}
+            )
+        if (
+            self.min_selections is not None
+            and self.max_selections is not None
+            and self.min_selections > self.max_selections
+        ):
+            raise ValidationError({"max_selections": "El máximo debe ser mayor o igual al mínimo."})
+        if (
+            self.min_value is not None or self.max_value is not None
+        ) and self.question_type != self.QuestionType.NUMBER:
+            raise ValidationError(
+                {"min_value": "Los límites numéricos solo aplican a preguntas de tipo número."}
+            )
+        if self.min_value is not None and self.max_value is not None and self.min_value > self.max_value:
+            raise ValidationError({"max_value": "El valor máximo debe ser mayor o igual al mínimo."})
         if self.section_id and self.section.survey_id != self.survey_id:
             raise ValidationError({"section": "La sección debe pertenecer a la misma encuesta."})
         if self.visibility_question_id and self.visibility_question.survey_id != self.survey_id:
@@ -346,8 +458,13 @@ class SurveyAnswer(BaseModel):
             SurveyQuestion.QuestionType.SINGLE_CHOICE,
             SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
         }:
-            return ", ".join(self.selected_options.values_list("label", flat=True))
-        if question_type == SurveyQuestion.QuestionType.NUMBER:
+            labels = list(self.selected_options.values_list("label", flat=True))
+            if self.value_text:
+                labels.append(f"Otro: {self.value_text}")
+            return ", ".join(labels)
+        if question_type == SurveyQuestion.QuestionType.RANKING:
+            return self._ranking_display_value()
+        if question_type in {SurveyQuestion.QuestionType.NUMBER, SurveyQuestion.QuestionType.NPS}:
             return "" if self.value_number is None else str(self.value_number)
         if question_type == SurveyQuestion.QuestionType.DATE:
             return "" if self.value_date is None else self.value_date.isoformat()
@@ -360,3 +477,22 @@ class SurveyAnswer(BaseModel):
                 return ""
             return f"{self.latitude}, {self.longitude}"
         return self.value_text
+
+    def _ranking_display_value(self):
+        """Render the ordered option VALUES stored in ``value_text`` (a JSON
+        array) as "1. Label, 2. Label…", resolving values back to option
+        labels for readability in the results table and exports.
+        """
+        if not self.value_text:
+            return ""
+        try:
+            ordered_values = json.loads(self.value_text)
+        except (TypeError, ValueError):
+            return self.value_text
+        if not isinstance(ordered_values, list):
+            return self.value_text
+        label_by_value = {option.value: option.label for option in self.question.options.all()}
+        return ", ".join(
+            f"{index}. {label_by_value.get(value, value)}"
+            for index, value in enumerate(ordered_values, start=1)
+        )

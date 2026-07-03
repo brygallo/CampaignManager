@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 
 from django.db import transaction
@@ -330,11 +331,22 @@ class SurveyResultsSummary:
         All option/text aggregates are batched into a constant number of
         queries instead of one query per question.
         """
-        option_question_ids = [q.pk for q in self.questions if q.uses_options]
+        # ``uses_options`` also covers RANKING (it needs a real SurveyOption
+        # set to sync/order), but ranking isn't part of CHOICE_QUESTION_TYPES
+        # and has its own aggregation (see ``ranking_summaries``), so it's
+        # deliberately excluded here.
+        option_choice_types = {
+            SurveyQuestion.QuestionType.SINGLE_CHOICE,
+            SurveyQuestion.QuestionType.MULTIPLE_CHOICE,
+        }
+        option_question_ids = [q.pk for q in self.questions if q.question_type in option_choice_types]
         text_choice_ids = [
             q.pk
             for q in self.questions
-            if q.question_type in CHOICE_QUESTION_TYPES and not q.uses_options
+            if q.question_type in CHOICE_QUESTION_TYPES and q.question_type not in option_choice_types
+        ]
+        other_question_ids = [
+            q.pk for q in self.questions if q.question_type in option_choice_types and q.allow_other
         ]
 
         option_rows = defaultdict(list)
@@ -369,15 +381,37 @@ class SurveyResultsSummary:
                     }
                 )
 
+        # "Otro" free-text picks don't have a SurveyOption row, so they're
+        # aggregated separately (any non-empty value_text on an
+        # allow_other choice question is an "Otro" pick — see
+        # ``SurveyRespondView._save_answers``) and folded in as their own
+        # category below.
+        other_counts = {}
+        if other_question_ids:
+            other_counts = {
+                row["question_id"]: row["count"]
+                for row in (
+                    SurveyAnswer.objects.filter(
+                        question_id__in=other_question_ids, response_id__in=self.response_ids
+                    )
+                    .exclude(value_text="")
+                    .values("question_id")
+                    .annotate(count=Count("id"))
+                )
+            }
+
         summaries = []
         for question in self.questions:
             if question.question_type not in CHOICE_QUESTION_TYPES:
                 continue
             rows = (
                 option_rows.get(question.pk, [])
-                if question.uses_options
+                if question.question_type in option_choice_types
                 else text_rows.get(question.pk, [])
             )
+            other_count = other_counts.get(question.pk)
+            if other_count:
+                rows = rows + [{"label": "Otro", "count": other_count}]
             denominator = self.total_responses or sum(row["count"] for row in rows)
             for row in rows:
                 row["percent"] = (
@@ -397,6 +431,110 @@ class SurveyResultsSummary:
                     "categories": [row["label"] for row in rows],
                     "series": [row["count"] for row in rows],
                     "answered": sum(row["count"] for row in rows),
+                }
+            )
+        return summaries
+
+    @cached_property
+    def nps_summaries(self):
+        """Per-NPS-question 0-10 distribution plus the computed NPS score.
+
+        Score = %promoters (9-10) − %detractors (0-6), rounded to a whole
+        percentage point, following the standard NPS formula.
+        """
+        nps_questions = [
+            q for q in self.questions if q.question_type == SurveyQuestion.QuestionType.NPS
+        ]
+        if not nps_questions:
+            return []
+        question_ids = [q.pk for q in nps_questions]
+        values_by_question = defaultdict(list)
+        for row in SurveyAnswer.objects.filter(
+            question_id__in=question_ids,
+            response_id__in=self.response_ids,
+            value_number__isnull=False,
+        ).values("question_id", "value_number"):
+            values_by_question[row["question_id"]].append(int(row["value_number"]))
+
+        summaries = []
+        for question in nps_questions:
+            values = [v for v in values_by_question.get(question.pk, []) if 0 <= v <= 10]
+            counts = [0] * 11
+            for value in values:
+                counts[value] += 1
+            total = len(values)
+            promoters = sum(counts[9:11])
+            detractors = sum(counts[0:7])
+            score = round(((promoters - detractors) / total) * 100) if total else None
+            summaries.append(
+                {
+                    "question_id": question.pk,
+                    "question": question.text,
+                    "chart_type": "bar",
+                    "categories": [str(i) for i in range(11)],
+                    "series": counts,
+                    "answered": total,
+                    "nps_score": score,
+                    "subtitle": f"NPS: {score}" if score is not None else "NPS: Sin datos",
+                }
+            )
+        return summaries
+
+    @cached_property
+    def ranking_summaries(self):
+        """Per-RANKING-question average position per option (lower = better)."""
+        ranking_questions = [
+            q for q in self.questions if q.question_type == SurveyQuestion.QuestionType.RANKING
+        ]
+        if not ranking_questions:
+            return []
+        question_ids = [q.pk for q in ranking_questions]
+        rows = list(
+            SurveyAnswer.objects.filter(question_id__in=question_ids, response_id__in=self.response_ids)
+            .exclude(value_text="")
+            .values("question_id", "value_text")
+        )
+        positions_by_question = defaultdict(lambda: defaultdict(list))
+        answered_by_question = defaultdict(int)
+        for row in rows:
+            try:
+                ordered_values = json.loads(row["value_text"])
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(ordered_values, list):
+                continue
+            answered_by_question[row["question_id"]] += 1
+            for position, value in enumerate(ordered_values, start=1):
+                positions_by_question[row["question_id"]][value].append(position)
+
+        summaries = []
+        for question in ranking_questions:
+            option_labels = {
+                option.value: option.label for option in question.options.filter(is_active=True)
+            }
+            positions = positions_by_question.get(question.pk, {})
+            option_rows = []
+            for value, label in option_labels.items():
+                option_positions = positions.get(value, [])
+                avg_position = (
+                    round(sum(option_positions) / len(option_positions), 2)
+                    if option_positions
+                    else None
+                )
+                option_rows.append(
+                    {"label": label, "avg_position": avg_position, "responses": len(option_positions)}
+                )
+            option_rows.sort(key=lambda row: (row["avg_position"] is None, row["avg_position"]))
+            summaries.append(
+                {
+                    "question_id": question.pk,
+                    "question": question.text,
+                    "chart_type": "bar",
+                    "rows": option_rows,
+                    "categories": [row["label"] for row in option_rows],
+                    "series": [row["avg_position"] or 0 for row in option_rows],
+                    "answered": answered_by_question.get(question.pk, 0),
+                    "subtitle": "Posición promedio (menor = mejor)",
                 }
             )
         return summaries
@@ -541,7 +679,7 @@ class SurveyResultsSummary:
         return {
             "survey_id": self.survey.pk,
             "question_count": len(self.questions),
-            "choice_summaries": self.choice_summaries,
+            "choice_summaries": self.choice_summaries + self.nps_summaries + self.ranking_summaries,
             "trend": self.trend,
             **self.stat_tiles,
         }

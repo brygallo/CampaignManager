@@ -33,6 +33,11 @@ urlpatterns = [
         name="builder_reorder",
     ),
     path("encuestas/<slug:slug>/responder/", views.SurveyRespondView.as_view(), name="respond"),
+    path(
+        "encuestas/publica/<str:token>/",
+        views.SurveyPublicRespondView.as_view(),
+        name="respond_public",
+    ),
     path("encuestas/<slug:slug>/gracias/", views.SurveyThanksView.as_view(), name="thanks"),
     path("encuestas/<int:pk>/resultados/", views.SurveyResultsView.as_view(), name="results"),
     path(

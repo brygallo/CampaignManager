@@ -352,11 +352,15 @@
           <a href="{{ survey.get_results_url }}" class="btn btn-light w-100">
             <i data-lucide="bar-chart-3" class="fs-4"></i> Ver resultados
           </a>
-          <button type="button"
-                  class="btn btn-light w-100"
-                  data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
-            <i data-lucide="copy" class="fs-4"></i> Copiar enlace
-          </button>
+          {% if survey.requires_login %}
+            <div class="text-muted fs-7">Esta encuesta es interna: requiere inicio de sesión y no tiene enlace público para compartir.</div>
+          {% else %}
+            <button type="button"
+                    class="btn btn-light w-100"
+                    data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ survey.get_public_url }}">
+              <i data-lucide="copy" class="fs-4"></i> Copiar enlace
+            </button>
+          {% endif %}
           <div class="separator"></div>
           <div class="d-flex align-items-start gap-3">
             <i data-lucide="mouse-pointer-click" class="fs-2 text-primary"></i>

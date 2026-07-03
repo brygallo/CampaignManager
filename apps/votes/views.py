@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, Sum
+from django.db.models import Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.views.generic import TemplateView, View
@@ -276,101 +276,6 @@ class ElectoralLookupView(LoginRequiredMixin, View):
         return ElectoralDignity.objects.filter(districts__in=districts, is_active=True).distinct().order_by(
             "order", "name"
         )
-
-
-class ElectoralMapView(LoginRequiredMixin, TemplateView):
-    template_name = "votes/map.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = "Mapa veedores"
-        context["breadcrumbs"] = [
-            ("Inicio", "/"),
-            ("Resultados electorales", None),
-            ("Mapa veedores", None),
-        ]
-        context["form"] = ElectoralReportFilterForm(self.request.GET or None)
-        return context
-
-
-class ElectoralMapDataView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        form = ElectoralReportFilterForm(request.GET or None)
-        filters = {}
-        if form.is_valid():
-            filters = {key: value for key, value in form.cleaned_data.items() if value}
-
-        venues = ElectoralVenue.objects.filter(
-            is_active=True,
-            latitude__isnull=False,
-            longitude__isnull=False,
-        ).select_related("parish__canton__province")
-        if filters.get("parish"):
-            venues = venues.filter(parish=filters["parish"])
-        if filters.get("venue"):
-            venues = venues.filter(pk=filters["venue"].pk)
-
-        reports = ElectoralResultReport.objects.filter(venue__in=venues)
-        if filters.get("dignity"):
-            reports = reports.filter(dignity=filters["dignity"])
-        if filters.get("district"):
-            reports = reports.filter(district=filters["district"])
-        if filters.get("table"):
-            reports = reports.filter(table=filters["table"])
-
-        table_counts = {
-            row["venue_id"]: row["count"]
-            for row in ElectoralTable.objects.filter(venue__in=venues, is_active=True)
-            .values("venue_id")
-            .annotate(count=Count("id"))
-        }
-        report_counts = {
-            row["venue_id"]: row["count"]
-            for row in reports.values("venue_id").annotate(count=Count("id", distinct=True))
-        }
-        vote_counts = {
-            row["report__venue_id"]: row["votes"] or 0
-            for row in ElectoralResultLine.objects.filter(report__in=reports)
-            .values("report__venue_id")
-            .annotate(votes=Sum("votes"))
-        }
-
-        points = []
-        for venue in venues.order_by("parish__name", "name"):
-            tables = table_counts.get(venue.pk, 0)
-            received = report_counts.get(venue.pk, 0)
-            pending = max(tables - received, 0)
-            if received == 0:
-                status = "pending"
-                color = "#f1416c"
-                label = "Sin actas"
-            elif pending > 0:
-                status = "partial"
-                color = "#ffc700"
-                label = "Parcial"
-            else:
-                status = "complete"
-                color = "#50cd89"
-                label = "Completo"
-            points.append(
-                {
-                    "id": venue.pk,
-                    "name": venue.name,
-                    "parish": venue.parish.name,
-                    "canton": venue.parish.canton.name,
-                    "province": venue.parish.canton.province.name,
-                    "lat": float(venue.latitude),
-                    "lng": float(venue.longitude),
-                    "tables": tables,
-                    "reports": received,
-                    "pending": pending,
-                    "votes": vote_counts.get(venue.pk, 0),
-                    "status": status,
-                    "status_label": label,
-                    "color": color,
-                }
-            )
-        return JsonResponse({"points": points, "count": len(points)})
 
 
 class ElectoralExportView(LoginRequiredMixin, ReportExportView):

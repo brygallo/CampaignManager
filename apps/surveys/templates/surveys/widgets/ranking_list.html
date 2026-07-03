@@ -1,0 +1,19 @@
+<div class="survey-ranking" data-survey-ranking>
+  <input type="hidden" name="{{ widget.name }}" value="{{ widget.value|default_if_none:'' }}" data-survey-ranking-input id="{{ widget.attrs.id }}">
+  <ol class="survey-ranking-list" data-survey-ranking-list>
+    {% for value, label in widget.ordered_options %}
+      <li class="survey-ranking-item" data-value="{{ value }}">
+        <span class="survey-ranking-item__position" data-survey-ranking-position></span>
+        <span class="survey-ranking-item__label">{{ label }}</span>
+        <span class="survey-ranking-item__actions">
+          <button type="button" class="btn btn-icon btn-sm btn-light" data-survey-ranking-up title="Subir">
+            <i data-lucide="chevron-up" class="fs-4"></i>
+          </button>
+          <button type="button" class="btn btn-icon btn-sm btn-light" data-survey-ranking-down title="Bajar">
+            <i data-lucide="chevron-down" class="fs-4"></i>
+          </button>
+        </span>
+      </li>
+    {% endfor %}
+  </ol>
+</div>

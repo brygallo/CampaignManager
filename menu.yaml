@@ -63,9 +63,6 @@ Resultados electorales:
   Reporte veedores:
     url_name: votes:report
     icon: chart-simple
-  Mapa veedores:
-    url_name: votes:map
-    icon: map
   Dignidades:
     app: votes
     model: electoraldignity

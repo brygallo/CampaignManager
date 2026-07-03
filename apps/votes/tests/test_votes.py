@@ -1,7 +1,4 @@
-import json
-
-from django.test import RequestFactory, TestCase
-from django.urls import reverse
+from django.test import TestCase
 
 from apps.authentication.tests.factories import UserFactory
 from apps.locations.tests.factories import CantonFactory, ParishFactory, ProvinceFactory
@@ -10,13 +7,11 @@ from apps.votes.models import (
     ElectoralCandidateOption,
     ElectoralDignity,
     ElectoralDistrict,
-    ElectoralResultLine,
     ElectoralResultReport,
     ElectoralTable,
     ElectoralTableAssignment,
     ElectoralVenue,
 )
-from apps.votes.views import ElectoralMapDataView
 
 
 class ElectoralWatcherFormTests(TestCase):
@@ -227,56 +222,3 @@ class ElectoralDistrictFormTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
-
-
-class ElectoralMapDataViewTests(TestCase):
-    def test_map_returns_only_georeferenced_venues_with_progress(self):
-        user = UserFactory()
-        parish = ParishFactory()
-        dignity = ElectoralDignity.objects.create(
-            name="Alcalde",
-            scope=ElectoralDignity.Scope.CANTON,
-        )
-        district = ElectoralDistrict.objects.create(
-            dignity=dignity,
-            name="Cantonal",
-            kind=ElectoralDistrict.DistrictKind.CANTON,
-            canton=parish.canton,
-        )
-        venue = ElectoralVenue.objects.create(
-            parish=parish,
-            name="Recinto con mapa",
-            latitude="-2.300000",
-            longitude="-78.120000",
-        )
-        ElectoralVenue.objects.create(parish=parish, name="Recinto sin mapa")
-        table_1 = ElectoralTable.objects.create(venue=venue, number="1")
-        ElectoralTable.objects.create(venue=venue, number="2")
-        report = ElectoralResultReport.objects.create(
-            parish=parish,
-            venue=venue,
-            table=table_1,
-            dignity=dignity,
-            district=district,
-            watcher=user,
-        )
-        ElectoralResultLine.objects.create(
-            report=report,
-            list_code="A",
-            candidate_name="Candidata",
-            votes=25,
-        )
-        request = RequestFactory().get(reverse("votes:map_data"))
-        request.user = user
-
-        response = ElectoralMapDataView.as_view()(request)
-
-        self.assertEqual(response.status_code, 200)
-        payload = json.loads(response.content)
-        self.assertEqual(payload["count"], 1)
-        self.assertEqual(payload["points"][0]["name"], "Recinto con mapa")
-        self.assertEqual(payload["points"][0]["tables"], 2)
-        self.assertEqual(payload["points"][0]["reports"], 1)
-        self.assertEqual(payload["points"][0]["pending"], 1)
-        self.assertEqual(payload["points"][0]["status"], "partial")
-        self.assertEqual(payload["points"][0]["votes"], 25)

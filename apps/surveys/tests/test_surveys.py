@@ -22,7 +22,7 @@ from apps.surveys.views import (
     SurveyApplyListView,
     SurveyBuilderView,
     SurveyBuilderQuestionInsoleView,
-    SurveyRespondView,
+    SurveyPublicRespondView,
     user_can_apply_survey,
 )
 from core.form_policies import apply_declared_form_policies
@@ -122,14 +122,17 @@ class SurveyRespondViewTests(TestCase):
         self.option = SurveyOption.objects.create(question=self.question, label="Salud")
 
     def test_post_creates_response_and_selected_option_answer(self):
+        # Anonymous visitors submit through the signed public token route;
+        # the slug route now always requires login for anonymous users.
+        token = self.survey.public_token()
         request = self.factory.post(
-            reverse("surveys:respond", kwargs={"slug": self.survey.slug}),
+            reverse("surveys:respond_public", kwargs={"token": token}),
             data={f"question_{self.question.pk}": str(self.option.pk)},
         )
         request.user = AnonymousUser()
         request.META["REMOTE_ADDR"] = "127.0.0.1"
 
-        response = SurveyRespondView.as_view()(request, slug=self.survey.slug)
+        response = SurveyPublicRespondView.as_view()(request, token=token)
 
         self.assertEqual(response.status_code, 302)
         survey_response = SurveyResponse.objects.get(survey=self.survey)

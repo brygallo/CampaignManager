@@ -5,7 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Max, Q
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import ListView, TemplateView, View
@@ -419,13 +419,20 @@ class SurveyBuilderReorderView(LoginRequiredMixin, PermissionRequiredMixin, View
 class SurveyRespondView(SurveyAccessMixin, TemplateView):
     template_name = "surveys/respond.html"
 
+    # The slug route is reached by name/URL guessing, so it always requires
+    # login for anonymous visitors. The shareable anonymous entry point is
+    # the signed token route (SurveyPublicRespondView below), which flips
+    # this flag on for surveys that don't require login.
+    allow_anonymous_public_access = False
+
     def dispatch(self, request, *args, **kwargs):
         self.survey = self.get_survey()
         # Editors can preview a non-open survey even if they are not part of
         # the assigned audience; the preview never allows submitting (POST
         # is still rejected for non-open surveys below).
         self.can_preview = request.user.has_perm("surveys.change_survey")
-        if self.survey.requires_login and not request.user.is_authenticated:
+        anonymous_allowed = self.allow_anonymous_public_access and not self.survey.requires_login
+        if not request.user.is_authenticated and not anonymous_allowed:
             from django.contrib.auth.views import redirect_to_login
 
             return redirect_to_login(request.get_full_path())
@@ -515,7 +522,7 @@ class SurveyRespondView(SurveyAccessMixin, TemplateView):
             answer = SurveyAnswer(response=response, question=question)
             qtype = question.question_type
             selected_option_ids = []
-            if qtype == SurveyQuestion.QuestionType.NUMBER:
+            if qtype in {SurveyQuestion.QuestionType.NUMBER, SurveyQuestion.QuestionType.NPS}:
                 answer.value_number = value
             elif qtype == SurveyQuestion.QuestionType.DATE:
                 answer.value_date = value
@@ -524,9 +531,19 @@ class SurveyRespondView(SurveyAccessMixin, TemplateView):
             elif qtype in {SurveyQuestion.QuestionType.FILE, SurveyQuestion.QuestionType.IMAGE}:
                 answer.value_file = value
             elif qtype == SurveyQuestion.QuestionType.SINGLE_CHOICE:
-                selected_option_ids = [value] if value else []
+                if question.allow_other and value == form.OTHER_VALUE:
+                    answer.value_text = form.cleaned_data.get(form.other_field_name(question), "")
+                elif value:
+                    selected_option_ids = [value]
             elif qtype == SurveyQuestion.QuestionType.MULTIPLE_CHOICE:
-                selected_option_ids = value or []
+                values = value or []
+                if question.allow_other and form.OTHER_VALUE in values:
+                    answer.value_text = form.cleaned_data.get(form.other_field_name(question), "")
+                    selected_option_ids = [v for v in values if v != form.OTHER_VALUE]
+                else:
+                    selected_option_ids = values
+            elif qtype == SurveyQuestion.QuestionType.RANKING:
+                answer.value_text = value or ""
             elif qtype == SurveyQuestion.QuestionType.LOCATION:
                 lat = form.cleaned_data.get(form.lat_field_name(question))
                 lng = form.cleaned_data.get(form.lng_field_name(question))
@@ -539,6 +556,24 @@ class SurveyRespondView(SurveyAccessMixin, TemplateView):
             answer.save()
             if selected_option_ids:
                 answer.selected_options.set(selected_option_ids)
+
+
+class SurveyPublicRespondView(SurveyRespondView):
+    """Anonymous entry point for open surveys, reached via a signed token
+    instead of the slug (see ``Survey.public_token``/``resolve_public_token``).
+
+    Everything else (form rendering, submission, respondent fields) is
+    inherited unchanged from ``SurveyRespondView``; only survey resolution
+    and the anonymous-access gate differ.
+    """
+
+    allow_anonymous_public_access = True
+
+    def get_survey(self):
+        survey = Survey.resolve_public_token(self.kwargs.get("token"))
+        if survey is None:
+            raise Http404("Enlace no válido.")
+        return survey
 
 
 class SurveyThanksView(SurveyAccessMixin, TemplateView):
