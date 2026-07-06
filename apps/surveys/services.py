@@ -743,7 +743,11 @@ class SurveyResultsSummary:
             if question.question_type == SurveyQuestion.QuestionType.NUMBER:
                 stats = number_map.get(question.pk)
                 summary["number_stats"] = (
-                    {"avg": stats["avg"], "min": stats["min"], "max": stats["max"]}
+                    {
+                        "avg": format_decimal_stat(stats["avg"]),
+                        "min": format_decimal_stat(stats["min"]),
+                        "max": format_decimal_stat(stats["max"]),
+                    }
                     if stats
                     else {"avg": None, "min": None, "max": None}
                 )
