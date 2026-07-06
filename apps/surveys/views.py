@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views.generic import ListView, TemplateView, View
 from django_fsm import TransitionNotAllowed
 
-from apps.insoles.views import InstanceBaseFormView
+from apps.insoles.views import InstanceBaseDeleteView, InstanceBaseFormView
 from apps.reporting.views import ReportExportView
 from apps.workflows.exceptions import WorkflowException
 
@@ -30,7 +30,9 @@ from .models import (
     SurveySection,
 )
 from .services import (
+    SurveyBuilderResponseService,
     SurveyResultsSummary,
+    clone_survey,
     get_survey_publication_issues,
     update_survey_question_positions,
 )
@@ -92,9 +94,11 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         survey = self.get_survey()
+        builder_responses = SurveyBuilderResponseService(survey)
         context.update(
             {
                 "survey": survey,
+                "survey_has_responses": builder_responses.is_structure_locked,
                 "sections": survey.sections.filter(is_active=True).prefetch_related(
                     "questions__options"
                 ),
@@ -125,6 +129,13 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
     def post(self, request, *args, **kwargs):
         self.survey = self.get_survey()
         action = request.POST.get("action")
+        builder_responses = SurveyBuilderResponseService(self.survey)
+        if action in {None, "", "delete_question", "duplicate_question"}:
+            try:
+                builder_responses.assert_structure_can_change()
+            except ValueError as exc:
+                messages.error(request, str(exc))
+                return HttpResponseRedirect(reverse("surveys:builder", kwargs={"pk": self.survey.pk}))
         if action == "delete_question":
             return self._delete_question(request)
         if action == "duplicate_question":
@@ -135,6 +146,8 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
             return self._run_transition("close", "Encuesta cerrada.")
         if action == "reopen_survey":
             return self._run_transition("reopen", "Encuesta reabierta.")
+        if action == "archive_survey":
+            return self._run_transition("archive", "Encuesta archivada.")
         form = SurveyQuestionBuilderForm(request.POST, survey=self.survey)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
@@ -229,7 +242,42 @@ class SurveyBuilderView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAcces
         return HttpResponseRedirect(reverse("surveys:builder", kwargs={"pk": self.survey.pk}))
 
 
-class SurveyBuilderQuestionInsoleView(LoginRequiredMixin, InstanceBaseFormView):
+class SurveyClearResponsesInsoleView(LoginRequiredMixin, PermissionRequiredMixin, InstanceBaseDeleteView):
+    model = Survey
+    permission_required = "surveys.change_survey"
+    create_url_name = "surveys:builder_clear_responses"
+    title = "Vaciar respuestas"
+    confirm_button = "Vaciar respuestas"
+    delete_heading = "Vaciar respuestas"
+    delete_message = (
+        "Se eliminarán definitivamente todas las respuestas registradas para esta encuesta. "
+        "Las preguntas y secciones no se eliminarán."
+    )
+    checkbox_label = "Sí, vaciar definitivamente las respuestas de esta encuesta."
+    success_message = "Respuestas vaciadas. El constructor vuelve a estar editable."
+
+    def get_create_url(self):
+        return reverse(self.create_url_name, kwargs={"pk": self.kwargs["pk"]})
+
+    def perform_delete(self):
+        self.response_count = SurveyBuilderResponseService(self.get_object()).clear_responses(
+            confirmed=True
+        )
+
+
+class SurveyBuilderLockMixin:
+    def get_survey_for_lock(self):
+        return self.get_object()
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            SurveyBuilderResponseService(self.get_survey_for_lock()).assert_structure_can_change()
+        except ValueError as exc:
+            return self.error(str(exc))
+        return super().dispatch(request, *args, **kwargs)
+
+
+class SurveyBuilderQuestionInsoleView(LoginRequiredMixin, SurveyBuilderLockMixin, InstanceBaseFormView):
     model = Survey
     form_class = SurveyQuestionBuilderForm
     create_url_name = "surveys:builder_question_modal"
@@ -286,6 +334,9 @@ class SurveyBuilderQuestionEditInsoleView(SurveyBuilderQuestionInsoleView):
             survey_id=self.kwargs["pk"],
         )
 
+    def get_survey_for_lock(self):
+        return self.get_object().survey
+
     def get_create_url(self):
         return reverse(
             self.create_url_name,
@@ -306,7 +357,7 @@ class SurveyBuilderQuestionEditInsoleView(SurveyBuilderQuestionInsoleView):
         return self.success("Pregunta actualizada.")
 
 
-class SurveyBuilderSectionInsoleView(LoginRequiredMixin, InstanceBaseFormView):
+class SurveyBuilderSectionInsoleView(LoginRequiredMixin, SurveyBuilderLockMixin, InstanceBaseFormView):
     model = Survey
     form_class = SurveySectionBuilderForm
     create_url_name = "surveys:builder_section_modal"
@@ -345,6 +396,9 @@ class SurveyBuilderSectionEditInsoleView(SurveyBuilderSectionInsoleView):
             survey_id=self.kwargs["pk"],
         )
 
+    def get_survey_for_lock(self):
+        return self.get_object().survey
+
     def get_create_url(self):
         return reverse(
             self.create_url_name,
@@ -368,6 +422,10 @@ class SurveyBuilderReorderView(LoginRequiredMixin, PermissionRequiredMixin, View
 
     def post(self, request, *args, **kwargs):
         survey = get_object_or_404(Survey, pk=kwargs["pk"])
+        try:
+            SurveyBuilderResponseService(survey).assert_structure_can_change()
+        except ValueError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
         item_type = request.POST.get("type")
         ordered_ids = [value for value in request.POST.getlist("ids[]") if value]
         if item_type == "sections":
@@ -427,6 +485,19 @@ class SurveyBuilderReorderView(LoginRequiredMixin, PermissionRequiredMixin, View
         except ValueError:
             return JsonResponse({"error": "Sección destino no válida."}, status=400)
         return JsonResponse({"message": "Orden actualizado."})
+
+
+class SurveyCloneView(LoginRequiredMixin, PermissionRequiredMixin, SurveyAccessMixin, View):
+    """Deep-copy a survey into a fresh draft and open its builder."""
+
+    permission_required = "surveys.add_survey"
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        source = self.get_survey()
+        clone = clone_survey(source, user=request.user)
+        messages.success(request, f'Encuesta duplicada como "{clone.title}".')
+        return HttpResponseRedirect(reverse("surveys:builder", kwargs={"pk": clone.pk}))
 
 
 class SurveyRespondView(SurveyAccessMixin, TemplateView):

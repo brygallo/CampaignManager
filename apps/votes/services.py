@@ -1,4 +1,5 @@
 from django.db.models import Max, Sum
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
 
@@ -108,6 +109,93 @@ class ElectoralReportConsistencyService:
             .prefetch_related("lines")
             .first()
         )
+
+
+class ElectoralWatcherReportService:
+    def __init__(self, form, *, watcher):
+        self.form = form
+        self.cleaned = form.cleaned_data
+        self.watcher = watcher
+
+    def save(self):
+        report, _ = ElectoralResultReport.objects.update_or_create(
+            table=self.cleaned["table"],
+            dignity=self.cleaned["dignity"],
+            district=self.form.district,
+            defaults={
+                "parish": self.cleaned["parish"],
+                "venue": self.cleaned["venue"],
+                "watcher": self.watcher,
+                "status": ElectoralResultReport.Status.SUBMITTED,
+                "voters_count": self.cleaned.get("voters_count"),
+                "is_active": True,
+            },
+        )
+        if self.cleaned.get("evidence_file"):
+            report.evidence_file = self.cleaned["evidence_file"]
+            report.save(update_fields=["evidence_file"])
+        report.lines.all().delete()
+        self._create_lines(report)
+        return report
+
+    def _create_lines(self, report):
+        order = 1
+        for option in self.form.candidate_options:
+            ElectoralResultLine.objects.create(
+                report=report,
+                line_type=ElectoralResultLine.LineType.CANDIDATE,
+                candidate_option=option,
+                list_code=option.list_code,
+                candidate_name=option.candidate_name,
+                votes=self.cleaned.get(self.form.vote_field_name(option)) or 0,
+                order=order,
+            )
+            order += 1
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.BLANK,
+            list_code="BLANCOS",
+            votes=self.cleaned["blank_votes"],
+            order=order,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.NULL,
+            list_code="NULOS",
+            votes=self.cleaned["null_votes"],
+            order=order + 1,
+        )
+
+
+class ElectoralReportDetailService:
+    def __init__(self, report):
+        self.report = report
+
+    def build_context(self):
+        lines = list(self.report.lines.all())
+        candidate_lines = [
+            line for line in lines if line.line_type == ElectoralResultLine.LineType.CANDIDATE
+        ]
+        blank_votes = self._line_votes(lines, ElectoralResultLine.LineType.BLANK)
+        null_votes = self._line_votes(lines, ElectoralResultLine.LineType.NULL)
+        valid_votes = sum(line.votes for line in candidate_lines)
+        total_votes = valid_votes + blank_votes + null_votes
+        return {
+            "report": self.report,
+            "candidate_lines": candidate_lines,
+            "blank_votes": blank_votes,
+            "null_votes": null_votes,
+            "valid_votes": valid_votes,
+            "total_votes": total_votes,
+            "difference": (
+                total_votes - self.report.voters_count
+                if self.report.voters_count is not None
+                else None
+            ),
+        }
+
+    def _line_votes(self, lines, line_type):
+        return sum(line.votes for line in lines if line.line_type == line_type)
 
 
 class ElectoralReportDashboardService:
@@ -435,6 +523,7 @@ class ElectoralReportDashboardService:
             "watcher": self._user_label(report.watcher),
             "updated_at": updated_at.isoformat(),
             "updated_at_display": date_format(updated_at, "H:i"),
+            "detail_url": reverse("votes:report_detail", args=[report.pk]),
             "status": report.get_status_display(),
             "status_badge_class": self.REPORT_STATUS_BADGES.get(
                 report.status, "badge-light-secondary"

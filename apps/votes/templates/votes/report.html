@@ -300,6 +300,12 @@
               <div class="text-muted fs-7">
                 Mesa {{ row.table }} · {{ row.dignity }} · {{ row.watcher }} · {{ row.updated_at_display }}
               </div>
+              <button type="button"
+                      class="btn btn-sm btn-light-primary mt-3 drawer-action"
+                      data-url="{{ row.detail_url }}"
+                      data-title="Acta mesa {{ row.table }}">
+                <i data-lucide="panel-right-open" class="fs-4"></i>Ver acta
+              </button>
             </div>
           </div>
         {% empty %}
@@ -389,7 +395,7 @@
           return;
         }
         rows.forEach(function (row) {
-          body.insertAdjacentHTML("beforeend", '<div class="timeline-item"><div class="timeline-line w-40px"></div><div class="timeline-icon symbol symbol-circle symbol-40px"><span class="symbol-label bg-light-primary"><i data-lucide="file-check-2" class="fs-3 text-primary"></i></span></div><div class="timeline-content mb-8 mt-n1"><div class="d-flex flex-wrap align-items-center gap-2 mb-1"><span class="fw-bold text-gray-900">' + escapeHtml(row.venue) + '</span><span class="badge ' + escapeHtml(row.status_badge_class) + '">' + escapeHtml(row.status) + '</span></div><div class="text-muted fs-7">Mesa ' + escapeHtml(row.table) + ' · ' + escapeHtml(row.dignity) + ' · ' + escapeHtml(row.watcher) + ' · ' + escapeHtml(row.updated_at_display) + '</div></div></div>');
+          body.insertAdjacentHTML("beforeend", '<div class="timeline-item"><div class="timeline-line w-40px"></div><div class="timeline-icon symbol symbol-circle symbol-40px"><span class="symbol-label bg-light-primary"><i data-lucide="file-check-2" class="fs-3 text-primary"></i></span></div><div class="timeline-content mb-8 mt-n1"><div class="d-flex flex-wrap align-items-center gap-2 mb-1"><span class="fw-bold text-gray-900">' + escapeHtml(row.venue) + '</span><span class="badge ' + escapeHtml(row.status_badge_class) + '">' + escapeHtml(row.status) + '</span></div><div class="text-muted fs-7">Mesa ' + escapeHtml(row.table) + ' · ' + escapeHtml(row.dignity) + ' · ' + escapeHtml(row.watcher) + ' · ' + escapeHtml(row.updated_at_display) + '</div><button type="button" class="btn btn-sm btn-light-primary mt-3 drawer-action" data-url="' + escapeHtml(row.detail_url) + '" data-title="Acta mesa ' + escapeHtml(row.table) + '"><i data-lucide="panel-right-open" class="fs-4"></i>Ver acta</button></div></div>');
         });
         if (window.cmRenderIcons) window.cmRenderIcons();
       }

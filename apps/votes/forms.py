@@ -260,6 +260,7 @@ class ElectoralWatcherForm(forms.Form):
     def __init__(self, *args, watcher=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.watcher = watcher
+        values = self.data if self.is_bound else self.initial
         assigned_tables = ElectoralTable.objects.filter(is_active=True)
         if watcher is not None:
             assigned_tables = assigned_tables.filter(
@@ -271,24 +272,27 @@ class ElectoralWatcherForm(forms.Form):
             .distinct()
             .order_by("canton__name", "name")
         )
-        if self.data.get("parish"):
+        parish_id = values.get("parish")
+        venue_id = values.get("venue")
+        dignity_id = values.get("dignity")
+        if parish_id:
             self.fields["venue"].queryset = ElectoralVenue.objects.filter(
-                parish_id=self.data.get("parish"),
+                parish_id=parish_id,
                 tables__in=assigned_tables,
                 is_active=True,
             ).distinct().order_by("name")
-            self.fields["dignity"].queryset = self._dignities_for_parish_id(self.data.get("parish"))
-        if self.data.get("venue"):
+            self.fields["dignity"].queryset = self._dignities_for_parish_id(parish_id)
+        if venue_id:
             self.fields["table"].queryset = ElectoralTable.objects.filter(
-                venue_id=self.data.get("venue"),
+                venue_id=venue_id,
                 pk__in=assigned_tables.values("pk"),
                 is_active=True,
             ).order_by("number", "gender")
         self.candidate_options = ElectoralCandidateOption.objects.none()
         self.district = None
-        if self.data.get("parish") and self.data.get("dignity"):
+        if parish_id and dignity_id:
             self.district = resolve_electoral_district(
-                parish_id=self.data.get("parish"), dignity_id=self.data.get("dignity")
+                parish_id=parish_id, dignity_id=dignity_id
             )
             if self.district:
                 self.candidate_options = self.district.candidate_options.filter(

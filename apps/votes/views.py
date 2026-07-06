@@ -1,6 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.generic import TemplateView, View
 
@@ -22,7 +24,11 @@ from .models import (
     ElectoralVenue,
 )
 from .reports import electoral_results_report
-from .services import ElectoralReportConsistencyService, ElectoralReportDashboardService
+from .services import (
+    ElectoralReportConsistencyService,
+    ElectoralReportDashboardService,
+    ElectoralReportDetailService,
+)
 
 
 class ElectoralWatcherPanelView(LoginRequiredMixin, TemplateView):
@@ -154,6 +160,30 @@ class ElectoralReportDataView(LoginRequiredMixin, View):
         if form.is_valid():
             filters = {key: value for key, value in form.cleaned_data.items() if value}
         return JsonResponse(ElectoralReportDashboardService(filters).build_payload())
+
+
+class ElectoralReportDetailView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        report = get_object_or_404(
+            ElectoralResultReport.objects.select_related(
+                "parish", "venue", "table", "dignity", "district", "watcher"
+            ).prefetch_related("lines"),
+            pk=kwargs["pk"],
+        )
+        context = ElectoralReportDetailService(report).build_context()
+        return JsonResponse(
+            {
+                "title": f"Acta mesa {report.table.number}",
+                "template": render_to_string(
+                    "votes/_report_detail_drawer.html",
+                    context,
+                    request=request,
+                ),
+                "create_url": request.path,
+                "confirm_button": "Cerrar",
+                "read_only": True,
+            }
+        )
 
 
 class ElectoralLookupView(LoginRequiredMixin, View):

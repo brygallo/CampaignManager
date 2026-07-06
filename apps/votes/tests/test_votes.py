@@ -1,5 +1,8 @@
+import json
+
 from django.http import QueryDict
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
 from apps.authentication.tests.factories import UserFactory
 from apps.locations.tests.factories import CantonFactory, ParishFactory, ProvinceFactory
@@ -15,6 +18,7 @@ from apps.votes.models import (
     ElectoralVenue,
 )
 from apps.votes.services import ElectoralReportDashboardService
+from apps.votes.views import ElectoralReportDetailView
 
 
 class ElectoralWatcherFormTests(TestCase):
@@ -454,3 +458,63 @@ class ElectoralReportPayloadTests(TestCase):
         self.assertEqual(table_statuses["4 - Mixta"], ("Validada", "badge-light-success"))
         self.assertEqual(venue_statuses["Recinto parcial"], "Parcial")
         self.assertEqual(dignity_statuses["Alcalde"], "Parcial")
+
+    def test_report_detail_drawer_returns_read_only_acta_payload(self):
+        user = UserFactory()
+        parish = ParishFactory(name="Macas")
+        venue = ElectoralVenue.objects.create(parish=parish, name="Recinto central")
+        table = ElectoralTable.objects.create(venue=venue, number="1")
+        dignity = ElectoralDignity.objects.create(
+            name="Alcalde",
+            scope=ElectoralDignity.Scope.CANTON,
+        )
+        district = ElectoralDistrict.objects.create(
+            dignity=dignity,
+            name="Cantonal",
+            kind=ElectoralDistrict.DistrictKind.CANTON,
+            canton=parish.canton,
+        )
+        option = ElectoralCandidateOption.objects.create(
+            district=district,
+            list_code="A",
+            candidate_name="Candidata",
+        )
+        report = ElectoralResultReport.objects.create(
+            parish=parish,
+            venue=venue,
+            table=table,
+            dignity=dignity,
+            district=district,
+            watcher=user,
+            voters_count=11,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.CANDIDATE,
+            candidate_option=option,
+            list_code=option.list_code,
+            candidate_name=option.candidate_name,
+            votes=10,
+            order=1,
+        )
+        ElectoralResultLine.objects.create(
+            report=report,
+            line_type=ElectoralResultLine.LineType.BLANK,
+            list_code="BLANCOS",
+            votes=1,
+            order=2,
+        )
+
+        request = RequestFactory().get(
+            reverse("votes:report_detail", args=[report.pk]),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        request.user = user
+        response = ElectoralReportDetailView.as_view()(request, pk=report.pk)
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertTrue(payload["read_only"])
+        self.assertIn("Acta mesa 1", payload["title"])
+        self.assertIn("Recinto central", payload["template"])
+        self.assertIn("Candidata", payload["template"])

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
+from django.utils.formats import number_format
 from django.utils.functional import cached_property
 from django.utils.text import slugify
 
@@ -29,6 +30,37 @@ CHOICE_QUESTION_TYPES = frozenset(
         SurveyQuestion.QuestionType.SCALE_10,
     }
 )
+
+
+def format_decimal_stat(value):
+    if value is None:
+        return None
+    return number_format(value, decimal_pos=2)
+
+
+class SurveyBuilderResponseService:
+    """Rules for editing a survey builder after responses have been collected."""
+
+    STRUCTURE_LOCK_MESSAGE = "Vacía las respuestas antes de modificar la estructura."
+
+    def __init__(self, survey):
+        self.survey = survey
+
+    @property
+    def is_structure_locked(self):
+        return self.survey.has_responses
+
+    def assert_structure_can_change(self):
+        if self.is_structure_locked:
+            raise ValueError(self.STRUCTURE_LOCK_MESSAGE)
+
+    def clear_responses(self, *, confirmed):
+        if not confirmed:
+            raise ValueError("Confirma el borrado de respuestas para continuar.")
+        with transaction.atomic():
+            response_count = self.survey.responses.count()
+            self.survey.responses.all().delete()
+        return response_count
 
 
 SURVEY_TEMPLATE_LIBRARY = [
@@ -163,6 +195,82 @@ def create_survey_from_template(template_key, *, user=None):
                     order=option_index,
                 )
     return survey
+
+
+@transaction.atomic
+def clone_survey(source, *, user=None):
+    """Deep-copy a survey into a fresh DRAFT: sections, questions, options and
+    visibility rules. Visibility FKs (``visibility_question`` /
+    ``visibility_option``) point at other objects within the same survey, so
+    they are remapped to the cloned counterparts in a second pass. Responses
+    are never copied."""
+    clone = Survey.objects.create(
+        title=f"Copia de {source.title}",
+        slug=unique_survey_slug(f"Copia de {source.title}"),
+        description=source.description,
+        is_anonymous=source.is_anonymous,
+        requires_login=source.requires_login,
+        allow_multiple_responses=source.allow_multiple_responses,
+        all_users_can_respond=source.all_users_can_respond,
+        thank_you_message=source.thank_you_message,
+        starts_at=source.starts_at,
+        ends_at=source.ends_at,
+        created_by=user if user and user.is_authenticated else None,
+    )
+    clone.assigned_users.set(source.assigned_users.all())
+
+    section_map = {}
+    for section in source.sections.filter(is_active=True).order_by("order", "title"):
+        section_map[section.pk] = SurveySection.objects.create(
+            survey=clone,
+            title=section.title,
+            description=section.description,
+            order=section.order,
+        )
+
+    question_map = {}
+    option_map = {}
+    source_questions = list(
+        source.questions.filter(is_active=True).order_by("section__order", "order", "id")
+    )
+    for question in source_questions:
+        new_question = SurveyQuestion.objects.create(
+            survey=clone,
+            section=section_map.get(question.section_id),
+            text=question.text,
+            help_text=question.help_text,
+            question_type=question.question_type,
+            is_required=question.is_required,
+            order=question.order,
+            visibility_operator=question.visibility_operator,
+            visibility_value=question.visibility_value,
+            allow_other=question.allow_other,
+            min_selections=question.min_selections,
+            max_selections=question.max_selections,
+            min_value=question.min_value,
+            max_value=question.max_value,
+        )
+        question_map[question.pk] = new_question
+        for option in question.options.filter(is_active=True).order_by("order", "label"):
+            option_map[option.pk] = SurveyOption.objects.create(
+                question=new_question,
+                label=option.label,
+                value=option.value,
+                order=option.order,
+            )
+
+    # Second pass: remap visibility references onto the cloned objects. A rule
+    # pointing at a question/option that was not cloned (inactive) degrades to
+    # no dependency rather than a dangling reference.
+    for question in source_questions:
+        if not (question.visibility_question_id or question.visibility_option_id):
+            continue
+        new_question = question_map[question.pk]
+        new_question.visibility_question = question_map.get(question.visibility_question_id)
+        new_question.visibility_option = option_map.get(question.visibility_option_id)
+        new_question.save(update_fields=["visibility_question", "visibility_option"])
+
+    return clone
 
 
 def get_survey_publication_issues(survey):

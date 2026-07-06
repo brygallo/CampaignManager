@@ -8,6 +8,11 @@ urlpatterns = [
     path("encuestas/aplicar/", views.SurveyApplyListView.as_view(), name="apply_list"),
     path("encuestas/<int:pk>/constructor/", views.SurveyBuilderView.as_view(), name="builder"),
     path(
+        "encuestas/<int:pk>/constructor/respuestas/vaciar/",
+        views.SurveyClearResponsesInsoleView.as_view(),
+        name="builder_clear_responses",
+    ),
+    path(
         "encuestas/<int:pk>/constructor/pregunta/",
         views.SurveyBuilderQuestionInsoleView.as_view(),
         name="builder_question_modal",
@@ -32,6 +37,7 @@ urlpatterns = [
         views.SurveyBuilderReorderView.as_view(),
         name="builder_reorder",
     ),
+    path("encuestas/<int:pk>/duplicar/", views.SurveyCloneView.as_view(), name="clone"),
     path("encuestas/<slug:slug>/responder/", views.SurveyRespondView.as_view(), name="respond"),
     path(
         "encuestas/publica/<str:token>/",

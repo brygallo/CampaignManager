@@ -1,0 +1,103 @@
+<div class="d-flex flex-column gap-6">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <div class="fw-bold fs-5">{{ report.venue.name }}</div>
+      <div class="text-muted fs-7">Mesa {{ report.table.number }} · {{ report.dignity.name }} · {{ report.district.name }}</div>
+    </div>
+    <span class="badge badge-light-primary">{{ report.get_status_display }}</span>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-6">
+      <div class="border rounded p-3 h-100">
+        <div class="text-muted fs-8 text-uppercase">Sufragantes</div>
+        <div class="fw-bold fs-3">{{ report.voters_count|default:"0" }}</div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="border rounded p-3 h-100">
+        <div class="text-muted fs-8 text-uppercase">Total acta</div>
+        <div class="fw-bold fs-3">{{ total_votes }}</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="border rounded p-3 h-100">
+        <div class="text-muted fs-8 text-uppercase">Válidos</div>
+        <div class="fw-bold">{{ valid_votes }}</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="border rounded p-3 h-100">
+        <div class="text-muted fs-8 text-uppercase">Blancos</div>
+        <div class="fw-bold">{{ blank_votes }}</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="border rounded p-3 h-100">
+        <div class="text-muted fs-8 text-uppercase">Nulos</div>
+        <div class="fw-bold">{{ null_votes }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if difference is not None %}
+    <div class="alert {% if difference == 0 %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center gap-3 mb-0">
+      <i data-lucide="{% if difference == 0 %}check-circle-2{% else %}triangle-alert{% endif %}" class="fs-2"></i>
+      <div class="fw-semibold">
+        {% if difference == 0 %}El acta cuadra con los sufragantes.{% else %}Diferencia de cuadre: {{ difference }} votos.{% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div>
+    <div class="fw-bold mb-3">Votos por lista/candidato</div>
+    <div class="table-responsive">
+      <table class="table table-row-dashed align-middle mb-0">
+        <thead><tr><th>Lista / candidato</th><th class="text-end">Votos</th></tr></thead>
+        <tbody>
+          {% for line in candidate_lines %}
+            <tr>
+              <td><div class="fw-bold">{{ line.list_code }}</div><div class="text-muted">{{ line.candidate_name }}</div></td>
+              <td class="text-end fw-bold">{{ line.votes }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" class="text-muted">Sin votos de candidatos.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if report.validation_notes %}
+    <div>
+      <div class="fw-bold mb-2">Observaciones</div>
+      <div class="border rounded p-3 text-gray-700">{{ report.validation_notes|linebreaksbr }}</div>
+    </div>
+  {% endif %}
+
+  <div>
+    <div class="fw-bold mb-2">Historial</div>
+    <div class="text-muted fs-7">Veedor: {{ report.watcher|default:"Sin veedor" }}</div>
+    <div class="text-muted fs-7">Recibida: {{ report.created_date|date:"d/m/Y H:i" }}</div>
+    <div class="text-muted fs-7">Última actualización: {{ report.modified_date|date:"d/m/Y H:i" }}</div>
+  </div>
+
+  {% if report.evidence_file %}
+    <div>
+      <div class="fw-bold mb-2">Evidencia</div>
+      {% if report.evidence_is_image %}
+        <button type="button"
+                class="btn btn-light-primary btn-sm"
+                data-image-lightbox
+                data-image-src="{{ report.evidence_file.url }}"
+                data-image-name="Acta mesa {{ report.table.number }} · {{ report.venue.name }}">
+          <i data-lucide="image" class="fs-4"></i>Ver imagen
+        </button>
+      {% else %}
+        <a href="{{ report.evidence_file.url }}" class="btn btn-light-primary btn-sm" target="_blank" rel="noopener">
+          <i data-lucide="file-text" class="fs-4"></i>Abrir archivo
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

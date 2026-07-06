@@ -280,6 +280,73 @@ class SurveyBuilderQuestionInsoleViewTests(TestCase):
         self.assertEqual(kwargs["initial"], {"section": str(section.pk)})
 
 
+class SurveyBuilderResponseLockTests(TestCase):
+    def setUp(self):
+        self.user = UserFactory()
+        self.user.user_permissions.add(Permission.objects.get(codename="change_survey"))
+        self.client.force_login(self.user)
+        self.survey = Survey.objects.create(
+            title="Con respuestas",
+            slug="con-respuestas",
+            state=Survey.workflow.DRAFT,
+        )
+        self.question = SurveyQuestion.objects.create(
+            survey=self.survey,
+            text="Nombre",
+            question_type=SurveyQuestion.QuestionType.TEXT_SHORT,
+        )
+        self.response = SurveyResponse.objects.create(survey=self.survey, respondent=self.user)
+        SurveyAnswer.objects.create(
+            response=self.response,
+            question=self.question,
+            value_text="Ana",
+        )
+
+    def test_builder_rejects_structure_changes_while_survey_has_responses(self):
+        response = self.client.post(
+            reverse("surveys:builder", kwargs={"pk": self.survey.pk}),
+            {
+                "text": "Nueva pregunta",
+                "question_type": SurveyQuestion.QuestionType.TEXT_SHORT,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(SurveyQuestion.objects.filter(text="Nueva pregunta").exists())
+
+    def test_clear_responses_requires_checkbox_confirmation(self):
+        response = self.client.post(
+            reverse("surveys:builder_clear_responses", kwargs={"pk": self.survey.pk}),
+            {},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(SurveyResponse.objects.filter(pk=self.response.pk).exists())
+        self.assertTrue(self.survey.has_responses)
+
+    def test_clear_responses_deletes_answers_and_unlocks_builder(self):
+        response = self.client.post(
+            reverse("surveys:builder_clear_responses", kwargs={"pk": self.survey.pk}),
+            {"confirm_button": "1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SurveyResponse.objects.filter(survey=self.survey).exists())
+        self.assertFalse(SurveyAnswer.objects.filter(question=self.question).exists())
+        self.assertFalse(Survey.objects.get(pk=self.survey.pk).has_responses)
+
+    def test_question_modal_is_blocked_while_survey_has_responses(self):
+        response = self.client.get(
+            reverse("surveys:builder_question_modal", kwargs={"pk": self.survey.pk})
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["error"],
+            "Vacía las respuestas antes de modificar la estructura.",
+        )
+
+
 class SurveyBuilderPermissionTests(TestCase):
     def test_change_survey_permission_does_not_allow_publish(self):
         survey = Survey.objects.create(

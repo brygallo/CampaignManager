@@ -383,22 +383,46 @@ class InstanceBaseDeleteView(InstanceBaseFormView):
     title = "¿Está seguro de eliminar este registro?"
     template_name = "insoles/delete.html"
     form_class = forms.Form
+    delete_heading = "Confirmar eliminación"
+    delete_message = None
+    checkbox_label = "Confirmo que deseo continuar con esta acción irreversible."
+    missing_confirmation_message = "Debes seleccionar la casilla de verificación para continuar."
+    success_message = "Borrado exitoso."
+
+    def get_kwargs(self):
+        kwargs = {}
+        if self.request.POST or self.request.FILES:
+            kwargs.update({"data": self.request.POST, "files": self.request.FILES})
+        return kwargs
 
     def post(self, request, *args, **kwargs):
         try:
             confirm_button = request.POST.get("confirm_button")
             if not confirm_button:
-                return self.error(
-                    "Debes seleccionar la casilla de verificación para eliminar el registros"
-                )
-            self.get_object().delete()
-            return self.success("Borrado exitoso.")
+                return self.error(self.missing_confirmation_message)
+            self.perform_delete()
+            return self.success(self.success_message)
         except Exception as err:
             return self.error(str(err))
 
+    def perform_delete(self):
+        self.get_object().delete()
+
+    def get_delete_message(self):
+        if self.delete_message:
+            return self.delete_message
+        return f"Estás por eliminar {self.get_object()}. Esta acción es irreversible."
+
     def get_context(self, request, *args, **kwargs):
         ctx = super().get_context(request, *args, **kwargs)
-        ctx.update({"object": self.get_object()})
+        ctx.update(
+            {
+                "object": self.get_object(),
+                "delete_heading": self.delete_heading,
+                "delete_message": self.get_delete_message(),
+                "checkbox_label": self.checkbox_label,
+            }
+        )
         return ctx
 
 

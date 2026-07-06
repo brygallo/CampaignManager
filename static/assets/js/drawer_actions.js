@@ -154,6 +154,8 @@
     if (label) label.textContent = data.title || "Formulario";
     var confirmBtn = drawer.querySelector("[data-drawer-confirm]");
     if (confirmBtn) confirmBtn.textContent = data.confirm_button || "Guardar";
+    var submitBtn = drawer.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.classList.toggle("d-none", !!data.read_only);
     if (window.initFormWidgets) window.initFormWidgets(drawer);
     if (window.cmRenderIcons) window.cmRenderIcons();
     showDrawer();

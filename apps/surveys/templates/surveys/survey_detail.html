@@ -33,6 +33,15 @@
        aria-labelledby="tab-questions-trigger"
        tabindex="0">
     <div class="d-flex flex-column gap-5">
+      <div class="d-flex flex-column flex-lg-row justify-content-lg-between align-items-lg-center gap-3">
+        <div>
+          <div class="fw-bold fs-4 text-dark">Preguntas</div>
+          <div class="text-muted fs-7">Edita preguntas, secciones y orden desde el constructor.</div>
+        </div>
+        <a class="btn btn-sm btn-light-primary align-self-start" href="{% url 'surveys:builder' object.pk %}">
+          <i data-lucide="pencil" class="fs-4"></i> Editar preguntas
+        </a>
+      </div>
       {% for section in object.sections.all %}
         <div>
           <div class="fw-bold fs-4 text-dark mb-1">{{ section.title }}</div>

@@ -293,6 +293,14 @@ class SurveyQuestionBuilderForm(forms.ModelForm):
                 question__survey=survey,
                 is_active=True,
             ).order_by("question__order", "order", "label")
+        # Lock the question type once the survey has responses: changing it would
+        # leave existing answers inconsistent with the new type. ``disabled``
+        # keeps the instance value on save regardless of submitted input.
+        if self.instance and self.instance.pk and survey is not None and survey.has_responses:
+            self.fields["question_type"].disabled = True
+            self.fields["question_type"].help_text = (
+                "No se puede cambiar el tipo porque la encuesta ya tiene respuestas."
+            )
         if self.is_bound:
             if hasattr(self.data, "getlist"):
                 submitted_options = self.data.getlist(self.add_prefix("option_lines"))

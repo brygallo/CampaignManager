@@ -88,6 +88,13 @@ class Survey(BaseModel, SurveyTransitions):
         return True
 
     @property
+    def has_responses(self):
+        """True once at least one response has been recorded. Used to lock
+        data-corrupting edits (e.g. changing a question's type) after the
+        survey starts collecting answers."""
+        return self.responses.exists()
+
+    @property
     def transition_requirements(self):
         """Checklist payload for the next forward transition, consumed by
         ``workflows/includes/transition_requirements.html``."""

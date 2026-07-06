@@ -1,0 +1,15 @@
+{% with qt=question.question_type %}
+  {% if qt == 'location' %}
+    <span class="badge badge-light-success d-inline-flex align-items-center gap-1"><i data-lucide="map-pin" class="fs-8"></i>{{ question.get_question_type_display }}</span>
+  {% elif qt == 'file' or qt == 'image' %}
+    <span class="badge badge-light-dark d-inline-flex align-items-center gap-1"><i data-lucide="paperclip" class="fs-8"></i>{{ question.get_question_type_display }}</span>
+  {% elif qt == 'ranking' %}
+    <span class="badge badge-light-info d-inline-flex align-items-center gap-1"><i data-lucide="list-ordered" class="fs-8"></i>{{ question.get_question_type_display }}</span>
+  {% elif question.uses_options %}
+    <span class="badge badge-light-info d-inline-flex align-items-center gap-1"><i data-lucide="list-checks" class="fs-8"></i>{{ question.get_question_type_display }}</span>
+  {% else %}
+    <span class="badge badge-light-primary">{{ question.get_question_type_display }}</span>
+  {% endif %}
+  {% if question.is_required %}<span class="badge badge-light-danger">Obligatoria</span>{% endif %}
+  {% if question.visibility_question_id %}<span class="badge badge-light-warning">Condicional</span>{% endif %}
+{% endwith %}

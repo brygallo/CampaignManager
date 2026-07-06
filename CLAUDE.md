@@ -54,6 +54,51 @@ Ejemplo de referencia: `PhysicalAdvertisement` (padre) ↔ `PhysicalAdvertisemen
 
 - Todo el texto a nivel de código (comentarios, docstrings, logs) en **inglés**.
   Español solo para strings visibles al usuario en la UI.
+- Mantener las **views delgadas**. La vista debe coordinar HTTP: permisos,
+  instanciar formularios, mensajes, redirects/JSON y selección de template. La
+  lógica de negocio va en `services.py`, `utils.py` o helpers del dominio.
+- Si una operación modifica varias tablas, tiene reglas de dominio, calcula
+  alertas, clona objetos, borra datos relacionados, sincroniza líneas/hijos o se
+  reutiliza desde más de una vista, crear un **service class/function** en el app
+  correspondiente. Ejemplos esperados: `SurveyBuilderResponseService`,
+  `ElectoralWatcherReportService`, `clone_survey`,
+  `update_survey_question_positions`.
+- No duplicar reglas en templates/JS/views. La UI puede ocultar o deshabilitar
+  acciones, pero el bloqueo real debe vivir en Python, idealmente en un service o
+  policy compartido.
+- Los `utils.py` son para helpers puros o casi puros (normalización, parseo,
+  pequeñas funciones sin estado). Si el helper toca modelos, transacciones,
+  permisos o workflows, preferir `services.py`.
+- Cuando una vista necesite la misma guarda en varios endpoints, usar un mixin
+  pequeño que delegue en el service; no repetir `get/post` con el mismo `if`.
+
+## Insoles y paneles laterales
+
+- Para crear/editar entidades desde una página, preferir los patrones existentes
+  de **Insoles** antes de inventar modales o formularios inline nuevos.
+- `insoles-action` abre el modal/flujo nativo de Insoles; `drawer-action` usa el
+  mismo contrato backend pero lo muestra en el panel lateral derecho.
+- Contrato backend para ambos:
+  - `GET` devuelve JSON con `template`, `create_url`, `title`,
+    `confirm_button` y opcionalmente `read_only`.
+  - `POST create_url` devuelve `{message}` en éxito o `{error, errors}` con
+    HTTP 400 en validación.
+- Usar `InstanceBaseFormView` cuando el caso es un `ModelForm` estándar. Si el
+  formulario es dinámico/no-model o guarda varias tablas, implementar una vista
+  compatible con el contrato de Insoles/Drawer, pero mover el guardado a un
+  service.
+- Para acciones destructivas o de confirmación irreversible (eliminar, vaciar,
+  reiniciar, anular, quitar datos relacionados), reutilizar
+  `InstanceBaseDeleteView`. Configurar `delete_heading`, `delete_message`,
+  `checkbox_label`, `success_message` y sobrescribir `perform_delete()` cuando la
+  acción no sea `self.get_object().delete()`. No crear formularios ad hoc con
+  textos mágicos como confirmación.
+- No dejar formularios grandes pegados en una pantalla si son acciones
+  secundarias o de captura puntual. En esos casos, abrirlos en `drawer-action`
+  para mantener la página principal como listado/resumen.
+- Si el formulario inyectado por drawer necesita JS propio, inicializarlo al
+  evento `drawer:shown`; no depender de scripts que solo corren en el load de la
+  página.
 
 ## Form Policies
 

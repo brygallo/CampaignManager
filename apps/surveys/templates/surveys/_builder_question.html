@@ -1,0 +1,47 @@
+<div class="d-flex align-items-center gap-3 border rounded px-4 py-3 bg-body survey-builder-item"
+     data-question-id="{{ question.pk }}" data-sort-item>
+  <button type="button" class="btn btn-icon btn-sm btn-active-light-primary text-muted flex-shrink-0" {% if not survey_has_responses %}data-drag-handle{% else %}disabled{% endif %} title="Arrastrar pregunta">
+    <i data-lucide="grip-vertical" class="fs-5"></i>
+  </button>
+  <span class="badge badge-circle badge-light fw-bold flex-shrink-0" data-question-order title="Orden en el formulario">{{ question.order }}</span>
+  <div class="flex-grow-1 min-w-0">
+    <div class="fw-semibold text-gray-800 text-truncate">{{ question.text }}</div>
+    <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+      {% include "surveys/_builder_question_badges.html" with question=question %}
+    </div>
+    {% if question.visibility_question_id %}
+      <div class="d-flex align-items-center gap-1 text-warning fs-8 mt-1">
+        <i data-lucide="eye" class="fs-8 flex-shrink-0"></i>
+        <span class="text-truncate">Visible si «{{ question.visibility_question.text|truncatechars:40 }}»
+          {% if question.visibility_operator == 'equals' %}={% elif question.visibility_operator == 'not_equals' %}≠{% elif question.visibility_operator == 'greater_than' %}&gt;{% elif question.visibility_operator == 'less_than' %}&lt;{% else %}—{% endif %}
+          «{% if question.visibility_option %}{{ question.visibility_option.label }}{% else %}{{ question.visibility_value }}{% endif %}»</span>
+      </div>
+    {% endif %}
+  </div>
+  {% if not survey_has_responses %}
+    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+      <button type="button"
+              class="btn btn-icon btn-sm btn-active-light-primary text-muted drawer-action"
+              data-url="{% url 'surveys:builder_question_edit_modal' survey.pk question.pk %}"
+              data-title="Editar pregunta" title="Editar pregunta">
+        <i data-lucide="pencil" class="fs-6"></i>
+      </button>
+      <form method="post" class="m-0">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="duplicate_question">
+        <input type="hidden" name="question_id" value="{{ question.pk }}">
+        <button type="submit" class="btn btn-icon btn-sm btn-active-light-primary text-muted" title="Duplicar pregunta">
+          <i data-lucide="copy" class="fs-6"></i>
+        </button>
+      </form>
+      <form method="post" class="m-0" onsubmit="return window.confirm('¿Retirar esta pregunta del formulario?');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_question">
+        <input type="hidden" name="question_id" value="{{ question.pk }}">
+        <button type="submit" class="btn btn-icon btn-sm btn-active-light-danger text-muted" title="Retirar pregunta">
+          <i data-lucide="trash-2" class="fs-6"></i>
+        </button>
+      </form>
+    </div>
+  {% endif %}
+</div>
